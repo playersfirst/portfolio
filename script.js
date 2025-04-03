@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to complete the loading process
     function finishLoading(totalValue, totalPnL, exchangeRate) {
         // Update total value
-        totalValueEl.textContent = `$${(totalValue + 2).toFixed(2)}`;
+        totalValueEl.textContent = `$${(totalValue + 2.5).toFixed(2)}`;
         
         // Update total P&L with color coding
         totalPnlEl.textContent = `$${(totalPnL).toFixed(2)}`;
@@ -168,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         totalPnlPerc.className = totalPnLPercentage >= 0 ? 'positive' : 'negative';
         
         // Calculate and update Euro values
-        const totalEuros = (totalValue + 2) / exchangeRate;
+        const totalEuros = (totalValue + 2.5) / exchangeRate;
         const euroPnL = totalEuros - originalEuroInvestment;
         
         totalEurosEl.textContent = `€${totalEuros.toFixed(2)}`;
