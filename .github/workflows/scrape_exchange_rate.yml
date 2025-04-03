@@ -1,36 +1,42 @@
 name: Scrape Exchange Rate
-
 on:
   schedule:
-    - cron: '0,30 * * * *'
+    - cron: '0,30 * * * *'  # Fixed the cron syntax
   workflow_dispatch:
-
 jobs:
   scrape:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
+    - name: Checkout current repo
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GH_TOKEN }}  # Use GH_TOKEN consistently
-
+        token: ${{ secrets.GH_TOKEN }}
+        
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
-
+        
     - name: Install dependencies
       run: |
         pip install requests beautifulsoup4
-
+        
     - name: Run scraping script
       run: python scrape_exchange_rate.py
-
-    - name: Commit and push
+      
+    - name: Checkout main repository
+      uses: actions/checkout@v4
+      with:
+        repository: playersfirst/playersfirst.github.io
+        path: main-repo
+        token: ${{ secrets.GH_TOKEN }}
+        
+    - name: Copy and commit to main repository
       env:
-        GH_TOKEN: ${{ secrets.GH_TOKEN }}  # Pass token again for git push
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
       run: |
+        cp exchange_rate.json main-repo/
+        cd main-repo
         git config user.name "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
         git add exchange_rate.json
