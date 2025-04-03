@@ -34,4 +34,4 @@ jobs:
         git commit -m "Update exchange rate"
         git push
       env:
-        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use the PAT you created instead
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}  # Use the PAT you created instead
