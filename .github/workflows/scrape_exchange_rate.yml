@@ -33,3 +33,5 @@ jobs:
         git add exchange_rate.json
         git commit -m "Update exchange rate"
         git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}  # This makes use of your secret
