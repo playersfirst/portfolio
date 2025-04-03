@@ -1,34 +1,40 @@
-name: Scrape Exchange Rate
+name: Scrape and Update Exchange Rate
 
 on:
   schedule:
-    - cron: '0,30 * * * *'  # This will run the script at minute 0 and minute 30 of every hour
-  workflow_dispatch:  # This allows you to manually trigger the workflow from GitHub Actions UI
+    - cron: '0,30 * * * *'  # Runs at 0 and 30 minutes past every hour
+  workflow_dispatch:
 
 jobs:
-  scrape:
+  scrape-and-update:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.PAT }}  # Using PAT for all git operations
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.x'
+        python-version: '3.10'  # Specify exact version for reliability
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install requests beautifulsoup4
 
-    - name: Run the scraping script
+    - name: Scrape exchange rate
       run: python scrape_exchange_rate.py
 
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GH_TOKEN }}
-        branch: main
-        force: true
+    - name: Commit and push changes
+      env:
+        # Use the same PAT for the push action
+        GITHUB_TOKEN: ${{ secrets.PAT }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add exchange_rate.json
+        git diff --cached --quiet || git commit -m "Auto-update exchange rate [skip ci]"
+        git push
