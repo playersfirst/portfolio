@@ -1,0 +1,35 @@
+name: Scrape Exchange Rate
+
+on:
+  schedule:
+    - cron: '0,30 * * * *'  # This will run the script at minute 0 and minute 30 of every hour
+  workflow_dispatch:  # You can also trigger it manually
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4
+
+    - name: Run the scraping script
+      run: python scrape_exchange_rate.py
+
+    - name: Commit and push the result
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
+        git add exchange_rate.json
+        git commit -m "Update exchange rate"
+        git push
