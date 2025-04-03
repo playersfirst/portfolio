@@ -26,18 +26,9 @@ jobs:
     - name: Run the scraping script
       run: python scrape_exchange_rate.py
 
-    - name: Commit and push changes
-      run: |
-        # Configure git
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-    
-        # Stage changes
-        git add exchange_rate.json
-    
-        # Commit changes
-        git commit -m "Update exchange rate" || echo "No changes to commit"
-    
-        # Push changes using the token
-        git remote set-url origin "https://x-access-token:${{ secrets.GH_TOKEN }}@github.com/playersfirst/portfolio.git"
-        git push origin HEAD:main
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GH_TOKEN }}
+        branch: main
+        force: true
