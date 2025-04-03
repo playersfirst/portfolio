@@ -1,0 +1,122 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: #f5f7fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #2c3e50;
+}
+
+.portfolio-container {
+    position: relative;
+    overflow-x: auto;
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+    font-size: 18px;
+    color: #7f8c8d;
+}
+
+.portfolio-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.portfolio-table th,
+.portfolio-table td {
+    padding: 12px 15px;
+    text-align: right;
+}
+
+.portfolio-table th:first-child,
+.portfolio-table td:first-child {
+    text-align: left;
+}
+
+.portfolio-table thead th {
+    background-color: #2c3e50;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+
+.portfolio-table tbody tr {
+    border-bottom: 1px solid #e9ecef;
+}
+
+.portfolio-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.portfolio-table tfoot {
+    font-weight: bold;
+    background-color: #f1f5f9;
+}
+
+.positive {
+    color: #27ae60;
+}
+
+.negative {
+    color: #e74c3c;
+}
+
+.last-updated {
+    text-align: right;
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    margin-bottom: 15px;
+}
+
+#refresh-btn {
+    display: block;
+    margin: 0 auto;
+    padding: 10px 20px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+#refresh-btn:hover {
+    background-color: #2980b9;
+}
+
+@media (max-width: 768px) {
+    .container {
+        margin: 20px;
+        padding: 15px;
+    }
+    
+    .portfolio-table th,
+    .portfolio-table td {
+        padding: 8px 10px;
+        font-size: 0.9rem;
+    }
+} 

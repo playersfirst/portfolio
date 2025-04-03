@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Portfolio Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Portfolio</h1>
+        <div class="portfolio-container">
+            <div class="loading" id="loading">Loading data...</div>
+            <table class="portfolio-table" id="portfolio-table">
+                <thead>
+                    <tr>
+                        <th>Symbol</th>
+                        <th>Shares</th>
+                        <th>Current Price</th>
+                        <th>Value ($)</th>
+                        <th>P&L ($)</th>
+                        <th>P&L (%)</th>
+                        <th>Change Today</th>
+                    </tr>
+                </thead>
+                <tbody id="portfolio-data">
+                    <!-- Data will be populated by JavaScript -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3">Total</td>
+                        <td id="total-value">$0.00</td>
+                        <td id="total-pnl">$0.00</td>
+                        <td id="total-%-pnl">$0.00</td>
+                        <td></td>
+         
+                    </tr>
+                    <tr>
+                        <td colspan="3">Total (€)</td>
+                        <td id="total-euros">€0.00</td>
+                        <td id="euro-pnl">€0.00</td>
+                        <td id="total-%-pnl-euros">$0.00</td>
+                        <td></td>
+            
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+        <div class="last-updated">
+            Last updated: <span id="last-updated">-</span>
+        </div>
+        <button id="refresh-btn">Refresh Data</button>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html> 
