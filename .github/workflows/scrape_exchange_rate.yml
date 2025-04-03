@@ -1,3 +1,10 @@
+name: Scrape Exchange Rate
+
+on:
+  schedule:
+    - cron: '0,30 * * * *'  # This will run the script at minute 0 and minute 30 of every hour
+  workflow_dispatch:  # This allows you to manually trigger the workflow from GitHub Actions UI
+
 jobs:
   scrape:
     runs-on: ubuntu-latest
@@ -27,4 +34,4 @@ jobs:
         git commit -m "Update exchange rate"
         git push
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Use the automatically provided token
+        GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}  # Use the PAT you created instead
