@@ -32,6 +32,5 @@ jobs:
         git config --global user.email "github-actions@github.com"
         git add exchange_rate.json
         git commit -m "Update exchange rate"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}  # Use the PAT you created instead
+        git push https://github-actions:${{ secrets.GH_TOKEN }}@github.com/playersfirst/portfolio.git
+
