@@ -442,8 +442,6 @@ let currentPieChart;
 } catch (error) {
     console.error('Error loading portfolio data:', error);
 }
-
-// Add this function to your existing JavaScript code
 async function loadHistoryChart(currentPortfolioValue) {
     try {
         // Fetch the mock historical data JSON file
@@ -483,7 +481,34 @@ async function loadHistoryChart(currentPortfolioValue) {
         const lastValue = values[values.length - 1];
         const changePercentage = ((lastValue - firstValue) / firstValue) * 100;
         const changeDirection = changePercentage >= 0 ? 'up' : 'down';
-        const changeColor = changePercentage >= 0 ? '#4CAF50' : '#FF5252';
+        const changeColor = changePercentage >= 0 ? '#10b981' : '#ef4444';
+        
+        // Custom tooltip styling
+        const tooltipStyle = {
+            backgroundColor: 'rgba(30, 41, 59, 0.85)',
+            borderColor: 'rgba(203, 213, 225, 0.3)',
+            borderWidth: 1,
+            titleColor: '#f8fafc',
+            bodyColor: '#f1f5f9',
+            bodySpacing: 6,
+            padding: 12,
+            boxPadding: 6,
+            cornerRadius: 8,
+            bodyFont: {
+                family: "'Inter', sans-serif",
+                size: 13
+            },
+            titleFont: {
+                family: "'Inter', sans-serif",
+                size: 14,
+                weight: 'bold'
+            }
+        };
+        
+        // Create gradient fill
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+        gradient.addColorStop(1, 'rgba(99, 102, 241, 0.05)');
         
         // Create chart
         window.historyChart = new Chart(ctx, {
@@ -493,49 +518,81 @@ async function loadHistoryChart(currentPortfolioValue) {
                 datasets: [{
                     label: 'Portfolio Value',
                     data: values,
-                    borderColor: '#36A2EB',
-                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    borderColor: '#6366f1',
+                    borderWidth: 3,
+                    backgroundColor: gradient,
                     fill: true,
-                    tension: 0.2,
-                    pointRadius: 2,
-                    pointHoverRadius: 5,
+                    tension: 0.25,
+                    pointRadius: 4,
+                    pointHoverRadius: 7,
                     pointBackgroundColor: function(context) {
                         // Highlight the last point (today's value)
                         return context.dataIndex === context.dataset.data.length - 1 ? 
-                               '#FF6384' : '#36A2EB';
+                               '#ec4899' : '#6366f1';
                     },
                     pointBorderColor: function(context) {
                         // Highlight the last point (today's value)
                         return context.dataIndex === context.dataset.data.length - 1 ? 
-                               '#FF6384' : '#36A2EB';
+                               '#ec4899' : '#6366f1';
                     },
+                    pointBorderWidth: 2,
+                    pointHitRadius: 8,
                     pointRadius: function(context) {
                         // Make the last point (today's value) larger
-                        return context.dataIndex === context.dataset.data.length - 1 ? 5 : 2;
-                    }
+                        return context.dataIndex === context.dataset.data.length - 1 ? 6 : 4;
+                    },
+                    pointHoverBorderWidth: 3,
+                    pointShadowOffsetX: 1,
+                    pointShadowOffsetY: 1,
+                    pointShadowBlur: 5,
+                    pointShadowColor: 'rgba(0, 0, 0, 0.1)'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        top: 20,
+                        right: 20,
+                        bottom: 20,
+                        left: 20
+                    }
+                },
                 plugins: {
                     title: {
-                      display: true,
-                      text: `7-Day Performance (${changeDirection} ${Math.abs(changePercentage).toFixed(2)}%)`,
-                      color: changeColor,
-                      font: {
-                        size: 16,
-                        weight: 'bold'
-                      }
+                        display: true,
+                        text: `Last seven days (${changeDirection} ${Math.abs(changePercentage).toFixed(2)}%)`,
+                        color: changeColor,
+                        font: {
+                            size: 15,
+                            weight: 'bold',
+                            family: "'Inter', sans-serif"
+                        },
+                        padding: {
+                            top: 10,
+                            bottom: 25
+                        }
                     },
                     legend: {
                         display: false
                     },
                     tooltip: {
+                        enabled: true,
+                        backgroundColor: tooltipStyle.backgroundColor,
+                        titleColor: tooltipStyle.titleColor,
+                        bodyColor: tooltipStyle.bodyColor,
+                        borderColor: tooltipStyle.borderColor,
+                        borderWidth: tooltipStyle.borderWidth,
+                        padding: tooltipStyle.padding,
+                        cornerRadius: tooltipStyle.cornerRadius,
+                        titleFont: tooltipStyle.titleFont,
+                        bodyFont: tooltipStyle.bodyFont,
+                        boxPadding: tooltipStyle.boxPadding,
                         callbacks: {
                             label: function(context) {
                                 const isToday = context.dataIndex === context.dataset.data.length - 1;
-                                return (isToday ? 'Current: $' : '$') + context.raw.toFixed(2);
+                                return (isToday ? 'Current: $' : '$') + context.raw.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
                             },
                             title: function(context) {
                                 const isToday = context[0].dataIndex === context[0].dataset.data.length - 1;
@@ -546,21 +603,48 @@ async function loadHistoryChart(currentPortfolioValue) {
                 },
                 scales: {
                     y: {
-                        min: minValue,
-                        max: maxValue,
+                    
+                        grid: {
+                            color: 'rgba(203, 213, 225, 0.5)',
+                            borderDash: [5, 5],
+                            drawBorder: false
+                        },
                         ticks: {
+                            font: {
+                                family: "'Inter', sans-serif",
+                                size: 12
+                            },
+                            padding: 10,
                             callback: function(value) {
                                 return '$' + value.toLocaleString();
                             }
                         }
                     },
                     x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
                         ticks: {
+                            font: {
+                                family: "'Inter', sans-serif",
+                                size: 12
+                            },
+                            padding: 10,
                             maxRotation: 45,
                             minRotation: 45,
                             autoSkip: true,
-                            maxTicksLimit: 10
+                            maxTicksLimit: 7
                         }
+                    }
+                },
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                elements: {
+                    line: {
+                        borderJoinStyle: 'round'
                     }
                 }
             }
@@ -573,6 +657,7 @@ async function loadHistoryChart(currentPortfolioValue) {
         console.error("Error loading historical chart:", error);
     }
 }
+
 
 // Call this function after the initial portfolio data loads
 // Add this line to the end of your finishLoading function:
