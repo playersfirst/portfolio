@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container">
-        
+        <!-- Main portfolio summary card -->
         <div class="portfolio-summary">
             <div class="total-value" id="main-total-value">$0.00</div>
             <div class="euro-value" id="main-euro-value">(€0.00)</div>
@@ -33,8 +33,8 @@
                 </div>
             </div>
         </div>
-        
-        <div class="portfolio-container">
+         <!-- Portfolio details table -->
+         <div class="portfolio-container">
             <div class="dashboard-card">
                 <div class="loading" id="loading">Loading data...</div>
                 <div class="table-container">
@@ -80,21 +80,26 @@
                 <div class="last-updated">Last updated: <span id="last-updated">-</span></div>
             </div>
         </div>
-    </div>
-    <div class="chart-container">
-        <canvas id="current-pie-chart"></canvas>
-      </div>
-      <div id="chart-legend"></div>
-      <div id="history-section" class="card" style="margin-top: 20px; display: none;">
-        <div class="card-header">
-        </div>
-        <div class="card-body">
-            <div class="chart-container" style="position: relative; height: 300px;">
-                <canvas id="history-chart"></canvas>
+        <!-- Responsive chart layout -->
+        <div class="flex-dashboard">
+    
+            
+            <div id="history-section" class="card">
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height: 300px; padding: 0;">
+                        <canvas id="history-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="current-pie-chart"></canvas>
+                <div id="chart-legend"></div>
             </div>
         </div>
+        
+       
     </div>
+    
     <script src="script.js"></script>
-    <br><br><br>
 </body>
 </html>
