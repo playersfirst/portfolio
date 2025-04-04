@@ -13,8 +13,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GH_TOKEN }}  # Add this line
-          fetch-depth: 0  # Needed for git history
+          token: ${{ secrets.GH_TOKEN }}
+          fetch-depth: 0
+          path: 'portfolio'  # Explicitly check out to this directory
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -28,12 +29,15 @@ jobs:
 
       - name: Run portfolio updater
         run: |
+          cd portfolio
           python portfolio_updater.py
 
       - name: Commit and push changes
         if: success()
         run: |
+          cd portfolio
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git add portfolio_history.json
-          git diff --quiet || (git commit -m "Update portfolio history [skip ci]" && git push origin HEAD)
+          git status
+          git diff --cached --quiet || (git commit -m "Update portfolio history [skip ci]" && git push origin HEAD)
