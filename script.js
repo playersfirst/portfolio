@@ -261,9 +261,9 @@ let currentPieChart;
     
         // Asset class labels for legend
         const assetClassLabels = {
-            'BINANCE:BTCUSDT': 'Cryptocurrency',
-            'VOO': 'Funds',
-            'NANC': 'Funds',
+            'BINANCE:BTCUSDT': 'Crypto',
+            'VOO': 'Equities',
+            'NANC': 'Equities',
             'IAU': 'Commodities',
             'SGOV': 'Savings'
         };
@@ -480,7 +480,7 @@ async function loadHistoryChart(currentPortfolioValue) {
         const firstValue = values[0];
         const lastValue = values[values.length - 1];
         const changePercentage = ((lastValue - firstValue) / firstValue) * 100;
-        const changeDirection = changePercentage >= 0 ? 'up' : 'down';
+        const changeDirection = changePercentage >= 0 ? '+' : '-';
         const changeColor = changePercentage >= 0 ? '#10b981' : '#ef4444';
         
         // Custom tooltip styling
@@ -518,7 +518,7 @@ async function loadHistoryChart(currentPortfolioValue) {
                 datasets: [{
                     label: 'Portfolio Value',
                     data: values,
-                    borderColor: '#6366f1',
+                    borderColor: '#3b82f6',
                     borderWidth: 3,
                     backgroundColor: gradient,
                     fill: true,
