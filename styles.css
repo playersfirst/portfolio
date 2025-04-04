@@ -580,4 +580,61 @@ body {
   .chart-container, .card {
     border-radius: var(--border-radius-sm);
   }
+
+}
+
+/* Styles for excluded assets */
+tr.excluded {
+  opacity: 0.6;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Toggle button styles */
+.symbol-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-asset {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  color: #666;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  user-select: none;
+  margin-left: -18px;
+  margin-right: -3px;
+}
+
+.toggle-asset:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+
+tr.excluded .toggle-asset {
+  color: #999;
+}
+
+/* Improve cursor for entire row to indicate it's clickable */
+#portfolio-data tr {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+#portfolio-data tr:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+
+
+@keyframes fadeIn {
+  to {
+      opacity: 1;
+  }
 }
