@@ -437,8 +437,144 @@ let currentPieChart;
         
         // Create pie charts
         createPieChart();
+        loadHistoryChart(adjustedTotalValue);
     }
 } catch (error) {
     console.error('Error loading portfolio data:', error);
 }
+
+// Add this function to your existing JavaScript code
+async function loadHistoryChart(currentPortfolioValue) {
+    try {
+        // Fetch the mock historical data JSON file
+        const response = await fetch('portfolio_history.json');
+        const data = await response.json();
+        const historicalData = data.history;
+        
+        // Create a copy of the historical data
+        const chartData = [...historicalData];
+        
+        // Add today's data point with the current portfolio value
+        const today = new Date();
+        chartData.push({
+            date: today.toISOString().split('T')[0],  // YYYY-MM-DD format
+            value: currentPortfolioValue
+        });
+        
+        // Get the canvas element
+        const historyChartEl = document.getElementById('history-chart');
+        const ctx = historyChartEl.getContext('2d');
+        
+        // Extract dates and values for the chart
+        const dates = chartData.map(item => {
+            // Format date to be more readable (e.g., "Mar 8")
+            const date = new Date(item.date);
+            return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        });
+        
+        const values = chartData.map(item => item.value);
+        
+        // Calculate min and max for better Y-axis scaling
+        const minValue = Math.min(...values) * 0.995; // 0.5% buffer below minimum
+        const maxValue = Math.max(...values) * 1.005; // 0.5% buffer above maximum
+        
+        // Calculate the overall change percentage for labeling
+        const firstValue = values[0];
+        const lastValue = values[values.length - 1];
+        const changePercentage = ((lastValue - firstValue) / firstValue) * 100;
+        const changeDirection = changePercentage >= 0 ? 'up' : 'down';
+        const changeColor = changePercentage >= 0 ? '#4CAF50' : '#FF5252';
+        
+        // Create chart
+        window.historyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: 'Portfolio Value',
+                    data: values,
+                    borderColor: '#36A2EB',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    fill: true,
+                    tension: 0.2,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    pointBackgroundColor: function(context) {
+                        // Highlight the last point (today's value)
+                        return context.dataIndex === context.dataset.data.length - 1 ? 
+                               '#FF6384' : '#36A2EB';
+                    },
+                    pointBorderColor: function(context) {
+                        // Highlight the last point (today's value)
+                        return context.dataIndex === context.dataset.data.length - 1 ? 
+                               '#FF6384' : '#36A2EB';
+                    },
+                    pointRadius: function(context) {
+                        // Make the last point (today's value) larger
+                        return context.dataIndex === context.dataset.data.length - 1 ? 5 : 2;
+                    }
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                      display: true,
+                      text: `7-Day Performance (${changeDirection} ${Math.abs(changePercentage).toFixed(2)}%)`,
+                      color: changeColor,
+                      font: {
+                        size: 16,
+                        weight: 'bold'
+                      }
+                    },
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const isToday = context.dataIndex === context.dataset.data.length - 1;
+                                return (isToday ? 'Current: $' : '$') + context.raw.toFixed(2);
+                            },
+                            title: function(context) {
+                                const isToday = context[0].dataIndex === context[0].dataset.data.length - 1;
+                                return context[0].label + (isToday ? ' (Today)' : '');
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        min: minValue,
+                        max: maxValue,
+                        ticks: {
+                            callback: function(value) {
+                                return '$' + value.toLocaleString();
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45,
+                            autoSkip: true,
+                            maxTicksLimit: 10
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Show the history section
+        document.getElementById('history-section').style.display = 'block';
+        
+    } catch (error) {
+        console.error("Error loading historical chart:", error);
+    }
+}
+
+// Call this function after the initial portfolio data loads
+// Add this line to the end of your finishLoading function:
+// 
 });
