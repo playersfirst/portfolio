@@ -247,12 +247,7 @@ body {
   color: var(--primary);
 }
 
-.portfolio-table thead th::after {
-  content: "↕";
-  margin-left: 0.5rem;
-  opacity: 0.5;
-  font-size: 0.75rem;
-}
+
 
 .portfolio-table tbody tr {
   transition: var(--transition);
