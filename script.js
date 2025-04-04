@@ -25,10 +25,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // API key from the Python script for stock data
     const apiKey = 'cvneau1r01qq3c7eq690cvneau1r01qq3c7eq69g';
-// Chart elements
-const currentPieChartEl = document.getElementById('current-pie-chart');
-const chartLegendEl = document.getElementById('chart-legend');
-let currentPieChart;
+    
+    // Track excluded assets
+    const excludedAssets = new Set();
+
+    // Chart elements
+    const currentPieChartEl = document.getElementById('current-pie-chart');
+    const chartLegendEl = document.getElementById('chart-legend');
+    let currentPieChart;
 
     const portfolioDataEl = document.getElementById('portfolio-data');
     const totalValueEl = document.getElementById('total-value');
@@ -127,16 +131,19 @@ let currentPieChart;
                     // Calculate P&L (current value - initial investment)
                     const pnl = value - initialInvestment;
                     
-                    // Add to total portfolio value and P&L
-                    totalPortfolioValue += value;
-                    totalPnL += pnl;
+                    // Add to total portfolio value and P&L only if not excluded
+                    if (!excludedAssets.has(symbol)) {
+                        totalPortfolioValue += value;
+                        totalPnL += pnl;
+                    }
                     
                     // Store data for charts
                     portfolioData[symbol] = {
                         price,
                         value,
                         pnl,
-                        percentChange
+                        percentChange,
+                        initialInvestment
                     };
                     
                     // Create table row with the new PnL % column
@@ -180,8 +187,19 @@ let currentPieChart;
         const pnlPercentage = ((value - initialInvestment) / initialInvestment) * 100;
     
         const row = document.createElement('tr');
+        // Add excluded class if this asset is excluded
+        if (excludedAssets.has(symbol)) {
+            row.classList.add('excluded');
+        }
+        
+        row.dataset.symbol = symbol; // Store the symbol in the row for reference
+        
         row.innerHTML = `
-            <td class="symbol">${displaySymbol}</td>
+            <td class="symbol">
+                <div class="symbol-container">
+                    <span class="toggle-asset">⊖</span>${displaySymbol}
+                </div>
+            </td>
             <td>${shares.toFixed(4)}</td>
             <td>$${price.toFixed(2)}</td>
             <td>$${value.toFixed(2)}</td>
@@ -197,8 +215,127 @@ let currentPieChart;
                 </span>
             </td>
         `;
+        
+        // Add click event to toggle button
+        const toggleBtn = row.querySelector('.toggle-asset');
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent triggering row selection
+            toggleAsset(symbol);
+        });
+        
+        // Add click event to the entire row
+        row.addEventListener('click', () => {
+            toggleAsset(symbol);
+        });
+        
         return row;
     }
+    
+    // Function to toggle an asset's inclusion in totals
+    function toggleAsset(symbol) {
+        // Toggle the asset in the excluded set
+        if (excludedAssets.has(symbol)) {
+            excludedAssets.delete(symbol);
+        } else {
+            excludedAssets.add(symbol);
+        }
+        
+        // Find the corresponding row and toggle its class
+        const rows = portfolioDataEl.querySelectorAll('tr');
+        rows.forEach(row => {
+            if (row.dataset.symbol === symbol) {
+                row.classList.toggle('excluded');
+                
+                // Change the toggle symbol
+                const toggleBtn = row.querySelector('.toggle-asset');
+                if (excludedAssets.has(symbol)) {
+                    toggleBtn.textContent = '⊕';
+                    toggleBtn.title = 'Click to include this asset';
+                } else {
+                    toggleBtn.textContent = '⊖';
+                    toggleBtn.title = 'Click to exclude this asset';
+                }
+            }
+        });
+        
+        // Recalculate totals
+        recalculateTotals();
+    }
+    
+    // Function to recalculate totals
+    // Function to recalculateTotals
+function recalculateTotals() {
+    // Calculate new totals
+    let totalValue = 0;
+    let totalPnL = 0;
+    let totalInitialInvestment = 0;
+    
+    Object.keys(portfolioData).forEach(symbol => {
+        if (!excludedAssets.has(symbol)) {
+            totalValue += portfolioData[symbol].value;
+            totalPnL += portfolioData[symbol].pnl;
+            totalInitialInvestment += portfolioData[symbol].initialInvestment;
+        }
+    });
+    
+    const adjustedTotalValue = totalValue + 2.5;
+    
+    // Update exchange rate
+    fetchExchangeRate().then(exchangeRate => {
+        // Calculate Euro values
+        const totalEuros = adjustedTotalValue / exchangeRate;
+        const euroPnL = totalEuros - originalEuroInvestment;
+        
+        // Update table totals
+        totalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
+        totalPnlEl.textContent = `$${totalPnL.toFixed(2)}`;
+        totalPnlEl.className = totalPnL >= 0 ? 'positive' : 'negative';
+        
+        // Calculate and update percentage values
+        const totalPnLPercentage = (totalPnL / totalInitialInvestment) * 100;
+        totalPnlPerc.textContent = `${totalPnLPercentage >= 0 ? '+' : ''}${totalPnLPercentage.toFixed(2)}%`;
+        totalPnlPerc.className = `badge ${totalPnLPercentage >= 0 ? 'positive' : 'negative'}`;
+        
+        // Check if any assets are excluded
+        const hasExcludedAssets = excludedAssets.size > 0;
+        
+        // Update Euro values only if no assets are excluded
+        const euroRowElements = document.querySelectorAll('.euro-row');
+        euroRowElements.forEach(el => {
+            el.style.display = hasExcludedAssets ? 'none' : 'table-row';
+        });
+        
+        if (!hasExcludedAssets) {
+            totalEurosEl.textContent = `€${totalEuros.toFixed(2)}`;
+            euroPnlEl.textContent = `€${euroPnL.toFixed(2)}`;
+            euroPnlEl.className = euroPnL >= 0 ? 'positive' : 'negative';
+            
+            const totalEuroPnLPercentage = (euroPnL / originalEuroInvestment) * 100;
+            totalEurosPerc.textContent = `${totalEuroPnLPercentage >= 0 ? '+' : ''}${totalEuroPnLPercentage.toFixed(2)}%`;
+            totalEurosPerc.className = `badge ${totalEuroPnLPercentage >= 0 ? 'positive' : 'negative'}`;
+        }
+        
+        // Update main summary
+        mainTotalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
+        
+        // Only show Euro value in main summary if no assets are excluded
+        if (hasExcludedAssets) {
+            mainEuroValueEl.style.display = 'none';
+        } else {
+            mainEuroValueEl.style.display = 'inline';
+            mainEuroValueEl.textContent = `(€${totalEuros.toFixed(2)})`;
+        }
+        
+        mainTotalPnlEl.textContent = `$${totalPnL.toFixed(2)}`;
+        mainTotalPnlEl.className = totalPnL >= 0 ? 'positive' : 'negative';
+        mainPnlBadgeEl.textContent = `${totalPnLPercentage >= 0 ? '+' : ''}${totalPnLPercentage.toFixed(2)}%`;
+        mainPnlBadgeEl.className = `badge ${totalPnLPercentage >= 0 ? 'positive' : 'negative'}`;
+        
+        // Update charts
+        createPieChart();
+        loadHistoryChart(adjustedTotalValue);
+    });
+}
     
     // Function to sort the table
     function sortTable(columnIndex) {
@@ -234,6 +371,14 @@ let currentPieChart;
                 const aValue = parseFloat(aCell.textContent.replace('$', ''));
                 const bValue = parseFloat(bCell.textContent.replace('$', ''));
                 return bValue - aValue;
+            }
+            
+            // Special handling for the symbol column with toggle button
+            if (columnIndex === 0) {
+                // Extract just the symbol text, not including the toggle button
+                const aSymbol = aCell.textContent.trim().replace('⊖', '').replace('⊕', '').trim();
+                const bSymbol = bCell.textContent.trim().replace('⊖', '').replace('⊕', '').trim();
+                return aSymbol.localeCompare(bSymbol);
             }
             
             // Default text comparison for other columns
@@ -274,29 +419,33 @@ let currentPieChart;
         const backgroundColors = [];
         const assetTooltips = {};
     
-        // Calculate total portfolio value for percentages
+        // Calculate total portfolio value for percentages (only include non-excluded assets)
         let totalValue = 0;
         Object.keys(portfolio).forEach(symbol => {
-            const value = portfolioData[symbol]?.value || 0;
-            totalValue += value;
+            if (!excludedAssets.has(symbol)) {
+                const value = portfolioData[symbol]?.value || 0;
+                totalValue += value;
+            }
         });
     
-        // Process each asset
+        // Process each asset (only include non-excluded assets)
         Object.keys(portfolio).forEach(symbol => {
-            const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
-            const value = portfolioData[symbol]?.value || 0;
-            const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
-            
-            labels.push(displaySymbol);
-            data.push(value);
-            backgroundColors.push(assetColors[symbol]);
-            
-            // Store tooltip information
-            assetTooltips[displaySymbol] = {
-                value: value,
-                percentage: percentage,
-                class: assetClassLabels[symbol]
-            };
+            if (!excludedAssets.has(symbol)) {
+                const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
+                const value = portfolioData[symbol]?.value || 0;
+                const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
+                
+                labels.push(displaySymbol);
+                data.push(value);
+                backgroundColors.push(assetColors[symbol]);
+                
+                // Store tooltip information
+                assetTooltips[displaySymbol] = {
+                    value: value,
+                    percentage: percentage,
+                    class: assetClassLabels[symbol]
+                };
+            }
         });
     
         // Create or update current value pie chart
@@ -350,15 +499,17 @@ let currentPieChart;
         // Group assets by class
         const classGroups = {};
         Object.keys(assetClassLabels).forEach(symbol => {
-            const className = assetClassLabels[symbol];
-            if (!classGroups[className]) {
-                classGroups[className] = {
-                    color: assetColors[symbol],
-                    assets: []
-                };
+            if (!excludedAssets.has(symbol)) {
+                const className = assetClassLabels[symbol];
+                if (!classGroups[className]) {
+                    classGroups[className] = {
+                        color: assetColors[symbol],
+                        assets: []
+                    };
+                }
+                const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
+                classGroups[className].assets.push(displaySymbol);
             }
-            const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
-            classGroups[className].assets.push(displaySymbol);
         });
     
         // Create legend items
@@ -381,28 +532,45 @@ let currentPieChart;
     }
     
     // Function to complete the loading process
-    function finishLoading(totalValue, totalPnL, exchangeRate) {
-        const adjustedTotalValue = totalValue + 2.5;
-        
-        // Update table total value
-        totalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
-        
-        // Update total P&L with color coding
-        totalPnlEl.textContent = `$${totalPnL.toFixed(2)}`;
-        totalPnlEl.className = totalPnL >= 0 ? 'positive' : 'negative';
-        
-        // Calculate total PnL %
-        const totalInitialInvestment = Object.values(initialInvestments).reduce((a, b) => a + b, 0);
-        const totalPnLPercentage = (totalPnL / totalInitialInvestment) * 100;
-        
-        // Update the percentage badge in the table footer
-        totalPnlPerc.textContent = `${totalPnLPercentage >= 0 ? '+' : ''}${totalPnLPercentage.toFixed(2)}%`;
-        totalPnlPerc.className = `badge ${totalPnLPercentage >= 0 ? 'positive' : 'negative'}`;
-        
-        // Calculate and update Euro values
-        const totalEuros = adjustedTotalValue / exchangeRate;
-        const euroPnL = totalEuros - originalEuroInvestment;
-        
+    // Function to complete the loading process
+function finishLoading(totalValue, totalPnL, exchangeRate) {
+    const adjustedTotalValue = totalValue + 2.5;
+    
+    // Update table total value
+    totalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
+    
+    // Update total P&L with color coding
+    totalPnlEl.textContent = `$${totalPnL.toFixed(2)}`;
+    totalPnlEl.className = totalPnL >= 0 ? 'positive' : 'negative';
+    
+    // Calculate total PnL %
+    let totalInitialInvestment = 0;
+    Object.keys(initialInvestments).forEach(symbol => {
+        if (!excludedAssets.has(symbol)) {
+            totalInitialInvestment += initialInvestments[symbol];
+        }
+    });
+    
+    const totalPnLPercentage = (totalPnL / totalInitialInvestment) * 100;
+    
+    // Update the percentage badge in the table footer
+    totalPnlPerc.textContent = `${totalPnLPercentage >= 0 ? '+' : ''}${totalPnLPercentage.toFixed(2)}%`;
+    totalPnlPerc.className = `badge ${totalPnLPercentage >= 0 ? 'positive' : 'negative'}`;
+    
+    // Check if any assets are excluded
+    const hasExcludedAssets = excludedAssets.size > 0;
+    
+    // Calculate and update Euro values
+    const totalEuros = adjustedTotalValue / exchangeRate;
+    const euroPnL = totalEuros - originalEuroInvestment;
+    
+    // Update Euro values only if no assets are excluded
+    const euroRowElements = document.querySelectorAll('.euro-row');
+    euroRowElements.forEach(el => {
+        el.style.display = hasExcludedAssets ? 'none' : 'table-row';
+    });
+    
+    if (!hasExcludedAssets) {
         totalEurosEl.textContent = `€${totalEuros.toFixed(2)}`;
         euroPnlEl.textContent = `€${euroPnL.toFixed(2)}`;
         euroPnlEl.className = euroPnL >= 0 ? 'positive' : 'negative';
@@ -413,32 +581,41 @@ let currentPieChart;
         // Update the Euro percentage badge in the table footer
         totalEurosPerc.textContent = `${totalEuroPnLPercentage >= 0 ? '+' : ''}${totalEuroPnLPercentage.toFixed(2)}%`;
         totalEurosPerc.className = `badge ${totalEuroPnLPercentage >= 0 ? 'positive' : 'negative'}`;
-        
-        // Update the main summary elements
-        mainTotalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
-        mainEuroValueEl.textContent = `(€${totalEuros.toFixed(2)})`;
-        mainTotalPnlEl.textContent = `$${totalPnL.toFixed(2)}`;
-        mainTotalPnlEl.className = totalPnL >= 0 ? 'positive' : 'negative';
-        
-        // Update the main P&L percentage badge
-        mainPnlBadgeEl.textContent = `${totalPnLPercentage >= 0 ? '+' : ''}${totalPnLPercentage.toFixed(2)}%`;
-        mainPnlBadgeEl.className = `badge ${totalPnLPercentage >= 0 ? 'positive' : 'negative'}`;
-        
-        // Update last updated timestamp
-        const now = new Date();
-        lastUpdatedEl.textContent = now.toLocaleString();
-        
-        // Hide loading, show table
-        loadingEl.style.display = 'none';
-        portfolioTable.style.display = 'table';
-        
-        // Sort by value by default
-        sortTable(3);
-        
-        // Create pie charts
-        createPieChart();
-        loadHistoryChart(adjustedTotalValue);
     }
+    
+    // Update the main summary elements
+    mainTotalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
+    
+    // Only show Euro value in main summary if no assets are excluded
+    if (hasExcludedAssets) {
+        mainEuroValueEl.style.display = 'none';
+    } else {
+        mainEuroValueEl.style.display = 'inline';
+        mainEuroValueEl.textContent = `(€${totalEuros.toFixed(2)})`;
+    }
+    
+    mainTotalPnlEl.textContent = `$${totalPnL.toFixed(2)}`;
+    mainTotalPnlEl.className = totalPnL >= 0 ? 'positive' : 'negative';
+    
+    // Update the main P&L percentage badge
+    mainPnlBadgeEl.textContent = `${totalPnLPercentage >= 0 ? '+' : ''}${totalPnLPercentage.toFixed(2)}%`;
+    mainPnlBadgeEl.className = `badge ${totalPnLPercentage >= 0 ? 'positive' : 'negative'}`;
+    
+    // Update last updated timestamp
+    const now = new Date();
+    lastUpdatedEl.textContent = now.toLocaleString();
+    
+    // Hide loading, show table
+    loadingEl.style.display = 'none';
+    portfolioTable.style.display = 'table';
+    
+    // Sort by value by default
+    sortTable(3);
+    
+    // Create pie charts
+    createPieChart();
+    loadHistoryChart(adjustedTotalValue);
+}
 } catch (error) {
     console.error('Error loading portfolio data:', error);
 }
