@@ -507,8 +507,8 @@ async function loadHistoryChart(currentPortfolioValue) {
         
         // Create gradient fill
         const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
-        gradient.addColorStop(1, 'rgba(99, 102, 241, 0.05)');
+        gradient.addColorStop(0, 'rgb(34, 153, 247, 0.4)');
+        gradient.addColorStop(1, 'rgb(34, 153, 247, 0.05)');
         
         // Create chart
         window.historyChart = new Chart(ctx, {
@@ -518,7 +518,7 @@ async function loadHistoryChart(currentPortfolioValue) {
                 datasets: [{
                     label: 'Portfolio Value',
                     data: values,
-                    borderColor: '#3b82f6',
+                    borderColor: '#2299f7',
                     borderWidth: 3,
                     backgroundColor: gradient,
                     fill: true,
@@ -528,12 +528,12 @@ async function loadHistoryChart(currentPortfolioValue) {
                     pointBackgroundColor: function(context) {
                         // Highlight the last point (today's value)
                         return context.dataIndex === context.dataset.data.length - 1 ? 
-                               '#ec4899' : '#6366f1';
+                               '#ec4899' : '#2299f7';
                     },
                     pointBorderColor: function(context) {
                         // Highlight the last point (today's value)
                         return context.dataIndex === context.dataset.data.length - 1 ? 
-                               '#ec4899' : '#6366f1';
+                               '#ec4899' : '#2299f7';
                     },
                     pointBorderWidth: 2,
                     pointHitRadius: 8,
@@ -562,7 +562,7 @@ async function loadHistoryChart(currentPortfolioValue) {
                 plugins: {
                     title: {
                         display: true,
-                        text: `Last seven days (${changeDirection} ${Math.abs(changePercentage).toFixed(2)}%)`,
+                        text: `Last seven days (${changeDirection}${Math.abs(changePercentage).toFixed(2)}%)`,
                         color: changeColor,
                         font: {
                             size: 15,
