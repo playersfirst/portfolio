@@ -1,7 +1,7 @@
 name: Scrape Exchange Rate
 on:
   schedule:
-    - cron: '0,30 * * * *'  # Fixed the cron syntax
+    - cron: '*/10 * * * *'
   workflow_dispatch:
 jobs:
   scrape:
