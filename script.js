@@ -1,12 +1,15 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // Portfolio positions from user input
-    const portfolio = {
-        'VOO': 2.31,
-        'NANC': 20.9265,
-        'IAU': 34.0794,
-        'SGOV': 142.4127,
-        'BINANCE:BTCUSDT': 0.09314954 // Use the same format as in the Python script
-    };
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const response = await fetch('dividend_history.json');
+        const dividendData = await response.json();
+
+        const portfolio = {
+            'VOO': dividendData.holdings.VOO.total_shares,
+            'NANC': dividendData.holdings.NANC.total_shares,
+            'IAU': 34.0794,
+            'SGOV': dividendData.holdings.SGOV.total_shares,
+            'BINANCE:BTCUSDT': 0.09314954
+        };
 
     // Initial investments as provided
     const initialInvestments = {
@@ -14,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'NANC': 782,
         'IAU': 1904,
         'SGOV': 14296,
-        'BINANCE:BTCUSDT': 5400 // Investment in Bitcoin
+        'BINANCE:BTCUSDT': 5400
     };
 
     // Original investment in Euros
@@ -22,8 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // API key from the Python script for stock data
     const apiKey = 'cvneau1r01qq3c7eq690cvneau1r01qq3c7eq69g';
+// Chart elements
+const currentPieChartEl = document.getElementById('current-pie-chart');
+const chartLegendEl = document.getElementById('chart-legend');
+let currentPieChart;
 
-    // Elements
     const portfolioDataEl = document.getElementById('portfolio-data');
     const totalValueEl = document.getElementById('total-value');
     const totalPnlEl = document.getElementById('total-pnl');
@@ -31,22 +37,47 @@ document.addEventListener('DOMContentLoaded', () => {
     const euroPnlEl = document.getElementById('euro-pnl');
     const lastUpdatedEl = document.getElementById('last-updated');
     const loadingEl = document.getElementById('loading');
-    const refreshBtn = document.getElementById('refresh-btn');
     const portfolioTable = document.getElementById('portfolio-table');
     const totalPnlPerc = document.getElementById('total-%-pnl');
     const totalEurosPerc = document.getElementById('total-%-pnl-euros');
     
+    // New main summary elements
+    const mainTotalValueEl = document.getElementById('main-total-value');
+    const mainEuroValueEl = document.getElementById('main-euro-value');
+    const mainTotalPnlEl = document.getElementById('main-total-pnl');
+    const mainPnlBadgeEl = document.getElementById('main-pnl-badge');
+    
+    // Auto-refresh settings (every 5 minutes)
+    const REFRESH_INTERVAL = 30 * 1000;
+    let refreshTimer;
+    
+    // Object to store portfolio data for charts
+    let portfolioData = {};
+    
     // Initialize
     fetchStockData();
     
-    // Add event listener for refresh button
-    refreshBtn.addEventListener('click', fetchStockData);
+    // Set up auto-refresh
+    function setupAutoRefresh() {
+        if (refreshTimer) {
+            clearInterval(refreshTimer);
+        }
+        refreshTimer = setInterval(fetchStockData, REFRESH_INTERVAL);
+    }
+    
+    // Set up sorting functionality
+    const tableHeaders = portfolioTable.querySelectorAll('th');
+    tableHeaders.forEach((header, index) => {
+        header.addEventListener('click', () => {
+            sortTable(index);
+        });
+    });
 
     async function fetchExchangeRate() {
         try {
-            let response = await fetch("https://playersfirst.github.io/exchange_rate.json"); // Fetch rate from Flask API
-            let data = await response.json(); // Get JSON data
-            return data.rate; // Return the exchange rate
+            let response = await fetch("https://playersfirst.github.io/exchange_rate.json");
+            let data = await response.json();
+            return data.rate;
         } catch (error) {
             console.error("Error fetching exchange rate:", error);
             return 1.0; // Fallback rate
@@ -56,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Function to fetch stock data
     async function fetchStockData() {
         // Show loading, hide table
-        loadingEl.style.display = 'block';
+        loadingEl.style.display = 'flex';
         portfolioTable.style.display = 'none';
         
         // Clear previous data
@@ -70,15 +101,18 @@ document.addEventListener('DOMContentLoaded', () => {
         let completedRequests = 0;
         const totalRequests = Object.keys(portfolio).length;
         
+        // Reset portfolio data
+        portfolioData = {};
+        
         // Process each stock symbol
-        Object.keys(portfolio).forEach(symbol => {
+        const promises = Object.keys(portfolio).map(symbol => {
             const shares = portfolio[symbol];
             const initialInvestment = initialInvestments[symbol];
 
-            // Special handling for cryptocurrency (Binance format)
+            // API URL for stock data
             let url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
             
-            fetch(url)
+            return fetch(url)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -87,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 })
                 .then(data => {
                     const price = data.c; // Current price
-                    const priceChange = data.d; // Price change
                     const percentChange = data.dp; // Percent change
                     const value = price * shares;
                     
@@ -98,15 +131,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     totalPortfolioValue += value;
                     totalPnL += pnl;
                     
+                    // Store data for charts
+                    portfolioData[symbol] = {
+                        price,
+                        value,
+                        pnl,
+                        percentChange
+                    };
+                    
                     // Create table row with the new PnL % column
                     const row = createTableRow(symbol, shares, price, value, pnl, percentChange, initialInvestment);
                     portfolioDataEl.appendChild(row);
-                    
-                    // Update UI when all requests are completed
-                    completedRequests++;
-                    if (completedRequests === totalRequests) {
-                        finishLoading(totalPortfolioValue, totalPnL, usdToEurRate);
-                    }
                 })
                 .catch(error => {
                     console.error(`Error fetching data for ${symbol}:`, error);
@@ -114,12 +149,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Create error row
                     const row = document.createElement('tr');
                     row.innerHTML = `
-                        <td>${symbol}</td>
-                        <td>${shares}</td>
+                        <td class="symbol">${symbol}</td>
+                        <td>${shares.toFixed(4)}</td>
                         <td colspan="4">Error loading data</td>
+                        <td></td>
                     `;
                     portfolioDataEl.appendChild(row);
-                    
+                })
+                .finally(() => {
                     // Update UI when all requests are completed
                     completedRequests++;
                     if (completedRequests === totalRequests) {
@@ -127,6 +164,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
         });
+        
+        // Wait for all requests to complete
+        await Promise.allSettled(promises);
+        
+        // Reset the auto-refresh timer to ensure consistent intervals
+        setupAutoRefresh();
     }
     
     // Function to create a table row for a stock
@@ -138,37 +181,226 @@ document.addEventListener('DOMContentLoaded', () => {
     
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${displaySymbol}</td>
+            <td class="symbol">${displaySymbol}</td>
             <td>${shares.toFixed(4)}</td>
             <td>$${price.toFixed(2)}</td>
             <td>$${value.toFixed(2)}</td>
             <td class="${pnl >= 0 ? 'positive' : 'negative'}">$${pnl.toFixed(2)}</td>
-            <td class="${pnlPercentage >= 0 ? 'positive' : 'negative'}">
-                ${pnlPercentage >= 0 ? '+' : ''}${pnlPercentage.toFixed(2)}%
+            <td>
+                <span class="badge ${pnlPercentage >= 0 ? 'positive' : 'negative'}">
+                    ${pnlPercentage >= 0 ? '+' : ''}${pnlPercentage.toFixed(2)}%
+                </span>
             </td>
-                        <td class="${percentChange >= 0 ? 'positive' : 'negative'}">
-                ${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(2)}%
+            <td>
+                <span class="badge ${percentChange >= 0 ? 'positive' : 'negative'}">
+                    ${percentChange >= 0 ? '+' : ''}${percentChange.toFixed(2)}%
+                </span>
             </td>
         `;
         return row;
     }
     
+    // Function to sort the table
+    function sortTable(columnIndex) {
+        const rows = Array.from(portfolioDataEl.querySelectorAll('tr'));
+        const isValueColumn = columnIndex === 3; // Value column is index 3
+        
+        rows.sort((a, b) => {
+            const aCell = a.cells[columnIndex];
+            const bCell = b.cells[columnIndex];
+            
+            // Special handling for value column (default sort)
+            if (isValueColumn) {
+                const aValue = parseFloat(aCell.textContent.replace('$', ''));
+                const bValue = parseFloat(bCell.textContent.replace('$', ''));
+                return bValue - aValue; // Descending by default for value
+            }
+            
+            // Handle percentage columns (index 5 and 6)
+            if (columnIndex === 5 || columnIndex === 6) {
+                const aBadge = aCell.querySelector('.badge');
+                const bBadge = bCell.querySelector('.badge');
+                
+                if (aBadge && bBadge) {
+                    const aPerc = parseFloat(aBadge.textContent.replace('%', '').replace('+', ''));
+                    const bPerc = parseFloat(bBadge.textContent.replace('%', '').replace('+', ''));
+                    return bPerc - aPerc;
+                }
+                return 0;
+            }
+            
+            // Handle P&L column (index 4)
+            if (columnIndex === 4) {
+                const aValue = parseFloat(aCell.textContent.replace('$', ''));
+                const bValue = parseFloat(bCell.textContent.replace('$', ''));
+                return bValue - aValue;
+            }
+            
+            // Default text comparison for other columns
+            return aCell.textContent.localeCompare(bCell.textContent);
+        });
+        
+        // Clear the table
+        portfolioDataEl.innerHTML = '';
+        
+        // Re-add the sorted rows
+        rows.forEach(row => {
+            portfolioDataEl.appendChild(row);
+        });
+    }
+    
+    function createPieChart() {
+        // Colors for each asset class
+        const assetColors = {
+            'BINANCE:BTCUSDT': '#FF6384',  // Cryptocurrency
+            'VOO': '#36A2EB',               // Funds (same color)
+            'NANC': '#36A2EB',              // Funds (same color)
+            'IAU': '#FFCE56',               // Commodities
+            'SGOV': '#4BC0C0'              // Savings
+        };
+    
+        // Asset class labels for legend
+        const assetClassLabels = {
+            'BINANCE:BTCUSDT': 'Cryptocurrency',
+            'VOO': 'Funds',
+            'NANC': 'Funds',
+            'IAU': 'Commodities',
+            'SGOV': 'Savings'
+        };
+    
+        // Prepare chart data - each asset gets its own segment
+        const labels = [];
+        const data = [];
+        const backgroundColors = [];
+        const assetTooltips = {};
+    
+        // Calculate total portfolio value for percentages
+        let totalValue = 0;
+        Object.keys(portfolio).forEach(symbol => {
+            const value = portfolioData[symbol]?.value || 0;
+            totalValue += value;
+        });
+    
+        // Process each asset
+        Object.keys(portfolio).forEach(symbol => {
+            const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
+            const value = portfolioData[symbol]?.value || 0;
+            const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
+            
+            labels.push(displaySymbol);
+            data.push(value);
+            backgroundColors.push(assetColors[symbol]);
+            
+            // Store tooltip information
+            assetTooltips[displaySymbol] = {
+                value: value,
+                percentage: percentage,
+                class: assetClassLabels[symbol]
+            };
+        });
+    
+        // Create or update current value pie chart
+        const currentCtx = currentPieChartEl.getContext('2d');
+        if (currentPieChart) {
+            currentPieChart.data.labels = labels;
+            currentPieChart.data.datasets[0].data = data;
+            currentPieChart.data.datasets[0].backgroundColor = backgroundColors;
+            currentPieChart.update();
+        } else {
+            currentPieChart = new Chart(currentCtx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label;
+                                    const value = context.raw;
+                                    const percentage = assetTooltips[label].percentage;
+                                    const assetClass = assetTooltips[label].class;
+                                    
+                                    return [
+                                        `${label} (${assetClass})`,
+                                        `Value: $${value.toFixed(2)}`,
+                                        `Percentage: ${percentage.toFixed(2)}%`
+                                    ];
+                                }
+                            }
+                        },
+                        legend: {
+                            display: false // We'll use our custom legend
+                        }
+                    }
+                }
+            });
+        }
+    
+        // Create custom legend grouped by asset class
+        chartLegendEl.innerHTML = '';
+        
+        // Group assets by class
+        const classGroups = {};
+        Object.keys(assetClassLabels).forEach(symbol => {
+            const className = assetClassLabels[symbol];
+            if (!classGroups[className]) {
+                classGroups[className] = {
+                    color: assetColors[symbol],
+                    assets: []
+                };
+            }
+            const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
+            classGroups[className].assets.push(displaySymbol);
+        });
+    
+        // Create legend items
+        Object.keys(classGroups).forEach(className => {
+            const group = classGroups[className];
+            const legendItem = document.createElement('div');
+            legendItem.className = 'legend-item';
+            
+            const assetsList = group.assets.map(asset => {
+                const percentage = assetTooltips[asset]?.percentage.toFixed(2) || '0.00';
+                return `${asset} (${percentage}%)`;
+            }).join(', ');
+            
+            legendItem.innerHTML = `
+                <div class="legend-color" style="background-color: ${group.color};"></div>
+                <span>${className}</span>
+            `;
+            chartLegendEl.appendChild(legendItem);
+        });
+    }
+    
     // Function to complete the loading process
     function finishLoading(totalValue, totalPnL, exchangeRate) {
-        // Update total value
-        totalValueEl.textContent = `$${(totalValue + 2.5).toFixed(2)}`;
+        const adjustedTotalValue = totalValue + 2.5;
+        
+        // Update table total value
+        totalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
         
         // Update total P&L with color coding
-        totalPnlEl.textContent = `$${(totalPnL).toFixed(2)}`;
+        totalPnlEl.textContent = `$${totalPnL.toFixed(2)}`;
         totalPnlEl.className = totalPnL >= 0 ? 'positive' : 'negative';
         
         // Calculate total PnL %
-        const totalPnLPercentage = (totalPnL / Object.values(initialInvestments).reduce((a, b) => a + b, 0)) * 100;
-        totalPnlPerc.textContent = `${totalPnLPercentage.toFixed(2)}%`;
-        totalPnlPerc.className = totalPnLPercentage >= 0 ? 'positive' : 'negative';
+        const totalInitialInvestment = Object.values(initialInvestments).reduce((a, b) => a + b, 0);
+        const totalPnLPercentage = (totalPnL / totalInitialInvestment) * 100;
+        
+        // Update the percentage badge in the table footer
+        totalPnlPerc.textContent = `${totalPnLPercentage >= 0 ? '+' : ''}${totalPnLPercentage.toFixed(2)}%`;
+        totalPnlPerc.className = `badge ${totalPnLPercentage >= 0 ? 'positive' : 'negative'}`;
         
         // Calculate and update Euro values
-        const totalEuros = (totalValue + 2.5) / exchangeRate;
+        const totalEuros = adjustedTotalValue / exchangeRate;
         const euroPnL = totalEuros - originalEuroInvestment;
         
         totalEurosEl.textContent = `€${totalEuros.toFixed(2)}`;
@@ -177,8 +409,20 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Calculate total Euro PnL %
         const totalEuroPnLPercentage = (euroPnL / originalEuroInvestment) * 100;
-        totalEurosPerc.textContent = `${totalEuroPnLPercentage.toFixed(2)}%`;
-        totalEurosPerc.className = totalEuroPnLPercentage >= 0 ? 'positive' : 'negative';
+        
+        // Update the Euro percentage badge in the table footer
+        totalEurosPerc.textContent = `${totalEuroPnLPercentage >= 0 ? '+' : ''}${totalEuroPnLPercentage.toFixed(2)}%`;
+        totalEurosPerc.className = `badge ${totalEuroPnLPercentage >= 0 ? 'positive' : 'negative'}`;
+        
+        // Update the main summary elements
+        mainTotalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
+        mainEuroValueEl.textContent = `(€${totalEuros.toFixed(2)})`;
+        mainTotalPnlEl.textContent = `$${totalPnL.toFixed(2)}`;
+        mainTotalPnlEl.className = totalPnL >= 0 ? 'positive' : 'negative';
+        
+        // Update the main P&L percentage badge
+        mainPnlBadgeEl.textContent = `${totalPnLPercentage >= 0 ? '+' : ''}${totalPnLPercentage.toFixed(2)}%`;
+        mainPnlBadgeEl.className = `badge ${totalPnLPercentage >= 0 ? 'positive' : 'negative'}`;
         
         // Update last updated timestamp
         const now = new Date();
@@ -187,5 +431,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hide loading, show table
         loadingEl.style.display = 'none';
         portfolioTable.style.display = 'table';
+        
+        // Sort by value by default
+        sortTable(3);
+        
+        // Create pie charts
+        createPieChart();
     }
+} catch (error) {
+    console.error('Error loading portfolio data:', error);
+}
 });
