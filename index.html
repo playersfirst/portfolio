@@ -11,52 +11,81 @@
     <meta name="X-Robots-Tag" content="noindex, nofollow, noarchive">
     <title>Portfolio Dashboard</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
-        <h1>Portfolio</h1>
-        <div class="portfolio-container">
-            <div class="loading" id="loading">Loading data...</div>
-            <table class="portfolio-table" id="portfolio-table">
-                <thead>
-                    <tr>
-                        <th>Symbol</th>
-                        <th>Shares</th>
-                        <th>Current Price</th>
-                        <th>Value ($)</th>
-                        <th>P&L ($)</th>
-                        <th>P&L (%)</th>
-                        <th>Change Today</th>
-                    </tr>
-                </thead>
-                <tbody id="portfolio-data">
-                    <!-- Data will be populated by JavaScript -->
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="3">Total</td>
-                        <td id="total-value">$0.00</td>
-                        <td id="total-pnl">$0.00</td>
-                        <td id="total-%-pnl">$0.00</td>
-                        <td></td>
-         
-                    </tr>
-                    <tr>
-                        <td colspan="3">Total (€)</td>
-                        <td id="total-euros">€0.00</td>
-                        <td id="euro-pnl">€0.00</td>
-                        <td id="total-%-pnl-euros">$0.00</td>
-                        <td></td>
+        
+        <div class="portfolio-summary">
+            <div class="total-value" id="main-total-value">$0.00</div>
+            <div class="euro-value" id="main-euro-value">(€0.00)</div>
             
-                    </tr>
-                </tfoot>
-            </table>
+            <div class="pnl-summary">
+                <div class="pnl-item">
+                    <div class="pnl-label">Total P&L</div>
+                    <div class="pnl-value" id="main-total-pnl">$0.00</div>
+                </div>
+                <div class="pnl-item">
+                    <div class="pnl-label">Return</div>
+                    <div class="pnl-value">
+                        <span class="badge" id="main-pnl-badge">0.00%</span>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="last-updated">
-            Last updated: <span id="last-updated">-</span>
+        
+        <div class="portfolio-container">
+            <div class="dashboard-card">
+                <div class="loading" id="loading">Loading data...</div>
+                <div class="table-container">
+                    <table class="portfolio-table" id="portfolio-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Shares</th>
+                                <th>Current Price</th>
+                                <th>Value ($)</th>
+                                <th>P&L ($)</th>
+                                <th>P&L (%)</th>
+                                <th>24H</th>
+                            </tr>
+                        </thead>
+                        <tbody id="portfolio-data">
+                            <!-- Data will be populated by JavaScript -->
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3">Total ($)</td>
+                                <td id="total-value">$0.00</td>
+                                <td id="total-pnl">$0.00</td>
+                                <td>
+                                    <span class="badge" id="total-%-pnl">0.00%</span>
+                                </td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td colspan="3">Total (€)</td>
+                                <td id="total-euros">€0.00</td>
+                                <td id="euro-pnl">€0.00</td>
+                                <td>
+                                    <span class="badge" id="total-%-pnl-euros">0.00%</span>
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="info-bar">
+                <div class="last-updated">Last updated: <span id="last-updated">-</span></div>
+            </div>
         </div>
-        <button id="refresh-btn">Refresh Data</button>
     </div>
+    <div class="chart-container">
+        <canvas id="current-pie-chart"></canvas>
+      </div>
+      <div id="chart-legend"></div>
     <script src="script.js"></script>
+    <br><br><br>
 </body>
-</html> 
+</html>
