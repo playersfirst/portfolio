@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             'NANC': dividendData.holdings.NANC.total_shares,
             'IAU': 34.0794,
             'SGOV': dividendData.holdings.SGOV.total_shares,
-            'BINANCE:BTCUSDT': 0.09314954
+            'BINANCE:BTCUSDT': 0.09580427
         };
 
     // Initial investments as provided
@@ -16,12 +16,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         'VOO': 1195,
         'NANC': 782,
         'IAU': 1904,
-        'SGOV': 14296,
-        'BINANCE:BTCUSDT': 5400
+        'SGOV': 13497,
+        'BINANCE:BTCUSDT': 5600
     };
 
     // Original investment in Euros
-    const originalEuroInvestment = 21500;
+    const originalEuroInvestment = 21700;
     
     // API key from the Python script for stock data
     const apiKey = 'cvneau1r01qq3c7eq690cvneau1r01qq3c7eq69g';
@@ -278,7 +278,7 @@ function recalculateTotals() {
         }
     });
     
-    const adjustedTotalValue = totalValue + 2.5;
+    const adjustedTotalValue = totalValue + 800.68;
     
     // Update exchange rate
     fetchExchangeRate().then(exchangeRate => {
@@ -534,7 +534,7 @@ function recalculateTotals() {
     // Function to complete the loading process
     // Function to complete the loading process
 function finishLoading(totalValue, totalPnL, exchangeRate) {
-    const adjustedTotalValue = totalValue + 2.5;
+    const adjustedTotalValue = totalValue + 800.68;
     
     // Update table total value
     totalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
