@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'VOO': 1195,
         'NANC': 782,
         'IAU': 1904,
-        'SGOV': 13497,
+        'SGOV': 13496,
         'BINANCE:BTCUSDT': 5600
     };
 
