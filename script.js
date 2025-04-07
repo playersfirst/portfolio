@@ -534,7 +534,7 @@ function recalculateTotals() {
     // Function to complete the loading process
     // Function to complete the loading process
 function finishLoading(totalValue, totalPnL, exchangeRate) {
-    const adjustedTotalValue = totalValue + 800.68;
+    const adjustedTotalValue = totalValue + 2242.54;
     
     // Update table total value
     totalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
