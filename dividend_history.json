@@ -2,7 +2,7 @@
   "last_checked": "2025-04-07T12:26:49.061429",
   "holdings": {
     "VOO": {
-      "total_shares": 2.31,
+      "total_shares": 0,
       "total_dividends": 0,
       "processed_dividends": []
     },
@@ -25,7 +25,7 @@
       ]
     },
     "NANC": {
-      "total_shares": 20.9265,
+      "total_shares": 0,
       "total_dividends": 0,
       "processed_dividends": []
     }
