@@ -6,16 +6,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         const portfolio = {
             'VOO': dividendData.holdings.VOO.total_shares,
             'NANC': dividendData.holdings.NANC.total_shares,
-            'IAU': 34.0794,
+            'IAU': 38.463,
             'SGOV': dividendData.holdings.SGOV.total_shares,
             'BINANCE:BTCUSDT': 0.09580427
         };
 
     // Initial investments as provided
     const initialInvestments = {
-        'VOO': 0,
-        'NANC': 0,
-        'IAU': 1904,
+        'VOO': 162.98,
+        'NANC': 123.64,
+        'IAU': 2155,
         'SGOV': 13496,
         'BINANCE:BTCUSDT': 5600
     };
