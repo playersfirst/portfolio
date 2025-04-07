@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial investments as provided
     const initialInvestments = {
-        'VOO': 1195,
-        'NANC': 782,
+        'VOO': 0,
+        'NANC': 0,
         'IAU': 1904,
         'SGOV': 13496,
         'BINANCE:BTCUSDT': 5600
@@ -278,7 +278,7 @@ function recalculateTotals() {
         }
     });
     
-    const adjustedTotalValue = totalValue + 800.68;
+    const adjustedTotalValue = totalValue + 2242.54;
     
     // Update exchange rate
     fetchExchangeRate().then(exchangeRate => {
