@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'NANC': 721,
         'IAU': 2155,
         'SGOV': 13496,
-        'BINANCE:BTCUSDT': 5600
+        'BINANCE:BTCUSDT': 5620
     };
 
     // Original investment in Euros
