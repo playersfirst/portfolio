@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial investments as provided
     const initialInvestments = {
-        'VOO': 1451,
+        'VOO': 1591,
         'NANC': 721,
         'IAU': 2155,
         'SGOV': 13496,
@@ -278,7 +278,7 @@ function recalculateTotals() {
         }
     });
     
-    const adjustedTotalValue = totalValue + 140;
+    const adjustedTotalValue = totalValue ;
     
     // Update exchange rate
     fetchExchangeRate().then(exchangeRate => {
@@ -534,7 +534,7 @@ function recalculateTotals() {
     // Function to complete the loading process
     // Function to complete the loading process
 function finishLoading(totalValue, totalPnL, exchangeRate) {
-    const adjustedTotalValue = totalValue + 140;
+    const adjustedTotalValue = totalValue ;
     
     // Update table total value
     totalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
