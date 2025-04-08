@@ -13,8 +13,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial investments as provided
     const initialInvestments = {
-        'VOO': 1441,
-        'NANC': 731,
+        'VOO': 1451,
+        'NANC': 721,
         'IAU': 2155,
         'SGOV': 13496,
         'BINANCE:BTCUSDT': 5600
