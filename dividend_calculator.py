@@ -6,7 +6,7 @@ import os
 # Configuration
 PORTFOLIO = {
     "VOO": {
-        "shares": 0,
+        "shares": 3.2086,
         "tax_rate": 0.30  # 30% tax for VOO
     },
     "SGOV": {
@@ -14,7 +14,7 @@ PORTFOLIO = {
         "tax_rate": 0.00  # 0% tax for SGOV (Treasury bills)
     },
     "NANC": {
-        "shares": 0,
+        "shares": 20.5685,
         "tax_rate": 0.30  # 30% tax for NANC
     }
 }
