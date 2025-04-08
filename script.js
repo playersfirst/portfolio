@@ -13,15 +13,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Initial investments as provided
     const initialInvestments = {
-        'VOO': 162.98,
-        'NANC': 123.64,
+        'VOO': 1441,
+        'NANC': 731,
         'IAU': 2155,
         'SGOV': 13496,
         'BINANCE:BTCUSDT': 5600
     };
 
     // Original investment in Euros
-    const originalEuroInvestment = 21700;
+    const originalEuroInvestment = 21500;
     
     // API key from the Python script for stock data
     const apiKey = 'cvneau1r01qq3c7eq690cvneau1r01qq3c7eq69g';
@@ -278,7 +278,7 @@ function recalculateTotals() {
         }
     });
     
-    const adjustedTotalValue = totalValue + 2242.54;
+    const adjustedTotalValue = totalValue + 140;
     
     // Update exchange rate
     fetchExchangeRate().then(exchangeRate => {
@@ -534,7 +534,7 @@ function recalculateTotals() {
     // Function to complete the loading process
     // Function to complete the loading process
 function finishLoading(totalValue, totalPnL, exchangeRate) {
-    const adjustedTotalValue = totalValue + 2242.54;
+    const adjustedTotalValue = totalValue + 140;
     
     // Update table total value
     totalValueEl.textContent = `$${adjustedTotalValue.toFixed(2)}`;
