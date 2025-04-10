@@ -20,7 +20,7 @@ PORTFOLIO = {
 }
 API_KEY = "G8FHWSAW9XXFUWJ8"  # Your Alpha Vantage API key
 DATA_FILE = "dividend_history.json"
-IGNORE_BEFORE_DATE = "2025-04-08"  # Ignore dividends before this date
+IGNORE_BEFORE_DATE = "2025-04-28"  # Ignore dividends before this date
 
 def load_previous_data():
     if os.path.exists(DATA_FILE):
