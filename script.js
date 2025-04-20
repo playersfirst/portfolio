@@ -504,8 +504,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const dates = calculatedHistory.map(item => new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
             const values = calculatedHistory.map(item => item.value);
 
-            console.log("Chart Dates:", dates);
-            console.log("Chart Values:", values);
 
             const numberOfDays = values.length; // Get the total number of data points
 
