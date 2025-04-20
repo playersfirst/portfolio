@@ -1,28 +1,179 @@
 {
   "history": [
     {
+      "date": "2025-04-14",
+      "assets": {
+        "VOO": {
+          "value_usd": 26291.85,
+          "value_eur": 23000
+        },
+        "NANC": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "IAU": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "SGOV": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 0,
+          "value_eur": 0
+        }
+      }
+    },
+    {
       "date": "2025-04-15",
-      "value": 26274.56
+      "assets": {
+        "VOO": {
+          "value_usd": 26274.56,
+          "value_eur": 0
+        },
+        "NANC": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "IAU": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "SGOV": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 0,
+          "value_eur": 0
+        }
+      }
     },
     {
       "date": "2025-04-16",
-      "value": 26191.62
+      "assets": {
+        "VOO": {
+          "value_usd": 26191.62,
+          "value_eur": 0
+        },
+        "NANC": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "IAU": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "SGOV": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 0,
+          "value_eur": 0
+        }
+      }
     },
     {
       "date": "2025-04-17",
-      "value": 26245.23
+      "assets": {
+        "VOO": {
+          "value_usd": 26245.23,
+          "value_eur": 0
+        },
+        "NANC": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "IAU": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "SGOV": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 0,
+          "value_eur": 0
+        }
+      }
     },
     {
       "date": "2025-04-18",
-      "value": 26325.73
+      "assets": {
+        "VOO": {
+          "value_usd": 26325.73,
+          "value_eur": 0
+        },
+        "NANC": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "IAU": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "SGOV": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 0,
+          "value_eur": 0
+        }
+      }
     },
     {
       "date": "2025-04-19",
-      "value": 26303.89
+      "assets": {
+        "VOO": {
+          "value_usd": 26303.89,
+          "value_eur": 0
+        },
+        "NANC": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "IAU": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "SGOV": {
+          "value_usd": 0,
+          "value_eur": 0
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 0,
+          "value_eur": 0
+        }
+      }
     },
     {
       "date": "2025-04-20",
-      "value": 26360.29
+      "assets": {
+        "SGOV": {
+          "value_usd": 13521.91,
+          "value_eur": 11868.82
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 8156.47,
+          "value_eur": 7159.32
+        },
+        "IAU": {
+          "value_usd": 2408.94,
+          "value_eur": 2114.44
+        },
+        "VOO": {
+          "value_usd": 1552.64,
+          "value_eur": 1362.83
+        },
+        "NANC": {
+          "value_usd": 704.88,
+          "value_eur": 618.71
+        }
+      }
     }
   ]
 }
