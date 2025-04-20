@@ -247,8 +247,6 @@ body {
   color: var(--primary);
 }
 
-
-
 .portfolio-table tbody tr {
   transition: var(--transition);
 }
@@ -319,6 +317,10 @@ body {
   border-top: 1px solid var(--gray-200);
   font-size: 0.875rem;
   color: var(--gray-500);
+}
+
+.info-bar div {
+  color: #6b7280;
 }
 
 .last-updated {
@@ -580,7 +582,6 @@ body {
   .chart-container, .card {
     border-radius: var(--border-radius-sm);
   }
-
 }
 
 /* Styles for excluded assets */
@@ -631,10 +632,35 @@ tr.excluded .toggle-asset {
   background-color: rgba(0, 0, 0, 0.03);
 }
 
-
-
 @keyframes fadeIn {
   to {
       opacity: 1;
   }
 }
+
+/* --- NEW: Currency Switch Button Styles --- */
+.currency-switch {
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #ffffff;
+    background-color: #3b82f6; /* Blue background */
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease;
+    margin-left: auto; /* Pushes button to the right within info-bar */
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.currency-switch:hover {
+    background-color: #2563eb; /* Darker blue on hover */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.currency-switch:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+}
+/* --- End Currency Switch Button Styles --- */
