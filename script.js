@@ -598,7 +598,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         mainTotalPnlEl.className = totalPnlPrimary >= 0 ? 'positive' : 'negative';
         mainPnlBadgeEl.textContent = `${totalPnLPercentagePrimary >= 0 ? '+' : ''}${totalPnLPercentagePrimary.toFixed(2)}%`;
         mainPnlBadgeEl.className = `badge ${totalPnLPercentagePrimary >= 0 ? 'positive' : 'negative'}`;
-        currencySwitchBtn.textContent = `Switch to ${secondaryCurrency}`;
+        currencySwitchBtn.textContent = `${secondaryCurrency}`;
 
         let totalUsdValueForCharts = 0;
         Object.keys(portfolioData).forEach(symbol => {
