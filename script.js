@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let displayCurrency = 'USD';
     let usdToEurRate = 1.0;
+    let selectedTimeframe = 'all'; // Default to showing all history
     const excludedAssets = new Set();
     let portfolioData = {};
     let refreshTimer;
@@ -61,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mainPnlBadgeEl = document.getElementById('main-pnl-badge');
     const currencySwitchBtn = document.getElementById('currency-switch-btn');
     const tableHeaders = portfolioTable.querySelectorAll('th');
+    const timeframeSelectEl = document.getElementById('timeframe-select'); // New timeframe selector
 
     async function fetchInitialData() {
         try {
@@ -466,7 +468,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                         }
                     });
                 } else {
-                    console.warn(`Missing or invalid 'assets' object for date: ${entry?.date}`);
                 }
                 return { date: entry.date, value: isNaN(dailyTotal) ? 0 : dailyTotal };
             }).filter(item => item !== null);
@@ -496,13 +497,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
 
-            if (!calculatedHistory || calculatedHistory.length === 0) {
+            let displayHistory = [...calculatedHistory]; // Start with the full history
+            if (selectedTimeframe !== 'all') {
+                const daysToShow = parseInt(selectedTimeframe, 10);
+                if (!isNaN(daysToShow) && daysToShow > 0 && daysToShow <= calculatedHistory.length) {
+                    displayHistory = calculatedHistory.slice(-daysToShow);
+                } else {
+                }
+            }
+
+            // Ensure calculatedHistory is valid before proceeding
+            if (!displayHistory || displayHistory.length === 0) { // Check the potentially filtered array
                 document.getElementById('history-section').style.display = 'none';
                 return;
             }
 
-            const dates = calculatedHistory.map(item => new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-            const values = calculatedHistory.map(item => item.value);
+            const dates = displayHistory.map(item => new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+            const values = displayHistory.map(item => item.value);
 
 
             const numberOfDays = values.length; // Get the total number of data points
@@ -554,7 +565,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     plugins: {
                         title: {
                             display: true,
-                            text: `Last ${numberOfDays} days (${displayCurrency}) (${changeDirection}${Math.abs(changePercentage).toFixed(2)}%)`,
+                            text: `Placeholder Title`, // Title is now set dynamically after chart creation/update
                             color: changeColor,
                             font: { size: 15, weight: 'bold', family: "'Inter', sans-serif" },
                             padding: { top: 10, bottom: 25 }
@@ -568,7 +579,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                                     const prefix = c.dataIndex === c.dataset.data.length - 1 ? 'Current: ' : '';
                                     return prefix + currencySymbol + c.raw.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
                                 },
-                                title: (c) => c[0].label + (c[0].dataIndex === c[0].dataset.data.length - 1 ? ' (Today)' : '')
+                                title: (c) => c[0].label + (c[0].dataIndex === c.dataset.data.length - 1 ? ' (Today)' : '')
                             }
                         }
                     },
@@ -580,6 +591,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                     elements: { line: { borderJoinStyle: 'round' } }
                 }
             });
+
+            // --- Update Title Text based on Selection --- //
+            let titleText = "History"; // Default base
+            const selectedOptionIndex = timeframeSelectEl.selectedIndex;
+            if (selectedOptionIndex >= 0) { // Check if an option is selected
+                const selectedOptionText = timeframeSelectEl.options[selectedOptionIndex].text;
+                // Use the selected option's text, but handle the default case
+                if (selectedTimeframe === 'all') {
+                    titleText = `History`; // Show actual days for 'all'
+                } else {
+                    titleText = selectedOptionText; // Use text like "Last week", "Last month"
+                }
+            } else {
+                 // Fallback if no option is somehow selected
+                 titleText = `Last ${numberOfDays > 0 ? numberOfDays -1 : 0} days`;
+            }
+
+            // Add currency and PnL % to the title
+            const finalTitle = `${titleText} (${changeDirection}${Math.abs(changePercentage).toFixed(2)}%)`;
+
+             // Update the chart title using the existing instance
+            if (window.historyChart && window.historyChart.options.plugins.title) {
+                window.historyChart.options.plugins.title.text = finalTitle;
+                 window.historyChart.options.plugins.title.color = changeColor; // Also update color
+                window.historyChart.update(); // Update the chart to show the new title
+            } else {
+                  console.error("Could not update chart title, chart instance or title plugin not found.");
+            }
+            // --- End Title Update --- //
+
             document.getElementById('history-section').style.display = 'block';
         } catch (error) {
             document.getElementById('history-section').style.display = 'none';
@@ -693,6 +734,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         header.addEventListener('click', () => sortTable(index));
     });
     currencySwitchBtn.addEventListener('click', toggleCurrency);
+
+    // --- Event Listener for Timeframe Change --- //
+    timeframeSelectEl.addEventListener('change', (event) => {
+        selectedTimeframe = event.target.value;
+        loadHistoryChart(); // Reload the history chart with the new timeframe
+    });
 
     fetchInitialData(); // Start the process
 
