@@ -577,9 +577,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 label: (c) => {
                                     const currencySymbol = displayCurrency === 'USD' ? '$' : '€';
                                     const prefix = c.dataIndex === c.dataset.data.length - 1 ? 'Current: ' : '';
-                                    return prefix + currencySymbol + c.raw.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                                    const value = (typeof c.raw === 'number' && !isNaN(c.raw)) ? c.raw.toFixed(2).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ",") : 'N/A';
+                                    return prefix + currencySymbol + value;
                                 },
-                                title: (c) => c[0].label + (c[0].dataIndex === c.dataset.data.length - 1 ? ' (Today)' : '')
+                                title: (c) => {
+                                    const label = c && c.length > 0 && c[0].label ? c[0].label : 'Date N/A';
+                                    const isLastPoint = c && c.length > 0 && c[0].dataIndex === c[0].dataset.data.length - 1;
+                                    return label + (isLastPoint ? ' (Today)' : '');
+                                }
                             }
                         }
                     },
