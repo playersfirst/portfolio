@@ -75,7 +75,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             };
             await fetchStockData();
         } catch (error) {
-            console.error('Error loading initial portfolio data:', error);
             loadingEl.textContent = 'Error loading initial data. Please refresh.';
             loadingEl.style.display = 'flex';
             portfolioTable.style.display = 'none';
@@ -88,7 +87,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             let data = await response.json();
             usdToEurRate = data.rate;
         } catch (error) {
-            console.error("Error fetching exchange rate:", error);
             usdToEurRate = 0.92;
         }
         return usdToEurRate;
@@ -150,7 +148,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     };
                 })
                 .catch(error => {
-                    console.error(`Error fetching data for ${symbol}:`, error);
                     portfolioData[symbol] = { error: true };
                     const row = document.createElement('tr');
                     const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
@@ -438,7 +435,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    async function loadHistoryChart(currentPortfolioValue) {
+    async function loadHistoryChart() {
         try {
             if (window.historyChart instanceof Chart) {
                 window.historyChart.destroy();
@@ -448,16 +445,89 @@ document.addEventListener('DOMContentLoaded', async () => {
             const ctx = historyChartEl.getContext('2d');
             const response = await fetch('portfolio_history.json');
             const data = await response.json();
-            const chartData = [...data.history];
+            const historicalEntries = data.history;
+
+            if (!historicalEntries || !Array.isArray(historicalEntries) || historicalEntries.length === 0) {
+                document.getElementById('history-section').style.display = 'none';
+                return;
+            }
+
+            // --- Calculate historical values based on current state ---
+            const valueKey = displayCurrency === 'USD' ? 'value_usd' : 'value_eur';
+            const calculatedHistory = historicalEntries.map(entry => {
+                let dailyTotal = 0;
+                if (entry && typeof entry.assets === 'object' && entry.assets !== null) {
+                    Object.keys(entry.assets).forEach(symbol => {
+                        if (!excludedAssets.has(symbol) && entry.assets[symbol] && typeof entry.assets[symbol] === 'object') {
+                            const value = entry.assets[symbol][valueKey];
+                            if (typeof value === 'number' && !isNaN(value)) {
+                                dailyTotal += value;
+                            }
+                        }
+                    });
+                } else {
+                    console.warn(`Missing or invalid 'assets' object for date: ${entry?.date}`);
+                }
+                return { date: entry.date, value: isNaN(dailyTotal) ? 0 : dailyTotal };
+            }).filter(item => item !== null);
+
+
+            // --- Calculate current value based on live data ---
+            let currentTotalValue = 0;
+            Object.keys(portfolioData).forEach(symbol => {
+                const assetData = portfolioData[symbol];
+                if (assetData && !assetData.error && !excludedAssets.has(symbol) && typeof assetData === 'object') {
+                    const liveValue = displayCurrency === 'USD' ? assetData.value : assetData.valueEur;
+                    if (typeof liveValue === 'number' && !isNaN(liveValue)) {
+                        currentTotalValue += liveValue;
+                    }
+                }
+            });
+            currentTotalValue = isNaN(currentTotalValue) ? 0 : currentTotalValue;
+
+
             const today = new Date();
-            chartData.push({ date: today.toISOString().split('T')[0], value: currentPortfolioValue });
 
-            const dates = chartData.map(item => new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-            const values = chartData.map(item => item.value);
+            if (calculatedHistory && calculatedHistory.length > 0) {
+                calculatedHistory.push({ date: today.toISOString().split('T')[0], value: currentTotalValue });
+            } else {
+                document.getElementById('history-section').style.display = 'none';
+                return;
+            }
 
-            const firstValue = values[0];
-            const lastValue = values[values.length - 1];
-            const changePercentage = ((lastValue - firstValue) / firstValue) * 100;
+
+            if (!calculatedHistory || calculatedHistory.length === 0) {
+                document.getElementById('history-section').style.display = 'none';
+                return;
+            }
+
+            const dates = calculatedHistory.map(item => new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+            const values = calculatedHistory.map(item => item.value);
+
+            console.log("Chart Dates:", dates);
+            console.log("Chart Values:", values);
+
+            const numberOfDays = values.length; // Get the total number of data points
+
+            let firstValue = 0, lastValue = 0, changePercentage = 0;
+            if (values && values.length > 0) {
+                const validValues = values.filter(v => typeof v === 'number' && !isNaN(v));
+                if (validValues.length > 1) {
+                    firstValue = validValues[0];
+                    lastValue = validValues[validValues.length - 1];
+                    if (firstValue !== 0) {
+                        changePercentage = ((lastValue - firstValue) / firstValue) * 100;
+                    } else if (lastValue > 0) {
+                        changePercentage = Infinity;
+                    }
+                } else if (validValues.length === 1) {
+                    lastValue = validValues[0];
+                }
+            }
+            if (!isFinite(changePercentage)) {
+                changePercentage = 0;
+            }
+
             const changeDirection = changePercentage >= 0 ? '+' : '-';
             const changeColor = changePercentage >= 0 ? '#10b981' : '#ef4444';
 
@@ -484,27 +554,36 @@ document.addEventListener('DOMContentLoaded', async () => {
                     responsive: true, maintainAspectRatio: false,
                     layout: { padding: { top: 20, right: 20, bottom: 20, left: 20 } },
                     plugins: {
-                        title: { display: true, text: `Last seven days (${changeDirection}${Math.abs(changePercentage).toFixed(2)}%)`, color: changeColor, font: { size: 15, weight: 'bold', family: "'Inter', sans-serif" }, padding: { top: 10, bottom: 25 } },
+                        title: {
+                            display: true,
+                            text: `Last ${numberOfDays} days (${displayCurrency}) (${changeDirection}${Math.abs(changePercentage).toFixed(2)}%)`,
+                            color: changeColor,
+                            font: { size: 15, weight: 'bold', family: "'Inter', sans-serif" },
+                            padding: { top: 10, bottom: 25 }
+                        },
                         legend: { display: false },
                         tooltip: {
                             enabled: true, backgroundColor: 'rgba(30, 41, 59, 0.85)', titleColor: '#f8fafc', bodyColor: '#f1f5f9', borderColor: 'rgba(203, 213, 225, 0.3)', borderWidth: 1, padding: 12, cornerRadius: 8, titleFont: {family: "'Inter', sans-serif", size: 14, weight: 'bold'}, bodyFont: {family: "'Inter', sans-serif", size: 13}, boxPadding: 6,
                             callbacks: {
-                                label: (c) => (c.dataIndex === c.dataset.data.length - 1 ? 'Current: $' : '$') + c.raw.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","),
-                                title: (c) => c[0].label + (c[0].dataIndex === c.dataset.data.length - 1 ? ' (Today)' : '')
+                                label: (c) => {
+                                    const currencySymbol = displayCurrency === 'USD' ? '$' : '€';
+                                    const prefix = c.dataIndex === c.dataset.data.length - 1 ? 'Current: ' : '';
+                                    return prefix + currencySymbol + c.raw.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                                },
+                                title: (c) => c[0].label + (c[0].dataIndex === c[0].dataset.data.length - 1 ? ' (Today)' : '')
                             }
                         }
                     },
                     scales: {
-                         y: { grid: { color: 'rgba(203, 213, 225, 0.5)', borderDash: [5, 5], drawBorder: false }, ticks: { font: { family: "'Inter', sans-serif", size: 12 }, padding: 10, callback: (v) => '$' + v.toLocaleString() } },
-                         x: { grid: { display: false, drawBorder: false }, ticks: { font: { family: "'Inter', sans-serif", size: 12 }, padding: 10, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 7 } }
-                     },
+                        y: { grid: { color: 'rgba(203, 213, 225, 0.5)', borderDash: [5, 5], drawBorder: false }, ticks: { font: { family: "'Inter', sans-serif", size: 12 }, padding: 10, callback: (v) => (displayCurrency === 'USD' ? '$' : '€') + v.toLocaleString() } },
+                        x: { grid: { display: false, drawBorder: false }, ticks: { font: { family: "'Inter', sans-serif", size: 12 }, padding: 10, maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 7 } }
+                    },
                     interaction: { mode: 'index', intersect: false },
                     elements: { line: { borderJoinStyle: 'round' } }
                 }
             });
             document.getElementById('history-section').style.display = 'block';
         } catch (error) {
-            console.error("Error loading historical chart:", error);
             document.getElementById('history-section').style.display = 'none';
         }
     }
@@ -598,18 +677,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         mainTotalPnlEl.className = totalPnlPrimary >= 0 ? 'positive' : 'negative';
         mainPnlBadgeEl.textContent = `${totalPnLPercentagePrimary >= 0 ? '+' : ''}${totalPnLPercentagePrimary.toFixed(2)}%`;
         mainPnlBadgeEl.className = `badge ${totalPnLPercentagePrimary >= 0 ? 'positive' : 'negative'}`;
-        currencySwitchBtn.textContent = `${secondaryCurrency}`;
-
-        let totalUsdValueForCharts = 0;
-        Object.keys(portfolioData).forEach(symbol => {
-             const data = portfolioData[symbol];
-             if (data && !data.error && !excludedAssets.has(symbol)) {
-                 totalUsdValueForCharts += data.value;
-             }
-         });
+        currencySwitchBtn.textContent = `Switch to ${secondaryCurrency}`;
 
         createPieChart();
-        loadHistoryChart(totalUsdValueForCharts);
+        loadHistoryChart();
 
          if (currentSortColumn !== -1 && currentSortHeader) {
              const sortClass = currentSortHeader.classList.contains('sort-asc') ? 'sort-asc' : 'sort-desc';
