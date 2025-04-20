@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     let displayCurrency = 'USD';
     let usdToEurRate = 1.0;
-    let selectedTimeframe = 'all'; // Default to showing all history
+    let selectedTimeframe = '8'; // Default to showing all history
     const excludedAssets = new Set();
     let portfolioData = {};
     let refreshTimer;
