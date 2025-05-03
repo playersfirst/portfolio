@@ -679,7 +679,7 @@
       "date": "2025-05-01",
       "assets": {
         "SGOV": {
-          "value_usd": 13538.04,
+          "value_usd": 13529.04,
           "value_eur": 11968.09
         },
         "BINANCE:BTCUSDT": {
@@ -704,7 +704,7 @@
       "date": "2025-05-02",
       "assets": {
         "SGOV": {
-          "value_usd": 13541.39,
+          "value_usd": 13529.39,
           "value_eur": 11983.96
         },
         "BINANCE:BTCUSDT": {
@@ -729,7 +729,7 @@
       "date": "2025-05-03",
       "assets": {
         "SGOV": {
-          "value_usd": 13545.44,
+          "value_usd": 13529.44,
           "value_eur": 11988.88
         },
         "BINANCE:BTCUSDT": {
