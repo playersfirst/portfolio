@@ -7,15 +7,18 @@ import os
 PORTFOLIO = {
     "VOO": {
         "shares": 3.2086,
-        "tax_rate": 0.30  # 30% tax for VOO
+        "tax_rate": 0.30,
+        "min_days_between_dividends": 28  
     },
     "SGOV": {
         "shares": 134.4527,
-        "tax_rate": 0.00  # 0% tax for SGOV (Treasury bills)
+        "tax_rate": 0.30,
+        "min_days_between_dividends": 28  
     },
     "NANC": {
         "shares": 20.5685,
-        "tax_rate": 0.30  # 30% tax for NANC
+        "tax_rate": 0.30,
+        "min_days_between_dividends": 28  
     }
 }
 API_KEY = "G8FHWSAW9XXFUWJ8"  # Your Alpha Vantage API key
@@ -85,11 +88,30 @@ def process_dividends(symbol, dividend_data, portfolio_data):
         return None
     
     holding_data = portfolio_data["holdings"][symbol]
-    processed_dates = [d["date"] for d in holding_data["processed_dividends"]]
+    processed_dividends = holding_data["processed_dividends"]
     
-    # Date range checks
+    # Check if we have recently processed a dividend for this symbol
+    min_days = PORTFOLIO[symbol]["min_days_between_dividends"]
     today = datetime.now().date()
-    two_weeks_ago = today - timedelta(days=14)
+    
+    # Check if any dividend for this symbol was processed within the min_days period
+    if processed_dividends:
+        # Find the most recent processed dividend
+        most_recent = None
+        for div in processed_dividends:
+            div_date = datetime.strptime(div["date"], "%Y-%m-%d").date()
+            if most_recent is None or div_date > most_recent:
+                most_recent = div_date
+        
+        # If we have a recent processed dividend, check if it's within the minimum days period
+        if most_recent:
+            days_since_last_dividend = (today - most_recent).days
+            if days_since_last_dividend < min_days:
+                print(f"Skipping {symbol}: Last dividend was {days_since_last_dividend} days ago (minimum wait is {min_days} days)")
+                return None
+    
+    processed_dates = [d["date"] for d in processed_dividends]
+    two_weeks_ago = today - timedelta(days=14)  # Standard lookback period for finding dividends
     ignore_before = datetime.strptime(IGNORE_BEFORE_DATE, "%Y-%m-%d").date()
     
     for dividend in dividend_data:
@@ -97,7 +119,7 @@ def process_dividends(symbol, dividend_data, portfolio_data):
             dividend_date = datetime.strptime(dividend["date"], "%Y-%m-%d").date()
             
             # Skip if:
-            # 1. Before our ignore date (April 4th 2025)
+            # 1. Before our ignore date
             # 2. Older than two weeks
             # 3. Already processed
             if (dividend_date < ignore_before or 
@@ -135,7 +157,9 @@ def process_dividends(symbol, dividend_data, portfolio_data):
 def main():
     print("Dividend Calculator")
     print(f"Checking dividends from the past two weeks (ignoring before {IGNORE_BEFORE_DATE})")
-    print("Tracking: VOO (1.7 shares), SGOV (141 shares), NANC (21 shares)")
+    print("Tracking:")
+    for symbol, details in PORTFOLIO.items():
+        print(f"  - {symbol} ({details['shares']} shares, minimum {details['min_days_between_dividends']} days between dividend processing)")
     
     data = load_previous_data()
     print(f"Last checked: {data.get('last_checked') or 'Never'}")
@@ -148,7 +172,7 @@ def main():
             all_new_dividends.append(new_dividend)
     
     if all_new_dividends:
-        print(f"\nFound {len(all_new_dividends)} new dividend(s) in the past two weeks:")
+        print(f"\nFound {len(all_new_dividends)} new dividend(s):")
         for div in all_new_dividends:
             print(f"\nSymbol: {div['symbol']}")
             print(f"Date: {div['date']} (Source: {div['source']})")
@@ -165,7 +189,14 @@ def main():
             holding = data["holdings"][div["symbol"]]
             holding["total_shares"] += div["additional_shares"]
             holding["total_dividends"] += div["net_payment"]
-            holding["processed_dividends"].append(div)
+            holding["processed_dividends"].append({
+                "date": div["date"],
+                "amount": div["amount"],
+                "gross_payment": div["gross_payment"],
+                "net_payment": div["net_payment"],
+                "additional_shares": div["additional_shares"],
+                "processing_date": datetime.now().isoformat()  # Record when we processed this dividend
+            })
     else:
         print("\nNo new dividends found in the past two weeks")
     
@@ -178,6 +209,7 @@ def main():
         print(f"\n{symbol}:")
         print(f"Total shares: {holding['total_shares']:.6f}")
         print(f"Total dividends (after tax): ${holding['total_dividends']:.2f}")
+
 
 if __name__ == "__main__":
     # Install required package:
