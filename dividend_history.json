@@ -1,5 +1,5 @@
 {
-  "last_checked": "2025-05-31T12:25:59.252743",
+  "last_checked": "2025-05-04T12:23:55.972518",
   "holdings": {
     "VOO": {
       "total_shares": 3.2086,
@@ -18,7 +18,7 @@
           "gross_payment": 45.04,
           "tax_paid": 13.54,
           "net_payment": 31.5,
-          "reinvestment_price": 100.40,
+          "reinvestment_price": 100.4,
           "additional_shares": 0.304,
           "source": "Alpha Vantage"
         }
