@@ -4,16 +4,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const originalEuroInvestment = 21500;
 
     const initialInvestments = {
-        'VOO': 1591,
-        'NANC': 721,
+        'VOO': 1583,
+        'NANC': 729,
         'IAU': 2155,
         'SGOV': 13496,
         'BINANCE:BTCUSDT': 5620
     };
 
     const initialEuroInvestments = {
-        'VOO': 1455,
-        'NANC': 660,
+        'VOO': 1448,
+        'NANC': 667,
         'IAU': 1972,
         'SGOV': 12213,
         'BINANCE:BTCUSDT': 5200
