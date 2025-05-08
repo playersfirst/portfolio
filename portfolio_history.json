@@ -849,6 +849,31 @@
           "value_eur": 673.31
         }
       }
+    },
+    {
+      "date": "2025-05-08",
+      "assets": {
+        "SGOV": {
+          "value_usd": 13532.89,
+          "value_eur": 11944.94
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 9451.17,
+          "value_eur": 8342.17
+        },
+        "IAU": {
+          "value_usd": 2446.63,
+          "value_eur": 2159.54
+        },
+        "VOO": {
+          "value_usd": 1655.32,
+          "value_eur": 1461.08
+        },
+        "NANC": {
+          "value_usd": 769.88,
+          "value_eur": 679.54
+        }
+      }
     }
   ]
 }
