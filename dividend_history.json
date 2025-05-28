@@ -1,5 +1,5 @@
 {
-  "last_checked": "2025-05-27T12:28:08.803197",
+  "last_checked": "2025-05-28T12:28:20.679467",
   "holdings": {
     "VOO": {
       "total_shares": 3.2086,
@@ -7,8 +7,8 @@
       "processed_dividends": []
     },
     "SGOV": {
-      "total_shares": 134.7629,
-      "total_dividends": 31.5,
+      "total_shares": 135.07687814257326,
+      "total_dividends": 63.101900050000005,
       "processed_dividends": [
         {
           "symbol": "SGOV",
@@ -21,6 +21,14 @@
           "reinvestment_price": 100.4,
           "additional_shares": 0.3102,
           "source": "Alpha Vantage"
+        },
+        {
+          "date": "2025-05-27",
+          "amount": 0.335,
+          "gross_payment": 45.1455715,
+          "net_payment": 31.601900050000005,
+          "additional_shares": 0.3139781425732737,
+          "processing_date": "2025-05-28T12:28:20.679462"
         }
       ]
     },
