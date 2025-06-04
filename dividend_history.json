@@ -2,12 +2,12 @@
   "last_checked": "2025-06-04T12:28:27.521959",
   "holdings": {
     "VOO": {
-      "total_shares": 3.2086,
+      "total_shares": 3.5089,
       "total_dividends": 0,
       "processed_dividends": []
     },
     "SGOV": {
-      "total_shares": 135.07687814257326,
+      "total_shares": 148.0253,
       "total_dividends": 63.101900050000005,
       "processed_dividends": [
         {
@@ -33,7 +33,7 @@
       ]
     },
     "NANC": {
-      "total_shares": 20.5685,
+      "total_shares": 29.7507,
       "total_dividends": 0,
       "processed_dividends": []
     }
