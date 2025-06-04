@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const apiKey = 'cvneau1r01qq3c7eq690cvneau1r01qq3c7eq69g';
     const REFRESH_INTERVAL = 30 * 1000;
-    const originalEuroInvestment = 21500;
+    const originalEuroInvestment = 23240;
 
     const initialInvestments = {
         'VOO': 1750,
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             portfolio = {
                 'VOO': dividendData.holdings.VOO.total_shares,
                 'NANC': dividendData.holdings.NANC.total_shares,
-                'IAU': 38.463,
+                'IAU': 40.6774,
                 'SGOV': dividendData.holdings.SGOV.total_shares,
                 'BINANCE:BTCUSDT': 0.09580427
             };
