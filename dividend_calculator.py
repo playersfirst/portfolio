@@ -6,17 +6,17 @@ import os
 # Configuration
 PORTFOLIO = {
     "VOO": {
-        "shares": 3.2086,
+        "shares": 3.5089,
         "tax_rate": 0.30,
         "min_days_between_dividends": 28  
     },
     "SGOV": {
-        "shares": 134.4527,
+        "shares": 148.0253,
         "tax_rate": 0.30,
         "min_days_between_dividends": 28  
     },
     "NANC": {
-        "shares": 20.5685,
+        "shares": 29.7507,
         "tax_rate": 0.30,
         "min_days_between_dividends": 28  
     }
