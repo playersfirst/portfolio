@@ -7,30 +7,9 @@
       "processed_dividends": []
     },
     "SGOV": {
-      "total_shares": 148.0253,
+      "total_shares": 148.0473,
       "total_dividends": 63.101900050000005,
-      "processed_dividends": [
-        {
-          "symbol": "SGOV",
-          "date": "2025-04-30",
-          "amount": 0.3102,
-          "shares_at_payment": 134.4527,
-          "gross_payment": 45.04,
-          "tax_paid": 13.54,
-          "net_payment": 31.5,
-          "reinvestment_price": 100.4,
-          "additional_shares": 0.3102,
-          "source": "Alpha Vantage"
-        },
-        {
-          "date": "2025-05-27",
-          "amount": 0.335,
-          "gross_payment": 45.1455715,
-          "net_payment": 31.601900050000005,
-          "additional_shares": 0.3139781425732737,
-          "processing_date": "2025-05-28T12:28:20.679462"
-        }
-      ]
+      "processed_dividends": []
     },
     "NANC": {
       "total_shares": 29.7507,
