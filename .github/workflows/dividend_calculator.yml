@@ -1,9 +1,14 @@
 name: Dividend Calculator
 
-on:
-  schedule:
-    - cron: '0 12 * * *'  # Runs daily at 12:00 UTC
-  workflow_dispatch:       # Allow manual runs
+# on:
+#   schedule:
+#     - cron: '0 12 * * *'  # Runs daily at 12:00 UTC
+#   workflow_dispatch:       # Allow manual runs
+
+# Temporarily disabled
+on: 
+  workflow_call: # Dummy trigger to keep YAML valid
+
 
 jobs:
   calculate-dividends:
