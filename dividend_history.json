@@ -7,18 +7,9 @@
       "processed_dividends": []
     },
     "SGOV": {
-      "total_shares": 148.4166812562724,
+      "total_shares": 148.0473,
       "total_dividends": 100.20255343,
-      "processed_dividends": [
-        {
-          "date": "2025-06-06",
-          "amount": 0.358,
-          "gross_payment": 53.0009334,
-          "net_payment": 37.10065338,
-          "additional_shares": 0.3693812562724014,
-          "processing_date": "2025-06-07T12:24:39.142124"
-        }
-      ]
+      "processed_dividends": [      ]
     },
     "NANC": {
       "total_shares": 29.7507,
