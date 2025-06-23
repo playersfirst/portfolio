@@ -1999,6 +1999,31 @@
           "value_eur": 1032.78
         }
       }
+    },
+    {
+      "date": "2025-06-23",
+      "assets": {
+        "SGOV": {
+          "value_usd": 14893.56,
+          "value_eur": 12948.9
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 9702.38,
+          "value_eur": 8435.54
+        },
+        "IAU": {
+          "value_usd": 2580.98,
+          "value_eur": 2243.98
+        },
+        "VOO": {
+          "value_usd": 1921.89,
+          "value_eur": 1670.95
+        },
+        "NANC": {
+          "value_usd": 1190.33,
+          "value_eur": 1034.9
+        }
+      }
     }
   ]
 }
