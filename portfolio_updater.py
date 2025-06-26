@@ -38,7 +38,7 @@ class PortfolioUpdater:
             portfolio = {
                 'VOO': dividend_data['holdings']['VOO']['total_shares'],
                 'NANC': dividend_data['holdings']['NANC']['total_shares'],
-                'IAU': 38.463, # Fixed value from script.js
+                'IAU': 47.0646, # Fixed value from script.js
                 'SGOV': dividend_data['holdings']['SGOV']['total_shares'],
                 'BINANCE:BTCUSDT': 0.09580427 # Fixed value from script.js
             }
