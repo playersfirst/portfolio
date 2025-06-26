@@ -6,7 +6,7 @@ import os
 # Configuration
 PORTFOLIO = {
     "VOO": {
-        "shares": 3.5089,
+        "shares": 3.5305,
         "tax_rate": 0.30,
         "min_days_between_dividends": 28  
     },
