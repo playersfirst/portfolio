@@ -16,7 +16,7 @@ PORTFOLIO = {
         "min_days_between_dividends": 28  
     },
     "NANC": {
-        "shares": 29.7507,
+        "shares": 39.4358,
         "tax_rate": 0.30,
         "min_days_between_dividends": 28  
     }
