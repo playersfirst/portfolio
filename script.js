@@ -1,21 +1,21 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const apiKey = 'cvneau1r01qq3c7eq690cvneau1r01qq3c7eq69g';
     const REFRESH_INTERVAL = 30 * 1000;
-    const originalEuroInvestment = 23240;
+    const originalEuroInvestment = 25240;
 
     const initialInvestments = {
-        'VOO': 1750,
-        'NANC': 1095,
-        'IAU': 2299,
-        'SGOV': 14796,
+        'VOO': 1764,
+        'NANC': 1496,
+        'IAU': 2700,
+        'SGOV': 16320,
         'BINANCE:BTCUSDT': 5620
     };
 
     const initialEuroInvestments = {
-        'VOO': 1595,
-        'NANC': 989,
-        'IAU': 2099,
-        'SGOV': 13357,
+        'VOO': 1607,
+        'NANC': 1332,
+        'IAU': 2442,
+        'SGOV': 14659,
         'BINANCE:BTCUSDT': 5200
     };
 
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             portfolio = {
                 'VOO': dividendData.holdings.VOO.total_shares,
                 'NANC': dividendData.holdings.NANC.total_shares,
-                'IAU': 40.6774,
+                'IAU': 47.0646,
                 'SGOV': dividendData.holdings.SGOV.total_shares,
                 'BINANCE:BTCUSDT': 0.09580427
             };
