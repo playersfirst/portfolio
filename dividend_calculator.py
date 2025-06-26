@@ -11,7 +11,7 @@ PORTFOLIO = {
         "min_days_between_dividends": 28  
     },
     "SGOV": {
-        "shares": 148.0253,
+        "shares": 148.0473,
         "tax_rate": 0.30,
         "min_days_between_dividends": 28  
     },
