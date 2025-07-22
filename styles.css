@@ -1057,15 +1057,10 @@ label[for="timeframe-select"] {
 
 .avg-buy-price-grid {
   display: grid;
-  grid-template-columns: repeat(3, 200px);
+  grid-template-columns: repeat(4, 200px);
   gap: 1rem;
   max-width: 100%;
   justify-content: center;
-}
-
-
-.avg-buy-price-item:nth-child(4) {
-  grid-column: 2;
 }
 
 .avg-buy-price-item {
