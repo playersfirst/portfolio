@@ -139,13 +139,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="ytd-assets" id="ytd-assets"></div>
         `;
 
-        // Insert after the avg-buy-price-card
-        const avgBuyPriceCard = document.querySelector('.avg-buy-price-card');
-        if (avgBuyPriceCard) {
-            avgBuyPriceCard.parentNode.insertBefore(ytdCard, avgBuyPriceCard.nextSibling);
+        // Insert after the cbbi-card (at the very bottom)
+        const cbbiCard = document.querySelector('.cbbi-card');
+        if (cbbiCard) {
+            cbbiCard.parentNode.insertBefore(ytdCard, cbbiCard.nextSibling);
         } else {
-            // Fallback: insert after history-section if avg-buy-price-card doesn't exist yet
-            historySection.parentNode.insertBefore(ytdCard, historySection.nextSibling);
+            // Fallback: insert at the end of the container
+            const container = document.querySelector('.container');
+            if (container) {
+                container.appendChild(ytdCard);
+            }
         }
 
         // Setup year selector event listeners
