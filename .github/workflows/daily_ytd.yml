@@ -21,6 +21,8 @@ jobs:
     # Checkout the repository code
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
     
     # Set up Python environment
     - name: Set up Python 3.11
@@ -84,7 +86,7 @@ jobs:
         # Commit if there are changes
         if ! git diff --staged --quiet; then
           git commit -m "Update portfolio YTD results - $(date +'%Y-%m-%d %H:%M:%S')"
-          git push
+          git push https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
         else
           echo "No changes to commit"
         fi
