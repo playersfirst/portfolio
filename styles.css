@@ -1057,10 +1057,48 @@ label[for="timeframe-select"] {
 
 .avg-buy-price-grid {
   display: grid;
-  grid-template-columns: repeat(3, 200px);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   max-width: 100%;
   justify-content: center;
+  justify-items: center;
+}
+
+/* When we have exactly 4 items and they need to wrap to 3+1 layout */
+@media (min-width: 650px) and (max-width: 899px) {
+  .avg-buy-price-grid {
+    grid-template-columns: repeat(3, 200px);
+    justify-content: center;
+  }
+  
+  /* Position the 4th item in the center of the second row */
+  .avg-buy-price-item:nth-child(4) {
+    grid-column: 2;
+  }
+}
+
+/* For very wide screens - all 4 in one row */
+@media (min-width: 900px) {
+  .avg-buy-price-grid {
+    grid-template-columns: repeat(4, 200px);
+    justify-content: center;
+  }
+}
+
+/* For smaller screens - responsive 2 column and 1 column layouts */
+@media (max-width: 649px) {
+  .avg-buy-price-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .avg-buy-price-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
 }
 
 .avg-buy-price-item:nth-child(4) {
@@ -1130,12 +1168,7 @@ label[for="timeframe-select"] {
   color: var(--danger);
 }
 
-@media (max-width: 768px) {
-  .avg-buy-price-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    max-width: 100%;
-  }
+
   
   .avg-buy-price-item {
     padding: 1rem;
@@ -1156,11 +1189,7 @@ label[for="timeframe-select"] {
   }
 }
 
-@media (max-width: 480px) {
-  .avg-buy-price-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
+
   
   .avg-buy-price-item {
     padding: 0.75rem;
