@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let originalEuroInvestment;
     let initialInvestments;
     let initialEuroInvestments;
-
     const assetColors = {
         'BINANCE:BTCUSDT': '#FF6384',
         'VOO': '#36A2EB',
@@ -26,6 +25,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let displayCurrency = 'USD';
     let usdToEurRate = 1.0;
     let selectedTimeframe = '8'; // Default to showing all history
+    let ytdData = null;
+    let ytdIncludeSgov = true;
+    let currentYtdYear = new Date().getFullYear();
     const excludedAssets = new Set();
     let portfolioData = {};
     let refreshTimer;
@@ -52,6 +54,335 @@ document.addEventListener('DOMContentLoaded', async () => {
     const tableHeaders = portfolioTable.querySelectorAll('th');
     const timeframeSelectEl = document.getElementById('timeframe-select'); // New timeframe selector
 
+    async function loadYtdData(year = null) {
+        try {
+            const targetYear = year || currentYtdYear;
+            const filename = targetYear === new Date().getFullYear() 
+                ? 'portfolio_ytd_results.json' 
+                : `portfolio_ytd_results_${targetYear}.json`;
+            
+            const response = await fetch(filename);
+            if (response.ok) {
+                ytdData = await response.json();
+                currentYtdYear = targetYear;
+                createYtdSection();
+            } else {
+                console.warn(`Could not load YTD data for year ${targetYear}`);
+                // If loading a specific year fails, set ytdData to null and update display
+                if (year) {
+                    ytdData = null;
+                    currentYtdYear = targetYear;
+                    createYtdSection();
+                }
+            }
+        } catch (error) {
+            console.warn('Could not load YTD data');
+            // If there's an error, set ytdData to null and update display
+            if (year) {
+                ytdData = null;
+                currentYtdYear = year;
+                createYtdSection();
+            }
+        }
+    }
+
+    function createYtdSection() {
+        // Remove existing section
+        const existing = document.querySelector('.ytd-card');
+        if (existing) existing.remove();
+
+        // Find the history-section to insert after it
+        const historySection = document.querySelector('#history-section');
+        if (!historySection) return;
+
+        const currentYear = new Date().getFullYear();
+        const ytdCard = document.createElement('div');
+        ytdCard.className = 'ytd-card';
+        
+        // Create the HTML with placeholder values that will be updated by updateYtdDisplay
+        ytdCard.innerHTML = `
+            <div class="ytd-header">
+                <div class="ytd-title-section">
+                    <h3>THEORETICAL YTD %</h3>
+                    <p>Normalized to exclude cash inflows</p>
+                </div>
+                <div class="ytd-year-selector">
+                    <button id="ytd-year-left" class="year-arrow" aria-label="Previous year">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 18l-6-6 6-6"/>
+                        </svg>
+                    </button>
+                    <div class="year-display" id="ytd-year-display">${currentYtdYear}</div>
+                    <button id="ytd-year-right" class="year-arrow" aria-label="Next year">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 18l6-6-6-6"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="ytd-values">
+                <div class="ytd-value-item">
+                    <span class="ytd-label">Total</span>
+                    <span id="ytd-value-with-sgov" class="ytd-value">N/A</span>
+                </div>
+                <div class="ytd-value-item">
+                    <span class="ytd-label">Excl SGOV</span>
+                    <span id="ytd-value-excl-sgov" class="ytd-value">N/A</span>
+                </div>
+            </div>
+            <div class="ytd-date" id="ytd-date">No ${currentYtdYear} data</div>
+            <div class="ytd-assets" id="ytd-assets"></div>
+        `;
+
+        // Insert after the avg-buy-price-card
+        const avgBuyPriceCard = document.querySelector('.avg-buy-price-card');
+        if (avgBuyPriceCard) {
+            avgBuyPriceCard.parentNode.insertBefore(ytdCard, avgBuyPriceCard.nextSibling);
+        } else {
+            // Fallback: insert after history-section if avg-buy-price-card doesn't exist yet
+            historySection.parentNode.insertBefore(ytdCard, historySection.nextSibling);
+        }
+
+        // Setup year selector event listeners
+        setupYearSelector();
+        updateYtdDisplay();
+    }
+
+    function setupYearSelector() {
+        const leftBtn = document.getElementById('ytd-year-left');
+        const rightBtn = document.getElementById('ytd-year-right');
+        const yearDisplay = document.getElementById('ytd-year-display');
+        
+        if (!leftBtn || !rightBtn || !yearDisplay) return;
+
+        // Update year display
+        yearDisplay.textContent = currentYtdYear;
+        
+        // Update arrow states
+        const currentYear = new Date().getFullYear();
+        rightBtn.disabled = currentYtdYear >= currentYear;
+        rightBtn.classList.toggle('disabled', currentYtdYear >= currentYear);
+        
+        // Add event listeners
+        leftBtn.addEventListener('click', async () => {
+            if (currentYtdYear > 2020) { // Assuming 2020 is the earliest year
+                await loadYtdData(currentYtdYear - 1);
+            }
+        });
+        
+        rightBtn.addEventListener('click', async () => {
+            if (currentYtdYear < currentYear) {
+                await loadYtdData(currentYtdYear + 1);
+            }
+        });
+    }
+
+    function updateYtdDisplay() {
+        // Update year display and arrow states regardless of data availability
+        const yearDisplay = document.getElementById('ytd-year-display');
+        const ytdDate = document.getElementById('ytd-date');
+        const rightBtn = document.getElementById('ytd-year-right');
+        
+        if (yearDisplay) {
+            yearDisplay.textContent = currentYtdYear;
+        }
+        
+        // Update arrow states
+        if (rightBtn) {
+            const currentYear = new Date().getFullYear();
+            rightBtn.disabled = currentYtdYear >= currentYear;
+            rightBtn.classList.toggle('disabled', currentYtdYear >= currentYear);
+        }
+
+        // If no YTD data available, show placeholder values
+        if (!ytdData) {
+            const withSgovEl = document.getElementById('ytd-value-with-sgov');
+            const exclSgovEl = document.getElementById('ytd-value-excl-sgov');
+            
+            if (withSgovEl) {
+                withSgovEl.textContent = 'N/A';
+                withSgovEl.className = 'ytd-value';
+            }
+            
+            if (exclSgovEl) {
+                exclSgovEl.textContent = 'N/A';
+                exclSgovEl.className = 'ytd-value';
+            }
+            
+            if (ytdDate) {
+                ytdDate.textContent = `No ${currentYtdYear} data`;
+            }
+            
+            // Clear asset returns when no data
+            const ytdAssets = document.getElementById('ytd-assets');
+            if (ytdAssets) {
+                ytdAssets.innerHTML = '';
+            }
+            return;
+        }
+
+        const returns = ytdData.portfolio_returns;
+        
+        // Get both values based on current currency
+        let withSgovValue = null;
+        let exclSgovValue = null;
+
+        if (displayCurrency === 'USD') {
+            withSgovValue = returns.total_usd_ytd;
+            exclSgovValue = returns.total_usd_ytd_excl_sgov;
+        } else {
+            withSgovValue = returns.total_eur_ytd;
+            exclSgovValue = returns.total_eur_ytd_excl_sgov;
+        }
+
+        // Update With SGOV value
+        const withSgovEl = document.getElementById('ytd-value-with-sgov');
+        if (withSgovEl && withSgovValue !== null) {
+            const sign = withSgovValue >= 0 ? '+' : '';
+            withSgovEl.textContent = `${sign}${withSgovValue.toFixed(2)}%`;
+            withSgovEl.className = `ytd-value ${withSgovValue >= 0 ? 'positive' : 'negative'}`;
+        }
+
+        // Update Excl SGOV value
+        const exclSgovEl = document.getElementById('ytd-value-excl-sgov');
+        if (exclSgovEl && exclSgovValue !== null) {
+            const sign = exclSgovValue >= 0 ? '+' : '';
+            exclSgovEl.textContent = `${sign}${exclSgovValue.toFixed(2)}%`;
+            exclSgovEl.className = `ytd-value ${exclSgovValue >= 0 ? 'positive' : 'negative'}`;
+        }
+        
+        if (ytdDate && ytdData.calculation_date) {
+            ytdDate.textContent = `Using invested allocation as of ${new Date(ytdData.calculation_date).toLocaleDateString()}`;
+        }
+        
+        // Update individual asset returns
+        updateAssetReturns();
+    }
+
+    function updateAssetReturns() {
+        const ytdAssets = document.getElementById('ytd-assets');
+        if (!ytdAssets || !ytdData || !ytdData.asset_returns) return;
+
+        const assetReturns = ytdData.asset_returns;
+        const assetNames = Object.keys(assetReturns);
+        
+        if (assetNames.length === 0) return;
+
+        // Sort assets by YTD return (highest to lowest)
+        const sortedAssets = assetNames.sort((a, b) => {
+            const aValue = displayCurrency === 'USD' ? assetReturns[a].usd_ytd : assetReturns[a].eur_ytd;
+            const bValue = displayCurrency === 'USD' ? assetReturns[b].usd_ytd : assetReturns[b].eur_ytd;
+            return bValue - aValue; // Sort descending (highest first)
+        });
+
+        let html = '';
+        html += '<div class="ytd-assets-grid">';
+        
+        sortedAssets.forEach(assetName => {
+            const assetData = assetReturns[assetName];
+            const returnValue = displayCurrency === 'USD' ? assetData.usd_ytd : assetData.eur_ytd;
+            
+            if (returnValue !== null && returnValue !== undefined) {
+                const sign = returnValue >= 0 ? '+' : '';
+                const colorClass = returnValue >= 0 ? 'positive' : 'negative';
+                
+                // Display "BTC" instead of "BINANCE:BTCUSDT"
+                const displayName = assetName === 'BINANCE:BTCUSDT' ? 'BTC' : assetName;
+                
+                html += `
+                    <div class="ytd-asset-item">
+                        <span class="ytd-asset-name">${displayName}</span>
+                        <span class="ytd-asset-value ${colorClass}">${sign}${returnValue.toFixed(2)}%</span>
+                    </div>
+                `;
+            }
+        });
+        
+        html += '</div>';
+        ytdAssets.innerHTML = html;
+    }
+
+    function createAverageBuyPriceSection() {
+        // Remove existing section
+        const existing = document.querySelector('.avg-buy-price-card');
+        if (existing) existing.remove();
+
+        // Find the history-section to insert after it
+        const historySection = document.querySelector('#history-section');
+        if (!historySection) return;
+
+        const avgBuyPriceCard = document.createElement('div');
+        avgBuyPriceCard.className = 'avg-buy-price-card';
+        
+        avgBuyPriceCard.innerHTML = `
+            <div class="avg-buy-price-header">
+                <h3>AVERAGE BUY PRICE</h3>
+            </div>
+            <div class="avg-buy-price-content" id="avg-buy-price-content">
+                <!-- Content will be populated by updateAverageBuyPriceDisplay -->
+            </div>
+        `;
+
+        // Insert after the history-section
+        historySection.parentNode.insertBefore(avgBuyPriceCard, historySection.nextSibling);
+        
+        updateAverageBuyPriceDisplay();
+    }
+
+    function updateAverageBuyPriceDisplay() {
+        const contentEl = document.getElementById('avg-buy-price-content');
+        if (!contentEl) return;
+
+        const assets = ['IAU', 'BINANCE:BTCUSDT', 'NANC', 'VOO'];
+        let html = '<div class="avg-buy-price-grid">';
+        
+        assets.forEach(symbol => {
+            const shares = portfolio[symbol];
+            const initialInvestment = displayCurrency === 'USD' ? 
+                initialInvestments[symbol] : 
+                initialEuroInvestments[symbol];
+            
+            if (shares && initialInvestment) {
+                const avgBuyPrice = initialInvestment / shares;
+                const currentPrice = portfolioData[symbol]?.price;
+                
+                if (currentPrice) {
+                    const currentPriceInCurrency = displayCurrency === 'USD' ? 
+                        currentPrice : 
+                        currentPrice / usdToEurRate;
+                    
+                    const isHigher = currentPriceInCurrency > avgBuyPrice;
+                    const priceColorClass = isHigher ? 'positive' : 'negative';
+                    
+                    // Display "BTC" instead of "BINANCE:BTCUSDT"
+                    const displayName = symbol === 'BINANCE:BTCUSDT' ? 'BTC' : symbol;
+                    
+                    html += `
+                        <div class="avg-buy-price-item">
+                            <div class="avg-buy-price-asset">
+                                <span class="avg-buy-price-name">${displayName}</span>
+                            </div>
+                            <div class="avg-buy-price-values">
+                                <div class="avg-buy-price-row">
+                                    <span class="avg-buy-price-label">Buy:</span>
+                                    <span class="avg-buy-price-value">${formatCurrency(avgBuyPrice, displayCurrency)}</span>
+                                </div>
+                                <div class="avg-buy-price-row">
+                                    <span class="avg-buy-price-label">Current:</span>
+                                    <span class="avg-buy-price-value ${priceColorClass}">${formatCurrency(currentPriceInCurrency, displayCurrency)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+        });
+        
+        html += '</div>';
+        contentEl.innerHTML = html;
+    }
+
+
     async function fetchInitialData() {
         try {
             // Load portfolio configuration from JSON file
@@ -68,6 +399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             portfolio = config.currentPortfolio;
             
             fetchStockData();
+            createAverageBuyPriceSection();
         } catch (error) {
             console.error('Error loading portfolio configuration:', error);
             loadingEl.textContent = 'Error loading portfolio configuration. Please refresh.';
@@ -105,6 +437,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         portfolioTable.style.display = 'table';
         lastUpdatedEl.textContent = new Date().toLocaleString();
         recalculateTotals();
+        updateAverageBuyPriceDisplay();
     }
 
     async function fetchStockData() {
@@ -257,6 +590,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     function toggleCurrency() {
         displayCurrency = (displayCurrency === 'USD') ? 'EUR' : 'USD';
         recalculateTotals();
+        updateYtdDisplay();
+        updateAssetReturns();
+        updateAverageBuyPriceDisplay();
     }
 
     function sortTable(columnIndex) {
@@ -718,6 +1054,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         createPieChart();
         loadHistoryChart();
+        updateYtdDisplay(); // Update YTD display when currency changes
 
          if (currentSortColumn !== -1 && currentSortHeader) {
              const sortClass = currentSortHeader.classList.contains('sort-asc') ? 'sort-asc' : 'sort-desc';
@@ -740,5 +1077,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     fetchInitialData(); // Start the process
+    loadYtdData(); // Load YTD data
 
 });
+
