@@ -1055,14 +1055,6 @@ label[for="timeframe-select"] {
   margin: 0;
 }
 
-.avg-buy-price-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 200px);
-  gap: 1rem;
-  max-width: 100%;
-  justify-content: center;
-}
-
 
 .avg-buy-price-item {
   display: flex;
@@ -1100,6 +1092,67 @@ label[for="timeframe-select"] {
   width: 100%;
 }
 
+.avg-buy-price-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+  max-width: 100%;
+}
+
+.avg-buy-price-item {
+  width: 200px;
+  flex-shrink: 0;
+}
+
+/* When wrapping to second row with only one item, center it */
+.avg-buy-price-grid:has(.avg-buy-price-item:nth-child(4):nth-last-child(1)) .avg-buy-price-item:nth-child(4) {
+  margin: 0 auto;
+  width: 200px;
+}
+
+/* Alternative fallback for browsers that don't support :has() */
+@supports not (selector(:has(*))) {
+  .avg-buy-price-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    justify-content: center;
+    max-width: 100%;
+  }
+  
+  /* Only apply 3+1 centered layout when screen is too narrow for 4 items */
+  @media (max-width: 880px) and (min-width: 650px) {
+    .avg-buy-price-grid {
+      grid-template-columns: repeat(3, 200px);
+    }
+    
+    .avg-buy-price-item:nth-child(4) {
+      grid-column: 2;
+    }
+  }
+}
+
+/* Mobile responsive layouts */
+@media (max-width: 649px) {
+  .avg-buy-price-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+  
+  .avg-buy-price-item {
+    width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .avg-buy-price-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
 .avg-buy-price-row {
   display: flex;
   justify-content: space-between;
@@ -1128,11 +1181,7 @@ label[for="timeframe-select"] {
 }
 
 @media (max-width: 768px) {
-  .avg-buy-price-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    max-width: 100%;
-  }
+
   
   .avg-buy-price-item {
     padding: 1rem;
@@ -1154,10 +1203,7 @@ label[for="timeframe-select"] {
 }
 
 @media (max-width: 480px) {
-  .avg-buy-price-grid {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
+
   
   .avg-buy-price-item {
     padding: 0.75rem;
