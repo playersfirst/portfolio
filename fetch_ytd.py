@@ -406,7 +406,7 @@ def main():
     asset_mapping = map_asset_symbols(portfolio_assets)
     
     # IMPORTANT: Replace with your Alpha Vantage API key
-    ALPHA_VANTAGE_API_KEY = "K6CPFIXKXRI871JN"
+    ALPHA_VANTAGE_API_KEY = "112Y0FDUP549LITS"
     # IMPORTANT: Replace with your Tiingo API key
     TIINGO_API_KEY = "ac91bda587a538e43a255056ee50432c52eaf391"
 
