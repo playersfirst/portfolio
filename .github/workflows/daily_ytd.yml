@@ -9,6 +9,10 @@ on:
   # Allow manual triggering of the workflow
   workflow_dispatch:
 
+# Grant write permissions to the workflow
+permissions:
+  contents: write
+
 jobs:
   calculate-portfolio-ytd:
     runs-on: ubuntu-latest
