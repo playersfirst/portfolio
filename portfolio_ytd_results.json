@@ -1,0 +1,32 @@
+{
+  "calculation_date": "2025-07-22",
+  "start_date": "2025-01-01",
+  "portfolio_returns": {
+    "total_usd_ytd": 9.54,
+    "total_usd_ytd_excl_sgov": 21.5,
+    "total_eur_ytd": -3.43,
+    "total_eur_ytd_excl_sgov": 8.52
+  },
+  "asset_returns": {
+    "VOO": {
+      "usd_ytd": 7.75,
+      "eur_ytd": -5.22
+    },
+    "NANC": {
+      "usd_ytd": 9.25,
+      "eur_ytd": -3.72
+    },
+    "IAU": {
+      "usd_ytd": 29.45,
+      "eur_ytd": 16.48
+    },
+    "SGOV": {
+      "usd_ytd": 1.71,
+      "eur_ytd": -11.26
+    },
+    "BINANCE:BTCUSDT": {
+      "usd_ytd": 25.78,
+      "eur_ytd": 12.81
+    }
+  }
+}
