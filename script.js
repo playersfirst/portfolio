@@ -357,6 +357,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // Display "BTC" instead of "BINANCE:BTCUSDT"
                     const displayName = symbol === 'BINANCE:BTCUSDT' ? 'BTC' : symbol;
                     
+                    // Use special formatting for Bitcoin (no decimal places)
+                    const formatFunction = symbol === 'BINANCE:BTCUSDT' ? formatBitcoinPrice : formatCurrency;
+                    
                     html += `
                         <div class="avg-buy-price-item">
                             <div class="avg-buy-price-asset">
@@ -365,11 +368,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             <div class="avg-buy-price-values">
                                 <div class="avg-buy-price-row">
                                     <span class="avg-buy-price-label">Buy:</span>
-                                    <span class="avg-buy-price-value">${formatCurrency(avgBuyPrice, displayCurrency)}</span>
+                                    <span class="avg-buy-price-value">${formatFunction(avgBuyPrice, displayCurrency)}</span>
                                 </div>
                                 <div class="avg-buy-price-row">
                                     <span class="avg-buy-price-label">Current:</span>
-                                    <span class="avg-buy-price-value ${priceColorClass}">${formatCurrency(currentPriceInCurrency, displayCurrency)}</span>
+                                    <span class="avg-buy-price-value ${priceColorClass}">${formatFunction(currentPriceInCurrency, displayCurrency)}</span>
                                 </div>
                             </div>
                         </div>
@@ -422,6 +425,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     function formatCurrency(value, currency) {
         const symbol = currency === 'USD' ? '$' : '€';
         const formattedValue = value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return `${symbol}${formattedValue}`;
+    }
+
+    function formatBitcoinPrice(value, currency) {
+        const symbol = currency === 'USD' ? '$' : '€';
+        const formattedValue = Math.round(value).toLocaleString();
         return `${symbol}${formattedValue}`;
     }
 
