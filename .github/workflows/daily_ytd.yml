@@ -86,7 +86,7 @@ jobs:
         # Commit if there are changes
         if ! git diff --staged --quiet; then
           git commit -m "Update portfolio YTD results - $(date +'%Y-%m-%d %H:%M:%S')"
-          git push https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git
+          git push
         else
           echo "No changes to commit"
         fi
