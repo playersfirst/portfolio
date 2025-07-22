@@ -5,7 +5,7 @@
     "total_usd_ytd": 9.47,
     "total_usd_ytd_excl_sgov": 21.31,
     "total_eur_ytd": -3.51,
-    "total_eur_ytd_excl_sgov": 8.33
+    "total_eur_ytd_excl_sgov": 8.34
   },
   "asset_returns": {
     "VOO": {
@@ -25,8 +25,8 @@
       "eur_ytd": -11.26
     },
     "BINANCE:BTCUSDT": {
-      "usd_ytd": 25.34,
-      "eur_ytd": 12.37
+      "usd_ytd": 25.35,
+      "eur_ytd": 12.38
     }
   }
 }
