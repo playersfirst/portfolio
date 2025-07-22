@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let refreshTimer;
     let currentPieChart;
     let portfolio = {};
+    let cbbiData = null;
 
     const currentPieChartEl = document.getElementById('current-pie-chart');
     const chartLegendEl = document.getElementById('chart-legend');
@@ -53,6 +54,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currencySwitchBtn = document.getElementById('currency-switch-btn');
     const tableHeaders = portfolioTable.querySelectorAll('th');
     const timeframeSelectEl = document.getElementById('timeframe-select'); // New timeframe selector
+    
+    // CBBI elements
+    const cbbiValueEl = document.getElementById('cbbi-value');
+    const cbbiDateEl = document.getElementById('cbbi-date');
 
     async function loadYtdData(year = null) {
         try {
@@ -403,6 +408,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             fetchStockData();
             createAverageBuyPriceSection();
+            fetchCbbiData(); // Fetch CBBI data
         } catch (error) {
             console.error('Error loading portfolio configuration:', error);
             loadingEl.textContent = 'Error loading portfolio configuration. Please refresh.';
@@ -422,6 +428,72 @@ document.addEventListener('DOMContentLoaded', async () => {
         return usdToEurRate;
     }
 
+    async function fetchCbbiData() {
+        try {
+            const response = await fetch('https://colintalkscrypto.com/cbbi/data/latest.json');
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            cbbiData = data;
+            updateCbbiDisplay();
+        } catch (error) {
+            console.warn('Failed to fetch CBBI data:', error);
+            cbbiValueEl.textContent = '--';
+            cbbiSentimentEl.textContent = 'Error loading data';
+            cbbiSentimentEl.className = 'cbbi-sentiment';
+            cbbiDateEl.textContent = '--';
+        }
+    }
+
+    function updateCbbiDisplay() {
+        if (!cbbiData) return;
+
+        // Get the latest value from the Confidence field
+        if (!cbbiData.Confidence) {
+            cbbiValueEl.textContent = '--';
+            cbbiSentimentEl.textContent = 'No CBBI data found';
+            cbbiSentimentEl.className = 'cbbi-sentiment';
+            cbbiDateEl.textContent = '--';
+            return;
+        }
+
+        // Get the latest timestamp and value from Confidence
+        const timestamps = Object.keys(cbbiData.Confidence).sort((a, b) => parseInt(a) - parseInt(b));
+        const latestTimestamp = timestamps[timestamps.length - 1];
+        const latestValue = cbbiData.Confidence[latestTimestamp];
+
+        if (latestValue !== null) {
+            // Convert from 0-1 scale to 0-100 scale
+            const displayValue = latestValue * 100;
+            cbbiValueEl.textContent = displayValue.toFixed(2);
+            
+            // Add color coding based on value
+            cbbiValueEl.className = 'cbbi-value';
+            if (displayValue <= 20) {
+                cbbiValueEl.classList.add('extreme-fear');
+            } else if (displayValue <= 40) {
+                cbbiValueEl.classList.add('fear');
+            } else if (displayValue <= 60) {
+                cbbiValueEl.classList.add('neutral');
+            } else if (displayValue <= 80) {
+                cbbiValueEl.classList.add('greed');
+            } else if (displayValue <= 90) {
+                cbbiValueEl.classList.add('greed');
+            } else {
+                cbbiValueEl.classList.add('extreme-greed');
+            }
+            
+            // Convert timestamp to date
+            const date = new Date(parseInt(latestTimestamp) * 1000);
+            cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+        } else {
+            cbbiValueEl.textContent = '--';
+            cbbiValueEl.className = 'cbbi-value';
+            cbbiDateEl.textContent = '--';
+        }
+    }
+
     function formatCurrency(value, currency) {
         const symbol = currency === 'USD' ? '$' : '€';
         const formattedValue = value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -438,7 +510,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (refreshTimer) {
             clearInterval(refreshTimer);
         }
-        refreshTimer = setInterval(fetchStockData, REFRESH_INTERVAL);
+        refreshTimer = setInterval(() => {
+            fetchStockData();
+            fetchCbbiData(); // Also refresh CBBI data
+        }, REFRESH_INTERVAL);
     }
 
     function finishLoading() {
@@ -505,6 +580,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         await Promise.allSettled(promises);
         setupAutoRefresh();
+        fetchCbbiData(); // Fetch CBBI data after stock data
     }
 
     function createTableRow(symbol) {
