@@ -1101,9 +1101,7 @@ label[for="timeframe-select"] {
   }
 }
 
-.avg-buy-price-item:nth-child(4) {
-  grid-column: 2;
-}
+
 
 .avg-buy-price-item {
   display: flex;
