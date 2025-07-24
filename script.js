@@ -25,9 +25,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let displayCurrency = 'USD';
     let usdToEurRate = 1.0;
     let selectedTimeframe = '8'; // Default to showing all history
-    let ytdData = null;
-    let ytdIncludeSgov = true;
-    let currentYtdYear = new Date().getFullYear();
     const excludedAssets = new Set();
     let portfolioData = {};
     let refreshTimer;
@@ -59,37 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cbbiValueEl = document.getElementById('cbbi-value');
     const cbbiDateEl = document.getElementById('cbbi-date');
 
-    async function loadYtdData(year = null) {
-        try {
-            const targetYear = year || currentYtdYear;
-            const filename = targetYear === new Date().getFullYear() 
-                ? 'portfolio_ytd_results.json' 
-                : `portfolio_ytd_results_${targetYear}.json`;
-            
-            const response = await fetch(filename);
-            if (response.ok) {
-                ytdData = await response.json();
-                currentYtdYear = targetYear;
-                createYtdSection();
-            } else {
-                console.warn(`Could not load YTD data for year ${targetYear}`);
-                // If loading a specific year fails, set ytdData to null and update display
-                if (year) {
-                    ytdData = null;
-                    currentYtdYear = targetYear;
-                    createYtdSection();
-                }
-            }
-        } catch (error) {
-            console.warn('Could not load YTD data');
-            // If there's an error, set ytdData to null and update display
-            if (year) {
-                ytdData = null;
-                currentYtdYear = year;
-                createYtdSection();
-            }
-        }
-    }
+
 
     function createYtdSection() {
         // Remove existing section
@@ -108,21 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ytdCard.innerHTML = `
             <div class="ytd-header">
                 <div class="ytd-title-section">
-                    <h3>THEORETICAL YTD %</h3>
-                    <p>Normalized to exclude cash inflows</p>
-                </div>
-                <div class="ytd-year-selector">
-                    <button id="ytd-year-left" class="year-arrow" aria-label="Previous year">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M15 18l-6-6 6-6"/>
-                        </svg>
-                    </button>
-                    <div class="year-display" id="ytd-year-display">${currentYtdYear}</div>
-                    <button id="ytd-year-right" class="year-arrow" aria-label="Next year">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M9 18l6-6-6-6"/>
-                        </svg>
-                    </button>
+                    <h3>AVERAGE YEARLY RETURN</h3>
                 </div>
             </div>
             <div class="ytd-values">
@@ -135,7 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span id="ytd-value-excl-sgov" class="ytd-value">N/A</span>
                 </div>
             </div>
-            <div class="ytd-date" id="ytd-date">No ${currentYtdYear} data</div>
+            <div class="ytd-date" id="ytd-date">Calculating...</div>
             <div class="ytd-assets" id="ytd-assets"></div>
         `;
 
@@ -151,96 +104,63 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // Setup year selector event listeners
-        setupYearSelector();
         updateYtdDisplay();
     }
 
-    function setupYearSelector() {
-        const leftBtn = document.getElementById('ytd-year-left');
-        const rightBtn = document.getElementById('ytd-year-right');
-        const yearDisplay = document.getElementById('ytd-year-display');
-        
-        if (!leftBtn || !rightBtn || !yearDisplay) return;
 
-        // Update year display
-        yearDisplay.textContent = currentYtdYear;
-        
-        // Update arrow states
-        const currentYear = new Date().getFullYear();
-        rightBtn.disabled = currentYtdYear >= currentYear;
-        rightBtn.classList.toggle('disabled', currentYtdYear >= currentYear);
-        
-        // Add event listeners
-        leftBtn.addEventListener('click', async () => {
-            if (currentYtdYear > 2020) { // Assuming 2020 is the earliest year
-                await loadYtdData(currentYtdYear - 1);
-            }
-        });
-        
-        rightBtn.addEventListener('click', async () => {
-            if (currentYtdYear < currentYear) {
-                await loadYtdData(currentYtdYear + 1);
-            }
-        });
-    }
 
     function updateYtdDisplay() {
-        // Update year display and arrow states regardless of data availability
-        const yearDisplay = document.getElementById('ytd-year-display');
         const ytdDate = document.getElementById('ytd-date');
-        const rightBtn = document.getElementById('ytd-year-right');
-        
-        if (yearDisplay) {
-            yearDisplay.textContent = currentYtdYear;
-        }
-        
-        // Update arrow states
-        if (rightBtn) {
-            const currentYear = new Date().getFullYear();
-            rightBtn.disabled = currentYtdYear >= currentYear;
-            rightBtn.classList.toggle('disabled', currentYtdYear >= currentYear);
-        }
 
-        // If no YTD data available, show placeholder values
-        if (!ytdData) {
-            const withSgovEl = document.getElementById('ytd-value-with-sgov');
-            const exclSgovEl = document.getElementById('ytd-value-excl-sgov');
-            
-            if (withSgovEl) {
-                withSgovEl.textContent = 'N/A';
-                withSgovEl.className = 'ytd-value';
-            }
-            
-            if (exclSgovEl) {
-                exclSgovEl.textContent = 'N/A';
-                exclSgovEl.className = 'ytd-value';
-            }
-            
-            if (ytdDate) {
-                ytdDate.textContent = `No ${currentYtdYear} data`;
-            }
-            
-            // Clear asset returns when no data
-            const ytdAssets = document.getElementById('ytd-assets');
-            if (ytdAssets) {
-                ytdAssets.innerHTML = '';
-            }
-            return;
-        }
+        // Calculate average yearly return based on current portfolio state
+        const portfolioStartDate = new Date('2024-08-01');
+        const currentDate = new Date();
+        const daysSinceStart = (currentDate - portfolioStartDate) / (1000 * 60 * 60 * 24);
+        const yearsSinceStart = daysSinceStart / 365.25;
 
-        const returns = ytdData.portfolio_returns;
-        
-        // Get both values based on current currency
+        // Calculate current total PnL percentages
+        let totalValuePrimary = 0;
+        let totalPnlPrimary = 0;
+        let totalInitialInvestmentPrimary = 0;
+        let totalValueExclSgov = 0;
+        let totalPnlExclSgov = 0;
+        let totalInitialInvestmentExclSgov = 0;
+
+        Object.keys(portfolioData).forEach(symbol => {
+            const data = portfolioData[symbol];
+            if (data && !data.error && !excludedAssets.has(symbol)) {
+                const value = displayCurrency === 'USD' ? data.value : data.valueEur;
+                const pnl = displayCurrency === 'USD' ? data.pnl : data.pnlEur;
+                const initialInvestment = displayCurrency === 'USD' ? data.initialInvestment : data.initialEuroInvestment;
+                
+                totalValuePrimary += value;
+                totalPnlPrimary += pnl;
+                totalInitialInvestmentPrimary += initialInvestment;
+                
+                // Exclude SGOV for the second calculation
+                if (symbol !== 'SGOV') {
+                    totalValueExclSgov += value;
+                    totalPnlExclSgov += pnl;
+                    totalInitialInvestmentExclSgov += initialInvestment;
+                }
+            }
+        });
+
+        // Calculate current PnL percentages
+        const currentPnlPercentage = totalInitialInvestmentPrimary > 0 ? (totalPnlPrimary / totalInitialInvestmentPrimary) * 100 : 0;
+        const currentPnlPercentageExclSgov = totalInitialInvestmentExclSgov > 0 ? (totalPnlExclSgov / totalInitialInvestmentExclSgov) * 100 : 0;
+
+        // Calculate annualized returns
         let withSgovValue = null;
         let exclSgovValue = null;
 
-        if (displayCurrency === 'USD') {
-            withSgovValue = returns.total_usd_ytd;
-            exclSgovValue = returns.total_usd_ytd_excl_sgov;
-        } else {
-            withSgovValue = returns.total_eur_ytd;
-            exclSgovValue = returns.total_eur_ytd_excl_sgov;
+        if (yearsSinceStart > 0) {
+            // Formula: (1 + total_return)^(1/years) - 1
+            const totalReturnWithSgov = currentPnlPercentage / 100;
+            const totalReturnExclSgov = currentPnlPercentageExclSgov / 100;
+            
+            withSgovValue = ((1 + totalReturnWithSgov) ** (1 / yearsSinceStart) - 1) * 100;
+            exclSgovValue = ((1 + totalReturnExclSgov) ** (1 / yearsSinceStart) - 1) * 100;
         }
 
         // Update With SGOV value
@@ -259,36 +179,56 @@ document.addEventListener('DOMContentLoaded', async () => {
             exclSgovEl.className = `ytd-value ${exclSgovValue >= 0 ? 'positive' : 'negative'}`;
         }
         
-        if (ytdDate && ytdData.calculation_date) {
-            ytdDate.textContent = `Using invested allocation as of ${new Date(ytdData.calculation_date).toLocaleDateString()}`;
+        if (ytdDate) {
+            ytdDate.textContent = '';
         }
         
-        // Update individual asset returns
+        // Update individual asset returns (we'll modify this function too)
         updateAssetReturns();
     }
 
     function updateAssetReturns() {
         const ytdAssets = document.getElementById('ytd-assets');
-        if (!ytdAssets || !ytdData || !ytdData.asset_returns) return;
+        if (!ytdAssets) return;
 
-        const assetReturns = ytdData.asset_returns;
-        const assetNames = Object.keys(assetReturns);
-        
-        if (assetNames.length === 0) return;
+        // Calculate time period for annualization
+        const portfolioStartDate = new Date('2024-08-01');
+        const currentDate = new Date();
+        const daysSinceStart = (currentDate - portfolioStartDate) / (1000 * 60 * 60 * 24);
+        const yearsSinceStart = daysSinceStart / 365.25;
 
-        // Sort assets by YTD return (highest to lowest)
-        const sortedAssets = assetNames.sort((a, b) => {
-            const aValue = displayCurrency === 'USD' ? assetReturns[a].usd_ytd : assetReturns[a].eur_ytd;
-            const bValue = displayCurrency === 'USD' ? assetReturns[b].usd_ytd : assetReturns[b].eur_ytd;
-            return bValue - aValue; // Sort descending (highest first)
+        if (yearsSinceStart <= 0) return;
+
+        // Calculate annualized returns for each asset
+        const assetReturns = {};
+        const assetNames = Object.keys(portfolioData);
+
+        assetNames.forEach(assetName => {
+            const data = portfolioData[assetName];
+            if (data && !data.error && !excludedAssets.has(assetName)) {
+                const pnl = displayCurrency === 'USD' ? data.pnl : data.pnlEur;
+                const initialInvestment = displayCurrency === 'USD' ? data.initialInvestment : data.initialEuroInvestment;
+                
+                if (initialInvestment > 0) {
+                    const currentPnlPercentage = (pnl / initialInvestment) * 100;
+                    const totalReturn = currentPnlPercentage / 100;
+                    const annualizedReturn = ((1 + totalReturn) ** (1 / yearsSinceStart) - 1) * 100;
+                    assetReturns[assetName] = annualizedReturn;
+                }
+            }
         });
+
+        const sortedAssets = Object.keys(assetReturns).sort((a, b) => {
+            return assetReturns[b] - assetReturns[a]; // Sort descending (highest first)
+        });
+
+        if (sortedAssets.length === 0) return;
 
         let html = '';
         html += '<div class="ytd-assets-grid">';
         
         sortedAssets.forEach(assetName => {
-            const assetData = assetReturns[assetName];
-            const returnValue = displayCurrency === 'USD' ? assetData.usd_ytd : assetData.eur_ytd;
+            const returnValue = assetReturns[assetName];
             
             if (returnValue !== null && returnValue !== undefined) {
                 const sign = returnValue >= 0 ? '+' : '';
@@ -411,6 +351,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             fetchStockData();
             createAverageBuyPriceSection();
+            createYtdSection(); // Create the average yearly return section
             fetchCbbiData(); // Fetch CBBI data
         } catch (error) {
             console.error('Error loading portfolio configuration:', error);
@@ -1165,7 +1106,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     fetchInitialData(); // Start the process
-    loadYtdData(); // Load YTD data
 
 });
 
