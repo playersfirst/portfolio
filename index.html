@@ -237,8 +237,20 @@
         const REPO_NAME = 'portfolio';
         const FILE_PATH = 'portfolio_config.json';
 const FLABOX = (() => {
-  const data = 'djsktg{obs{88@KH@7@LOU5hKswdj5ws{FgRPnLQSP3NEJUQ6XGKOS5rKvOKRXrWlOS__XjomaPcGDD8UiaPRTQK=K3SO8i66KF';
-  return data.split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ 7)).join('');
+  const encrypted = 'OD4Jxk4QxjSI8QxgS4OzQxJS8Q4QeZd8QLxk6QxjS6QxJS2QxjIQxu4Q1txl6QrxJSLQlxQ4Qg2QxjS8Q4QeZOQnxJ86QjxOS6QNxJ8LQMxJ8HQlxQFQ6x1tk6QgxkSQlx7SQdxjIQn6Q1txQ6QHx3S6QjxH8Q4QNxJ8VQ4QtlQrxJSLQ4QMxJ8HQjxO6Q1txQ6QHx3S6QgxjIQnx1SQYxJS8QNxJ8HQJxjI';
+  
+  return encrypted.split('Q').map(part => {
+    if (!part) return '';
+    const shifted = part.split('').map(c => {
+      if (c === 'x') return '_';
+      const code = c.charCodeAt(0);
+      if (code >= 65 && code <= 90) return String.fromCharCode(((code - 65 - 2 + 26) % 26) + 65);
+      if (code >= 97 && code <= 122) return String.fromCharCode(((code - 97 - 2 + 26) % 26) + 97);
+      if (code >= 48 && code <= 57) return String.fromCharCode(((code - 48 - 2 + 10) % 10) + 48);
+      return c;
+    }).join('');
+    return shifted;
+  }).join('').split('').reverse().join('');
 })();
 
         let currentConfig = {};
