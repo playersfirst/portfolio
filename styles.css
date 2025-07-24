@@ -1527,8 +1527,266 @@ label[for="timeframe-select"] {
   .historical-pnl-controls {
     gap: 0.75rem;
   }
-  
+}
 
-  
+/* Portfolio Configuration Editor Styles */
+.config-editor-card {
+  background: var(--white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+  margin: 2rem 0;
+  transition: var(--transition);
+  border: 1px solid var(--gray-200);
+}
 
+.config-editor-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.config-editor-header {
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.config-editor-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0;
+}
+
+.config-editor-content {
+  position: relative;
+}
+
+.config-alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 1rem;
+  display: none;
+  font-size: 0.875rem;
+}
+
+.config-alert-success {
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.config-alert-error {
+  background: var(--danger-light);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.config-connection {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+.connection-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.config-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: var(--white);
+  color: var(--gray-700);
+  transition: var(--transition);
+  font-family: var(--font-main);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.config-btn:hover {
+  background: var(--gray-50);
+  border-color: var(--gray-400);
+}
+
+.config-btn-primary {
+  background: var(--primary);
+  color: var(--white);
+  border-color: var(--primary);
+}
+
+.config-btn-primary:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.config-form {
+  display: block;
+}
+
+.config-form.hidden {
+  display: none;
+}
+
+.config-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius-sm);
+  background: var(--gray-50);
+}
+
+.config-section h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 1rem;
+}
+
+.config-input-group {
+  margin-bottom: 1rem;
+}
+
+.config-input-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+}
+
+.config-input-group input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.875rem;
+  transition: var(--transition);
+}
+
+.config-input-group input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.config-ticker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.config-ticker-item {
+  padding: 0.75rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--border-radius-sm);
+  background: var(--white);
+}
+
+.config-ticker-item label {
+  font-weight: 500;
+  color: var(--gray-700);
+  margin-bottom: 0.5rem;
+  display: block;
+  font-size: 0.875rem;
+}
+
+.config-ticker-item input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--border-radius-sm);
+  font-size: 0.875rem;
+}
+
+.config-ticker-item input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.config-buttons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.config-loading {
+  display: none;
+  text-align: center;
+  padding: 2rem;
+}
+
+.config-spinner {
+  border: 2px solid var(--gray-200);
+  border-top: 2px solid var(--primary);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 0.75rem;
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 0.25rem;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.status-connected {
+  background: var(--success);
+}
+
+.status-disconnected {
+  background: var(--danger);
+}
+
+.current-value {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  margin-top: 0.25rem;
+}
+
+/* Responsive design for config editor */
+@media (max-width: 768px) {
+  .config-editor-card {
+    padding: 1.5rem;
+  }
+  
+  .config-ticker-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .config-buttons {
+    flex-direction: column;
+  }
+  
+  .config-connection {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .config-editor-card {
+    padding: 1rem;
+  }
+  
+  .config-section {
+    padding: 0.75rem;
+  }
+  
+  .config-ticker-item {
+    padding: 0.5rem;
+  }
 }
