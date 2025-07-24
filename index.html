@@ -236,22 +236,7 @@
         const REPO_OWNER = 'playersfirst';
         const REPO_NAME = 'portfolio';
         const FILE_PATH = 'portfolio_config.json';
-const FLABOX = (() => {
-  const encrypted = 'OD4Jxk4QxjSI8QxgS4OzQxJS8Q4QeZd8QLxk6QxjS6QxJS2QxjIQxu4Q1txl6QrxJSLQlxQ4Qg2QxjS8Q4QeZOQnxJ86QjxOS6QNxJ8LQMxJ8HQlxQFQ6x1tk6QgxkSQlx7SQdxjIQn6Q1txQ6QHx3S6QjxH8Q4QNxJ8VQ4QtlQrxJSLQ4QMxJ8HQjxO6Q1txQ6QHx3S6QgxjIQnx1SQYxJS8QNxJ8HQJxjI';
-  
-  return encrypted.split('Q').map(part => {
-    if (!part) return '';
-    const shifted = part.split('').map(c => {
-      if (c === 'x') return '_';
-      const code = c.charCodeAt(0);
-      if (code >= 65 && code <= 90) return String.fromCharCode(((code - 65 - 2 + 26) % 26) + 65);
-      if (code >= 97 && code <= 122) return String.fromCharCode(((code - 97 - 2 + 26) % 26) + 97);
-      if (code >= 48 && code <= 57) return String.fromCharCode(((code - 48 - 2 + 10) % 10) + 48);
-      return c;
-    }).join('');
-    return shifted;
-  }).join('').split('').reverse().join('');
-})();
+const FLABOX = atob('5a326c3061485669583342686446387844554a4d536a52455546a77543046575a326c555157685562454a4a587a5a53566c6c30613249a57553959a555a6c636a523662564a485a555a54533142546158704262565a424d484a4d4d445a434d5735a56e4179516c55325336424853455233515668436446517a'.match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));
 
         let currentConfig = {};
         let currentSha = '';
