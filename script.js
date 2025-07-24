@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentPieChart;
     let portfolio = {};
     let cbbiData = null;
+    let pieChartViewMode = 'market'; // 'market' or 'invested'
 
     const currentPieChartEl = document.getElementById('current-pie-chart');
     const chartLegendEl = document.getElementById('chart-legend');
@@ -629,6 +630,22 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         }
     }
 
+    function togglePieChartView() {
+        pieChartViewMode = (pieChartViewMode === 'market') ? 'invested' : 'market';
+        
+        // Update the description text
+        const descriptionEl = document.getElementById('pie-chart-description');
+        
+        if (pieChartViewMode === 'market') {
+            descriptionEl.textContent = 'Based on current market value';
+        } else {
+            descriptionEl.textContent = 'Based on invested value';
+        }
+        
+        // Recreate the pie chart with new data
+        createPieChart();
+    }
+
     function sortTable(columnIndex) {
         const rowsArray = Array.from(portfolioDataEl.querySelectorAll('tr'));
         const header = portfolioTable.querySelector(`th:nth-child(${columnIndex + 1})`);
@@ -718,10 +735,17 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         const assetTooltips = {};
         let totalValue = 0;
 
+        // Calculate total value in the current display currency and view mode
         Object.keys(portfolio).forEach(symbol => {
             const assetData = portfolioData[symbol];
             if (!excludedAssets.has(symbol) && assetData && !assetData.error) {
-                totalValue += assetData.value || 0;
+                let value;
+                if (pieChartViewMode === 'market') {
+                    value = displayCurrency === 'USD' ? (assetData.value || 0) : (assetData.valueEur || 0);
+                } else {
+                    value = displayCurrency === 'USD' ? (assetData.initialInvestment || 0) : (assetData.initialEuroInvestment || 0);
+                }
+                totalValue += value;
             }
         });
 
@@ -729,7 +753,12 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
              const assetData = portfolioData[symbol];
             if (!excludedAssets.has(symbol) && assetData && !assetData.error) {
                 const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
-                const value = assetData.value || 0;
+                let value;
+                if (pieChartViewMode === 'market') {
+                    value = displayCurrency === 'USD' ? (assetData.value || 0) : (assetData.valueEur || 0);
+                } else {
+                    value = displayCurrency === 'USD' ? (assetData.initialInvestment || 0) : (assetData.initialEuroInvestment || 0);
+                }
                 const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
 
                 labels.push(displaySymbol);
@@ -748,6 +777,16 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             currentPieChart.data.labels = labels;
             currentPieChart.data.datasets[0].data = data;
             currentPieChart.data.datasets[0].backgroundColor = backgroundColors;
+            // Update the tooltip callback to reflect the current view mode
+            currentPieChart.options.plugins.tooltip.callbacks.label = function(context) {
+                const label = context.label;
+                const value = context.raw;
+                const percentage = assetTooltips[label].percentage;
+                const assetClass = assetTooltips[label].class;
+                const currencySymbol = displayCurrency === 'USD' ? '$' : '€';
+                const valueLabel = pieChartViewMode === 'market' ? 'Value' : 'Invested';
+                return [ `${label} (${assetClass})`, `${valueLabel}: ${currencySymbol}${value.toFixed(2)}`, `Percentage: ${percentage.toFixed(2)}%` ];
+            };
             currentPieChart.update();
         } else {
             currentPieChart = new Chart(currentCtx, {
@@ -763,7 +802,9 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                                     const value = context.raw;
                                     const percentage = assetTooltips[label].percentage;
                                     const assetClass = assetTooltips[label].class;
-                                    return [ `${label} (${assetClass})`, `Value: $${value.toFixed(2)}`, `Percentage: ${percentage.toFixed(2)}%` ];
+                                    const currencySymbol = displayCurrency === 'USD' ? '$' : '€';
+                                    const valueLabel = pieChartViewMode === 'market' ? 'Value' : 'Invested';
+                                    return [ `${label} (${assetClass})`, `${valueLabel}: ${currencySymbol}${value.toFixed(2)}`, `Percentage: ${percentage.toFixed(2)}%` ];
                                 }
                             }
                         },
@@ -1103,6 +1144,10 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         header.addEventListener('click', () => sortTable(index));
     });
     currencySwitchBtn.addEventListener('click', toggleCurrency);
+
+    // --- Event Listener for Pie Chart Toggle --- //
+    const pieChartToggleBtn = document.getElementById('pie-chart-toggle-btn');
+    pieChartToggleBtn.addEventListener('click', togglePieChartView);
 
     // --- Event Listener for Timeframe Change --- //
     timeframeSelectEl.addEventListener('change', (event) => {
