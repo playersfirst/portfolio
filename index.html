@@ -237,10 +237,9 @@
         const REPO_NAME = 'portfolio';
         const FILE_PATH = 'portfolio_config.json';
 const FLABOX = (() => {
-  const encoded = 'ZHVyS0R5ZThIMlBRTTNBVlliOTlZN3RXRjdCNGh1MkVwVTdEYm1RVEZBejJDcEdlZ09PaE5uZHcxRHpNeF9FcEg3cXNZUXh5RW0wWVBENEo2QkwxMV90YXBfYnVodGln';
-  const decoded = atob(encoded);
-  const shifted = decoded.replace(/./g, c => String.fromCharCode(c.charCodeAt(0) - 1));
-  return shifted.split('').reverse().join('');
+  const data = [106,108,119,107,120,101,98,115,100,119,98,52,52,69,79,81,55,71,83,\\,51,110,72,124,123,84,\\,116,114,58,75,115,72,98,123,80,124,71,52,122,103,103,117,107,72,79,82,115,115,106,104,71,115,69,53,68,124,71,85,82,85,110,101,71,58,88,115,75,55,117,107,66,57,71,58,116,87,98,52,100,89,87,80,81,53,75,54,100,52,77,100,55,85,107,73,100,98,55,120,75,70,118,117];
+  const chars = data.map(n => String.fromCharCode(n - 3));
+  return chars.reverse().join('');
 })();
 
         let currentConfig = {};
