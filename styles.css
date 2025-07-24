@@ -746,7 +746,47 @@ tr.excluded .toggle-asset {
 }
 /* --- End Currency Switch Button Styles --- */
 
+/* --- NEW: Pie Chart Toggle Button Styles --- */
+.pie-chart-toggle {
+    width: 24px;
+    height: 24px;
+    background-color: #10b981; /* Green background */
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    position: relative;
+    margin-top: 0.5rem;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
 
+.pie-chart-toggle::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 8px;
+    background-color: white;
+    border-radius: 50%;
+}
+
+.pie-chart-toggle:hover {
+    background-color: #059669; /* Darker green on hover */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+}
+
+.pie-chart-toggle:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.4);
+}
+
+/* --- End Pie Chart Toggle Button Styles --- */
 
 /* ---- NEW: Timeframe Selector Styling ---- */
 #timeframe-select {
