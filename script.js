@@ -430,7 +430,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // Convert timestamp to date
             const date = new Date(parseInt(latestTimestamp) * 1000);
-            cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()} ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         } else {
             cbbiValueEl.textContent = '--';
             cbbiValueEl.className = 'cbbi-value';
