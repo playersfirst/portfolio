@@ -1155,11 +1155,11 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             <h3 style="margin: 0 0 15px 0; color: #333;">Select Date Range</h3>
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: 500;">Start Date:</label>
-                <input type="date" id="start-date" value="${dataStartDate}" min="${dataStartDate}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <input type="date" id="start-date" value="${dataStartDate}" min="${dataStartDate}" max="${today}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
             </div>
             <div style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: 500;">End Date:</label>
-                <input type="date" id="end-date" value="${today}" min="${dataStartDate}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                <input type="date" id="end-date" value="${today}" min="${dataStartDate}" max="${today}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
             </div>
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
                 <button id="cancel-date-picker" style="padding: 8px 16px; border: 1px solid #ccc; background: #f8f9fa; border-radius: 4px; cursor: pointer;">Cancel</button>
@@ -1180,12 +1180,62 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             const endDate = document.getElementById('end-date').value;
             
             if (startDate && endDate) {
+                // Validate dates
+                const startDateObj = new Date(startDate);
+                const endDateObj = new Date(endDate);
+                const todayObj = new Date();
+                const dataStartDateObj = new Date(dataStartDate);
+                
+                // Reset time to midnight for accurate comparison
+                todayObj.setHours(0, 0, 0, 0);
+                startDateObj.setHours(0, 0, 0, 0);
+                endDateObj.setHours(0, 0, 0, 0);
+                dataStartDateObj.setHours(0, 0, 0, 0);
+                
+                // Check if dates are valid
+                if (startDateObj < dataStartDateObj || startDateObj > todayObj) {
+                    alert('Start date must be between July 23, 2025 and today.');
+                    return;
+                }
+                
+                if (endDateObj < dataStartDateObj || endDateObj > todayObj) {
+                    alert('End date must be between July 23, 2025 and today.');
+                    return;
+                }
+                
+                if (startDateObj > endDateObj) {
+                    alert('Start date must be before or equal to end date.');
+                    return;
+                }
+                
                 customDateRange = {
-                    start: new Date(startDate),
-                    end: new Date(endDate)
+                    start: startDateObj,
+                    end: endDateObj
                 };
                 updateHistoricalPnlDisplay();
                 modal.remove();
+            }
+        });
+
+        // Add input event listeners to enforce constraints
+        const startDateInput = document.getElementById('start-date');
+        const endDateInput = document.getElementById('end-date');
+        
+        startDateInput.addEventListener('change', () => {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            
+            if (startDate && endDate && startDate > endDate) {
+                endDateInput.value = startDate;
+            }
+        });
+        
+        endDateInput.addEventListener('change', () => {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            
+            if (startDate && endDate && endDate < startDate) {
+                startDateInput.value = endDate;
             }
         });
 
