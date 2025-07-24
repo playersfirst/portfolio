@@ -578,6 +578,13 @@ body {
     height: 10px;
     margin-right: 8px;
   }
+  
+  /* Ensure pie chart toggle stays in top-right on mobile */
+  .pie-chart-toggle {
+    top: 1rem;
+    right: 1rem;
+    position: absolute;
+  }
 }
 
 @media (max-width: 576px) {
@@ -662,6 +669,13 @@ body {
     width: 8px;
     height: 8px;
     margin-right: 6px;
+  }
+  
+  /* Ensure pie chart toggle stays in top-right on small mobile */
+  .pie-chart-toggle {
+    top: 0.75rem;
+    right: 0.75rem;
+    position: absolute;
   }
 }
 
@@ -760,6 +774,7 @@ tr.excluded .toggle-asset {
     top: 1rem;
     right: 1rem;
     z-index: 10;
+    pointer-events: auto;
 }
 
 .pie-chart-toggle::before {
