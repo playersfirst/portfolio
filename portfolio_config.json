@@ -1,5 +1,5 @@
 {
-  "originalEuroInvestment": 29440,
+  "originalEuroInvestment": 1,
   "initialInvestments": {
     "VOO": 1966,
     "NANC": 1982,
@@ -21,4 +21,4 @@
     "SGOV": 198.5599,
     "BINANCE:BTCUSDT": 0.09580427
   }
-} 
+}
