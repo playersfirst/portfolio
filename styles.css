@@ -1043,7 +1043,7 @@ label[for="timeframe-select"] {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--gray-800);
-  margin-bottom: 0.25rem;
+  margin: 0 0 0.25rem 0;
   letter-spacing: 0.025em;
 }
 
@@ -1179,10 +1179,11 @@ label[for="timeframe-select"] {
 }
 
 .cbbi-header h3 {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--gray-900);
-  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0 0 0.25rem 0;
+  letter-spacing: 0.025em;
 }
 
 .cbbi-header p {
@@ -1303,7 +1304,5 @@ label[for="timeframe-select"] {
     font-size: 2rem;
   }
   
-  .cbbi-header h3 {
-    font-size: 1.125rem;
-  }
+
 }
