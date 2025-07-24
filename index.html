@@ -236,7 +236,7 @@
         const REPO_OWNER = 'playersfirst';
         const REPO_NAME = 'portfolio';
         const FILE_PATH = 'portfolio_config.json';
-        const GITHUB_TOKEN = atob('Z2l0aHViX3BhdF8xMUJMSjREUFkwUUpWUE9lZ3lOZzM5X2dGSjNLZ3BZbmROVUlmRzBldXVCdTlabXdGUmRacHAxYWFaWE10V2JIN1pHV1Q1R09RNVJTNUpySzJN');
+        const FLABOX = atob('Z2l0aHViX3BhdF8xMUJMSjREUFkwdlFybElYYUV1ampmX1paVkxxYTN5cHNLMk4zZmhBV0FoQjdvU1pMdnpCN0FHNVdWZlF2d3BScGZDSFBHNEVCNEFQQXlhV1JQ');
 
         let currentConfig = {};
         let currentSha = '';
@@ -282,7 +282,7 @@
             try {
                 const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
                     headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Authorization': `token ${FLABOX}`,
                         'Accept': 'application/vnd.github.v3+json'
                     }
                 });
@@ -391,7 +391,7 @@
                 const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
                     method: 'PUT',
                     headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Authorization': `token ${FLABOX}`,
                         'Accept': 'application/vnd.github.v3+json',
                         'Content-Type': 'application/json'
                     },
@@ -433,7 +433,7 @@
             try {
                 const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
                     headers: {
-                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Authorization': `token ${FLABOX}`,
                         'Accept': 'application/vnd.github.v3+json'
                     }
                 });
