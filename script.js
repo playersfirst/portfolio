@@ -84,7 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <span id="ytd-value-with-sgov" class="ytd-value">N/A</span>
                 </div>
                 <div class="ytd-value-item">
-                    <span class="ytd-label">Excl SGOV</span>
+                    <span class="ytd-label">Risk Assets</span>
                     <span id="ytd-value-excl-sgov" class="ytd-value">N/A</span>
                 </div>
             </div>
@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             withSgovEl.className = `ytd-value ${withSgovValue >= 0 ? 'positive' : 'negative'}`;
         }
 
-        // Update Excl SGOV value
+        // Update Risk Assets value
         const exclSgovEl = document.getElementById('ytd-value-excl-sgov');
         if (exclSgovEl && exclSgovValue !== null) {
             const sign = exclSgovValue >= 0 ? '+' : '';
@@ -622,6 +622,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateYtdDisplay();
         updateAssetReturns();
         updateAverageBuyPriceDisplay();
+        
+        // Update historical PnL display when currency changes
+        if (pnlHistoryData) {
+            updateHistoricalPnlDisplay();
+        }
     }
 
     function sortTable(columnIndex) {
@@ -1104,6 +1109,333 @@ document.addEventListener('DOMContentLoaded', async () => {
         selectedTimeframe = event.target.value;
         loadHistoryChart(); // Reload the history chart with the new timeframe
     });
+
+    // Historical PnL functionality
+    let pnlHistoryData = null;
+    let selectedYear = new Date().getFullYear();
+    let customDateRange = null;
+
+    function showCustomDatePicker() {
+        // Remove existing date picker if it exists
+        const existingPicker = document.getElementById('custom-date-picker-modal');
+        if (existingPicker) {
+            existingPicker.remove();
+        }
+
+        // Create modal overlay
+        const modal = document.createElement('div');
+        modal.id = 'custom-date-picker-modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        `;
+
+        // Create date picker content
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-width: 300px;
+        `;
+
+        const today = new Date().toISOString().split('T')[0];
+        const dataStartDate = '2025-07-23'; // July 23, 2025
+        
+        content.innerHTML = `
+            <h3 style="margin: 0 0 15px 0; color: #333;">Select Date Range</h3>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Start Date:</label>
+                <input type="date" id="start-date" value="${dataStartDate}" min="${dataStartDate}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500;">End Date:</label>
+                <input type="date" id="end-date" value="${today}" min="${dataStartDate}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button id="cancel-date-picker" style="padding: 8px 16px; border: 1px solid #ccc; background: #f8f9fa; border-radius: 4px; cursor: pointer;">Cancel</button>
+                <button id="apply-date-picker" style="padding: 8px 16px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Apply</button>
+            </div>
+        `;
+
+        modal.appendChild(content);
+        document.body.appendChild(modal);
+
+        // Add event listeners
+        document.getElementById('cancel-date-picker').addEventListener('click', () => {
+            modal.remove();
+        });
+
+        document.getElementById('apply-date-picker').addEventListener('click', () => {
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            
+            if (startDate && endDate) {
+                customDateRange = {
+                    start: new Date(startDate),
+                    end: new Date(endDate)
+                };
+                updateHistoricalPnlDisplay();
+                modal.remove();
+            }
+        });
+
+        // Close modal when clicking outside
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    // Historical PnL elements
+    let yearPrevBtn, yearNextBtn, yearDisplayEl, calendarBtn, historicalPeriodTextEl, 
+        historicalTotalReturnEl, historicalExclSgovReturnEl, historicalPnlAssetsEl;
+
+    function initializeHistoricalPnlElements() {
+        yearPrevBtn = document.getElementById('year-prev');
+        yearNextBtn = document.getElementById('year-next');
+        yearDisplayEl = document.getElementById('year-display');
+        calendarBtn = document.getElementById('calendar-btn');
+        historicalPeriodTextEl = document.getElementById('historical-period-text');
+        historicalTotalReturnEl = document.getElementById('historical-total-return');
+        historicalExclSgovReturnEl = document.getElementById('historical-excl-sgov-return');
+        historicalPnlAssetsEl = document.getElementById('historical-pnl-assets');
+
+        // Add event listeners if elements exist
+        if (yearPrevBtn) {
+            yearPrevBtn.addEventListener('click', () => {
+                if (selectedYear > 2025) {
+                    selectedYear--;
+                    updateYearSelector();
+                }
+            });
+        }
+
+        if (yearNextBtn) {
+            yearNextBtn.addEventListener('click', () => {
+                const currentYear = new Date().getFullYear();
+                if (selectedYear < currentYear) {
+                    selectedYear++;
+                    updateYearSelector();
+                }
+            });
+        }
+
+        if (calendarBtn) {
+            calendarBtn.addEventListener('click', () => {
+                showCustomDatePicker();
+            });
+        }
+    }
+
+    async function loadPnlHistory() {
+        try {
+            const response = await fetch('pnl_history.json');
+            if (!response.ok) {
+                console.log('PnL history file not found or empty');
+                return;
+            }
+            pnlHistoryData = await response.json();
+            updateHistoricalPnlDisplay();
+        } catch (error) {
+            console.log('Error loading PnL history:', error);
+        }
+    }
+
+    function updateHistoricalPnlDisplay() {
+        // Check if elements exist
+        if (!historicalTotalReturnEl || !historicalExclSgovReturnEl || !historicalPeriodTextEl || !historicalPnlAssetsEl) {
+            initializeHistoricalPnlElements();
+            return;
+        }
+
+        if (!pnlHistoryData || !pnlHistoryData.history || pnlHistoryData.history.length === 0) {
+            historicalTotalReturnEl.textContent = 'No data';
+            historicalExclSgovReturnEl.textContent = 'No data';
+            historicalPeriodTextEl.textContent = 'No data available';
+            historicalPnlAssetsEl.innerHTML = '';
+            return;
+        }
+
+        // Get date range based on selected year or custom range
+        const dateRange = customDateRange || getDateRangeForYear(selectedYear);
+        if (!dateRange) {
+            historicalTotalReturnEl.textContent = 'Invalid date range';
+            historicalExclSgovReturnEl.textContent = 'Invalid date range';
+            historicalPeriodTextEl.textContent = 'Invalid date range';
+            return;
+        }
+
+        // Filter data for the selected timeframe
+        const filteredData = pnlHistoryData.history.filter(entry => {
+            const entryDate = new Date(entry.date);
+            return entryDate >= dateRange.start && entryDate <= dateRange.end;
+        });
+
+        if (filteredData.length < 2) {
+            historicalTotalReturnEl.textContent = 'Insufficient data';
+            historicalExclSgovReturnEl.textContent = 'Insufficient data';
+            historicalPeriodTextEl.textContent = 'Insufficient data for selected period';
+            historicalPnlAssetsEl.innerHTML = '';
+            return;
+        }
+
+        // Calculate returns
+        const firstEntry = filteredData[0];
+        const lastEntry = filteredData[filteredData.length - 1];
+        
+        const totalUsdReturn = calculateReturn(firstEntry.percentages.total.usd, lastEntry.percentages.total.usd);
+        const totalEurReturn = calculateReturn(firstEntry.percentages.total.eur, lastEntry.percentages.total.eur);
+        const exclSgovUsdReturn = calculateReturn(firstEntry.percentages.excl_sgov.usd, lastEntry.percentages.excl_sgov.usd);
+        const exclSgovEurReturn = calculateReturn(firstEntry.percentages.excl_sgov.eur, lastEntry.percentages.excl_sgov.eur);
+
+        // Update display based on current currency
+        const isEur = displayCurrency === 'EUR';
+        const totalReturn = isEur ? totalEurReturn : totalUsdReturn;
+        const exclSgovReturn = isEur ? exclSgovEurReturn : exclSgovUsdReturn;
+
+        historicalTotalReturnEl.textContent = `${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%`;
+        historicalTotalReturnEl.className = `ytd-value ${totalReturn >= 0 ? 'positive' : 'negative'}`;
+        
+        historicalExclSgovReturnEl.textContent = `${exclSgovReturn >= 0 ? '+' : ''}${exclSgovReturn.toFixed(2)}%`;
+        historicalExclSgovReturnEl.className = `ytd-value ${exclSgovReturn >= 0 ? 'positive' : 'negative'}`;
+
+        // Update period text
+        const startDate = new Date(dateRange.start).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+        });
+        const endDate = new Date(dateRange.end).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+        });
+        historicalPeriodTextEl.textContent = `${startDate} - ${endDate}`;
+
+        // Update individual assets
+        updateHistoricalPnlAssets(filteredData, isEur);
+    }
+
+    function getDateRangeForYear(year) {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const dataStartDate = new Date(2025, 6, 23); // July 23, 2025 (month is 0-indexed)
+        
+        if (year === currentYear) {
+            // Current year: Jan 1 to today (or data start date if it's 2025)
+            const startDate = year === 2025 ? dataStartDate : new Date(year, 0, 1);
+            return {
+                start: startDate,
+                end: now
+            };
+        } else if (year < currentYear) {
+            // Past year: Jan 1 to Dec 31 (or data start date if it's 2025)
+            const startDate = year === 2025 ? dataStartDate : new Date(year, 0, 1);
+            return {
+                start: startDate,
+                end: new Date(year, 11, 31)
+            };
+        } else {
+            // Future year: no data
+            return null;
+        }
+    }
+
+    function calculateReturn(startValue, endValue) {
+        // Calculate percentage return between two values
+        if (startValue === 0) return 0;
+        return ((endValue - startValue) / Math.abs(startValue)) * 100;
+    }
+
+    function updateHistoricalPnlAssets(data, isEur) {
+        const firstEntry = data[0];
+        const lastEntry = data[data.length - 1];
+        
+        const assets = [
+            { key: 'btc', name: 'BTC' },
+            { key: 'voo', name: 'VOO' },
+            { key: 'iau', name: 'IAU' },
+            { key: 'nanc', name: 'NANC' },
+            { key: 'sgov', name: 'SGOV' }
+        ];
+
+        let assetsHtml = '';
+        assetsHtml += '<div class="ytd-assets-grid">';
+
+        assets.forEach(asset => {
+            const usdReturn = calculateReturn(firstEntry.percentages[asset.key].usd, lastEntry.percentages[asset.key].usd);
+            const eurReturn = calculateReturn(firstEntry.percentages[asset.key].eur, lastEntry.percentages[asset.key].eur);
+            const returnValue = isEur ? eurReturn : usdReturn;
+
+            assetsHtml += `
+                <div class="ytd-asset-item">
+                    <span class="ytd-asset-name">${asset.name}</span>
+                    <span class="ytd-asset-value ${returnValue >= 0 ? 'positive' : 'negative'}">
+                        ${returnValue >= 0 ? '+' : ''}${returnValue.toFixed(2)}%
+                    </span>
+                </div>
+            `;
+        });
+
+        assetsHtml += '</div>';
+        historicalPnlAssetsEl.innerHTML = assetsHtml;
+    }
+
+    function updateYearSelector() {
+        if (!yearDisplayEl || !yearPrevBtn || !yearNextBtn) {
+            initializeHistoricalPnlElements();
+            return;
+        }
+
+        yearDisplayEl.textContent = selectedYear;
+        
+        // Disable prev button if we're at the earliest year (2025)
+        if (selectedYear <= 2025) {
+            yearPrevBtn.classList.add('disabled');
+        } else {
+            yearPrevBtn.classList.remove('disabled');
+        }
+        
+        // Disable next button if we're at the current year
+        const currentYear = new Date().getFullYear();
+        if (selectedYear >= currentYear) {
+            yearNextBtn.classList.add('disabled');
+        } else {
+            yearNextBtn.classList.remove('disabled');
+        }
+        
+        // Reset custom date range when changing years
+        customDateRange = null;
+        updateHistoricalPnlDisplay();
+    }
+
+    // Initialize historical PnL elements and year selector
+    initializeHistoricalPnlElements();
+    updateYearSelector();
+
+    // Load PnL history after initial data is loaded
+    setTimeout(() => {
+        loadPnlHistory();
+    }, 2000);
+
+    // Also try to initialize after a short delay in case elements load later
+    setTimeout(() => {
+        if (!yearPrevBtn || !yearNextBtn || !calendarBtn) {
+            initializeHistoricalPnlElements();
+            updateYearSelector();
+        }
+    }, 1000);
 
     fetchInitialData(); // Start the process
 
