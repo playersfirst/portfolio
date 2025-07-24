@@ -15,10 +15,7 @@ class PortfolioUpdater:
     def __init__(self):
         self.setup_driver()
         self.json_file = Path(__file__).parent / 'portfolio_history.json'
-        self.dividend_history_file = Path(__file__).parent / 'dividend_history.json' # Added for share counts
         self.portfolio_url = "https://playersfirst.github.io/portfolio"
-        # self.exchange_rate_url = "https://playersfirst.github.io/exchange_rate.json" # Removed
-        # self.max_entries = 7 # Removed limit for now
 
     def setup_driver(self):
         chrome_options = Options()
@@ -29,26 +26,7 @@ class PortfolioUpdater:
         
         self.driver = webdriver.Chrome(options=chrome_options)
 
-    def get_share_counts(self):
-        """Reads share counts from dividend_history.json"""
-        try:
-            with open(self.dividend_history_file, 'r') as f:
-                dividend_data = json.load(f)
-            # Define the standard portfolio structure based on dividend history and fixed values
-            portfolio = {
-                'VOO': dividend_data['holdings']['VOO']['total_shares'],
-                'NANC': dividend_data['holdings']['NANC']['total_shares'],
-                'IAU': 47.0646, # Fixed value from script.js
-                'SGOV': dividend_data['holdings']['SGOV']['total_shares'],
-                'BINANCE:BTCUSDT': 0.09580427 # Fixed value from script.js
-            }
-            return portfolio
-        except FileNotFoundError:
-            print(f"Error: {self.dividend_history_file} not found.")
-            return {}
-        except Exception as e:
-            print(f"Error reading share counts from {self.dividend_history_file}: {e}")
-            return {}
+
 
     def get_asset_values(self):
         """Scrapes the current USD and EUR values for each asset from the portfolio page by clicking the currency switch."""
@@ -207,7 +185,6 @@ class PortfolioUpdater:
         new_entry = {
             "date": today,
             "assets": today_assets
-            # Removed "usd_to_eur_rate"
         }
 
         # Check if today's entry already exists and update it, otherwise append
@@ -235,13 +212,6 @@ class PortfolioUpdater:
     def run(self):
         """Main execution flow."""
         try:
-            # Fetch share counts - still needed? No, we get total values directly.
-            # print("Fetching share counts...")
-            # share_counts = self.get_share_counts()
-            # if not share_counts:
-            #      raise ValueError("Could not retrieve share counts.")
-            # print(f"Share counts: {share_counts}")
-
             print("Fetching current asset values (USD and EUR)...")
             asset_values_usd, asset_values_eur = self.get_asset_values()
 
@@ -249,20 +219,12 @@ class PortfolioUpdater:
             if not asset_values_usd:
                  raise ValueError("Failed to retrieve USD asset values.")
             if not asset_values_eur:
-                 # Decide how critical this is. Maybe log a warning and proceed with only USD?
-                 # For now, let's require both.
                  raise ValueError("Failed to retrieve EUR asset values after switching currency.")
 
             print(f"Retrieved USD Values: {asset_values_usd}")
             print(f"Retrieved EUR Values: {asset_values_eur}")
 
-            # Removed calculation step as values are scraped directly
-            # print("Fetching exchange rate...") # Removed
-            # rate = self.get_exchange_rate() # Removed
-            # print(f"USD to EUR rate: {rate}") # Removed
-
             print("Updating history file...")
-            # Pass both dictionaries to update_history
             updated_data = self.update_history(asset_values_usd, asset_values_eur)
 
             if updated_data:
