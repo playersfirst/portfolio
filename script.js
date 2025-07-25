@@ -1386,8 +1386,8 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         }
 
         // Calculate returns
-        const firstEntry = filteredData[0];
-        const lastEntry = filteredData[filteredData.length - 1];
+        const firstEntry = filteredData[filteredData.length - 1]; // Oldest entry (start date)
+        const lastEntry = filteredData[0]; // Newest entry (end date)
         
         const totalUsdReturn = calculateReturn(firstEntry.percentages.total.usd, lastEntry.percentages.total.usd);
         const totalEurReturn = calculateReturn(firstEntry.percentages.total.eur, lastEntry.percentages.total.eur);
@@ -1448,14 +1448,13 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     }
 
     function calculateReturn(startValue, endValue) {
-        // Calculate percentage return between two values
-        if (startValue === 0) return 0;
-        return ((endValue - startValue) / Math.abs(startValue)) * 100;
+        // Calculate the change in percentage points between two dates
+        return endValue - startValue;
     }
 
     function updateHistoricalPnlAssets(data, isEur) {
-        const firstEntry = data[0];
-        const lastEntry = data[data.length - 1];
+        const firstEntry = data[data.length - 1]; // Oldest entry (start date)
+        const lastEntry = data[0]; // Newest entry (end date)
         
         const assets = [
             { key: 'btc', name: 'BTC' },
