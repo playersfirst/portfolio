@@ -628,6 +628,9 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         if (pnlHistoryData) {
             updateHistoricalPnlDisplay();
         }
+        
+        // Update asset returns display when currency changes
+        updateAssetReturnsDisplay();
     }
 
     function togglePieChartView() {
@@ -969,7 +972,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                     plugins: {
                         title: {
                             display: true,
-                            text: `Placeholder Title`, // Title is now set dynamically after chart creation/update
+                            text: `History`, // Title is now set dynamically after chart creation/update
                             color: changeColor,
                             font: { size: 15, weight: 'bold', family: "'Inter', sans-serif" },
                             padding: { top: 10, bottom: 25 }
@@ -1533,5 +1536,338 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
 
     fetchInitialData(); // Start the process
 
-});
+    // Asset Returns Tracker functionality
+    const ASSETS_RETURNS = [
+        { symbol: 'BTC-USD', name: 'Bitcoin' },
+        { symbol: 'IAU', name: 'iShares Gold Trust' },
+        { symbol: 'VOO', name: 'Vanguard S&P 500 ETF' },
+        { symbol: 'NANC', name: 'NANC ETF' },
+    ];
 
+    const PERIOD_DAYS = {
+        '1 week': 7,
+        '1 month': 30,
+        '2 months': 60,
+        '6 months': 180,
+        '1 year': 365,
+        '2 years': 730
+    };
+
+    let currentAssetReturns = {};
+    let currentAssetReturnsPeriod = '1 month';
+
+
+    // Initialize asset returns functionality
+    function initializeAssetReturns() {
+        const periodSelect = document.getElementById('periodSelect');
+        const refreshBtn = document.getElementById('refreshReturnsBtn');
+        
+        if (periodSelect) {
+            periodSelect.addEventListener('change', loadAssetReturns);
+        }
+        
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', loadAssetReturns);
+        }
+        
+        // Load initial data
+        loadAssetReturns();
+    }
+
+    async function loadAssetReturns() {
+        const periodSelect = document.getElementById('periodSelect');
+        const returnsGrid = document.getElementById('returns-grid');
+        const loadingDiv = document.getElementById('returns-loading');
+        const errorDiv = document.getElementById('returns-error');
+        
+        if (!periodSelect || !returnsGrid) {
+            return;
+        }
+        
+        const selectedPeriod = periodSelect.value;
+        currentAssetReturnsPeriod = selectedPeriod;
+        
+        showReturnsLoading(true);
+        hideReturnsError();
+        clearReturnsGrid();
+
+        try {
+            const returns = await fetchAssetReturns(selectedPeriod);
+            currentAssetReturns = returns;
+            displayAssetReturns(returns, selectedPeriod);
+        } catch (error) {
+            showReturnsError(`Failed to load asset data: ${error.message}`);
+        } finally {
+            showReturnsLoading(false);
+        }
+    }
+
+    function updateAssetReturnsDisplay() {
+        if (Object.keys(currentAssetReturns).length === 0) {
+            return;
+        }
+        
+        displayAssetReturns(currentAssetReturns, currentAssetReturnsPeriod);
+    }
+
+    async function fetchAssetReturns(period) {
+        const days = PERIOD_DAYS[period];
+        const endDate = new Date();
+        const startDate = new Date(endDate.getTime() - (days * 24 * 60 * 60 * 1000));
+
+        const returns = { usd: {}, eur: {} };
+        let useFallback = false;
+
+        // Calculate EUR/USD exchange rate change for the same period
+        let eurUsdReturn = 0;
+        try {
+            eurUsdReturn = await calculateEurUsdReturn(startDate, endDate);
+        } catch (error) {
+            eurUsdReturn = 0;
+        }
+
+        // Try to get real data first
+        for (const asset of ASSETS_RETURNS) {
+            try {
+                const usdReturn = await calculateAssetReturn(asset.symbol, startDate, endDate);
+                
+                // Calculate EUR return: (1 + USD return) / (1 + EUR/USD return) - 1
+                const eurReturn = ((1 + usdReturn / 100) / (1 + eurUsdReturn / 100) - 1) * 100;
+                const roundedEurReturn = Math.round(eurReturn * 100) / 100;
+                
+                returns.usd[asset.symbol] = usdReturn;
+                returns.eur[asset.symbol] = roundedEurReturn;
+            } catch (error) {
+                useFallback = true;
+                break; // If any asset fails, use fallback for all
+            }
+        }
+
+        // If API failed, throw error
+        if (useFallback) {
+            throw new Error('Failed to fetch asset data from all sources');
+        }
+
+        return returns;
+    }
+
+    async function calculateEurUsdReturn(startDate, endDate) {
+        try {
+            const baseUrl = `https://query1.finance.yahoo.com/v8/finance/chart/EURUSD=X?period1=${Math.floor(startDate.getTime() / 1000)}&period2=${Math.floor(endDate.getTime() / 1000)}&interval=1d`;
+            const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl)}`;
+            
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+                throw new Error('No EUR/USD data available');
+            }
+
+            const result = data.chart.result[0];
+            const quotes = result.indicators.quote[0];
+            
+            if (!quotes.close || quotes.close.length < 2) {
+                throw new Error('Insufficient EUR/USD data points');
+            }
+
+            const prices = quotes.close;
+            let startPrice = null;
+            let endPrice = null;
+
+            for (let i = 0; i < prices.length; i++) {
+                if (prices[i] !== null && prices[i] !== undefined) {
+                    startPrice = prices[i];
+                    break;
+                }
+            }
+
+            for (let i = prices.length - 1; i >= 0; i--) {
+                if (prices[i] !== null && prices[i] !== undefined) {
+                    endPrice = prices[i];
+                    break;
+                }
+            }
+
+            if (startPrice === null || endPrice === null) {
+                throw new Error('No valid EUR/USD price data');
+            }
+
+            const returnPercentage = ((endPrice - startPrice) / startPrice) * 100;
+            return Math.round(returnPercentage * 100) / 100;
+        } catch (error) {
+            return 0;
+        }
+    }
+
+    async function calculateAssetReturn(symbol, startDate, endDate) {
+        // Try multiple CORS proxies in case one fails
+        const baseUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${Math.floor(startDate.getTime() / 1000)}&period2=${Math.floor(endDate.getTime() / 1000)}&interval=1d`;
+        
+        const proxies = [
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl)}`,
+            `https://cors-anywhere.herokuapp.com/${baseUrl}`,
+            `https://thingproxy.freeboard.io/fetch/${baseUrl}`
+        ];
+        
+        let lastError;
+        let data;
+        
+        for (const url of proxies) {
+            try {
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                data = await response.json();
+                break; // Success, exit the loop
+                
+            } catch (error) {
+                lastError = error;
+                continue; // Try next proxy
+            }
+        }
+        
+        if (!data) {
+            throw lastError || new Error('All proxies failed');
+        }
+        
+        if (!data.chart || !data.chart.result || data.chart.result.length === 0) {
+            throw new Error('No data available');
+        }
+
+        const result = data.chart.result[0];
+        const timestamps = result.timestamp;
+        const quotes = result.indicators.quote[0];
+        
+        if (!timestamps || timestamps.length < 2) {
+            throw new Error('Insufficient data points');
+        }
+
+        // Get first and last available prices
+        const prices = quotes.close;
+        let startPrice = null;
+        let endPrice = null;
+
+        // Find first valid price
+        for (let i = 0; i < prices.length; i++) {
+            if (prices[i] !== null && prices[i] !== undefined) {
+                startPrice = prices[i];
+                break;
+            }
+        }
+
+        // Find last valid price
+        for (let i = prices.length - 1; i >= 0; i--) {
+            if (prices[i] !== null && prices[i] !== undefined) {
+                endPrice = prices[i];
+                break;
+            }
+        }
+
+        if (startPrice === null || endPrice === null) {
+            throw new Error('No valid price data');
+        }
+
+        const returnPercentage = ((endPrice - startPrice) / startPrice) * 100;
+        return Math.round(returnPercentage * 100) / 100; // Round to 2 decimal places
+    }
+
+    function displayAssetReturns(returns, period) {
+        const returnsGrid = document.getElementById('returns-grid');
+        if (!returnsGrid) {
+            return;
+        }
+        
+        returnsGrid.innerHTML = '';
+
+        ASSETS_RETURNS.forEach(asset => {
+            const returnValue = displayCurrency === 'USD' ? returns.usd[asset.symbol] : returns.eur[asset.symbol];
+            const card = createReturnsCard(asset, returnValue, period);
+            returnsGrid.appendChild(card);
+        });
+    }
+
+    function createReturnsCard(asset, returnValue, period) {
+        const card = document.createElement('div');
+        card.className = 'returns-item';
+
+        const assetDiv = document.createElement('div');
+        assetDiv.className = 'returns-asset';
+
+        const name = document.createElement('span');
+        name.className = 'returns-name';
+        // Display "BTC" instead of "BTC-USD"
+        const displayName = asset.symbol === 'BTC-USD' ? 'BTC' : asset.symbol;
+        name.textContent = displayName;
+
+        assetDiv.appendChild(name);
+
+        const returnDiv = document.createElement('div');
+        returnDiv.className = 'returns-value';
+
+        if (returnValue === null) {
+            returnDiv.textContent = 'N/A';
+            returnDiv.className += ' neutral';
+        } else {
+            const sign = returnValue >= 0 ? '+' : '';
+            returnDiv.textContent = `${sign}${returnValue}%`;
+            returnDiv.className += returnValue > 0 ? ' positive' : 
+                                 returnValue < 0 ? ' negative' : ' neutral';
+        }
+
+        card.appendChild(assetDiv);
+        card.appendChild(returnDiv);
+
+        return card;
+    }
+
+    function showReturnsLoading(show) {
+        const loadingDiv = document.getElementById('returns-loading');
+        if (loadingDiv) {
+            loadingDiv.style.display = show ? 'block' : 'none';
+        }
+    }
+
+    function showReturnsError(message) {
+        const errorDiv = document.getElementById('returns-error');
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    }
+
+    function hideReturnsError() {
+        const errorDiv = document.getElementById('returns-error');
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+        }
+    }
+
+    function clearReturnsGrid() {
+        const returnsGrid = document.getElementById('returns-grid');
+        if (returnsGrid) {
+            returnsGrid.innerHTML = '';
+        }
+    }
+
+    // Initialize asset returns after a short delay to ensure DOM is ready
+    setTimeout(() => {
+        initializeAssetReturns();
+    }, 1000);
+
+});
