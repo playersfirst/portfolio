@@ -169,6 +169,35 @@
             </div>
         </div>
 
+        
+        <!-- Asset Returns Tracker section -->
+        <div class="asset-returns-card">
+            <div class="asset-returns-header">
+                <h3>PRICE ACTION</h3>
+            </div>
+            <div class="asset-returns-controls">
+                <div class="period-selector">
+                    <select id="periodSelect">
+                        <option value="1 week">1 Week</option>
+                        <option value="1 month" selected>1 Month</option>
+                        <option value="2 months">2 Months</option>
+                        <option value="6 months">6 Months</option>
+                        <option value="1 year">1 Year</option>
+                        <option value="2 years">2 Years</option>
+                    </select>
+                </div>
+            </div>
+            <div class="asset-returns-content">
+                <div id="returns-loading" class="returns-loading" style="display: none;">
+                    Loading asset data...
+                </div>
+                <div id="returns-error" class="returns-error" style="display: none;"></div>
+                <div id="returns-grid" class="returns-grid">
+                    <!-- Asset returns will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
         <!-- Portfolio Configuration Editor section -->
         <div class="config-editor-card">
             <div class="config-editor-header">
