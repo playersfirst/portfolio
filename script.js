@@ -1574,7 +1574,8 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         loadAssetReturns();
     }
 
-    async function loadAssetReturns() {
+    // Make loadAssetReturns globally accessible
+    window.loadAssetReturns = async function() {
         const periodSelect = document.getElementById('periodSelect');
         const returnsGrid = document.getElementById('returns-grid');
         const loadingDiv = document.getElementById('returns-loading');
@@ -1596,11 +1597,11 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             currentAssetReturns = returns;
             displayAssetReturns(returns, selectedPeriod);
         } catch (error) {
-            showReturnsError(`Failed to load asset data: ${error.message}`);
+            showReturnsError();
         } finally {
             showReturnsLoading(false);
         }
-    }
+    };
 
     function updateAssetReturnsDisplay() {
         if (Object.keys(currentAssetReturns).length === 0) {
@@ -1846,7 +1847,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     function showReturnsError(message) {
         const errorDiv = document.getElementById('returns-error');
         if (errorDiv) {
-            errorDiv.textContent = message;
+            errorDiv.innerHTML = 'Failed to load data. <a href="#" onclick="loadAssetReturns(); return false;" style="color: inherit; text-decoration: underline;">Retry</a>';
             errorDiv.style.display = 'block';
         }
     }
