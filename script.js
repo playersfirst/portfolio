@@ -1349,8 +1349,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             console.log('Error loading PnL history:', error);
         }
     }
-
-    function updateHistoricalPnlDisplay() {
+function updateHistoricalPnlDisplay() {
     // Check if elements exist
     if (!historicalTotalReturnEl || !historicalExclSgovReturnEl || !historicalPeriodTextEl || !historicalPnlAssetsEl) {
         initializeHistoricalPnlElements();
@@ -1374,11 +1373,11 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         return;
     }
 
-    // Filter data for the selected timeframe and sort by date (oldest first)
+    // Filter data for the selected timeframe
     const filteredData = pnlHistoryData.history.filter(entry => {
         const entryDate = new Date(entry.date);
         return entryDate >= dateRange.start && entryDate <= dateRange.end;
-    }).sort((a, b) => new Date(a.date) - new Date(b.date)); // Sort chronologically
+    });
 
     if (filteredData.length < 2) {
         historicalTotalReturnEl.textContent = 'Insufficient data';
@@ -1388,9 +1387,26 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         return;
     }
 
-    // Calculate returns - now using proper chronological order
+    // Sort filtered data by date to ensure correct order (oldest first)
+    filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    // Now we can safely get first (oldest) and last (newest) entries
     const firstEntry = filteredData[0]; // Oldest entry (start date)
     const lastEntry = filteredData[filteredData.length - 1]; // Newest entry (end date)
+    
+    // Debug logging to verify correct data selection
+    console.log('Historical PnL Calculation Debug:', {
+        dateRangeStart: dateRange.start.toISOString().split('T')[0],
+        dateRangeEnd: dateRange.end.toISOString().split('T')[0],
+        totalDataPoints: pnlHistoryData.history.length,
+        filteredDataPoints: filteredData.length,
+        firstEntryDate: firstEntry.date,
+        lastEntryDate: lastEntry.date,
+        firstEntryTotalUSD: firstEntry.percentages.total.usd,
+        lastEntryTotalUSD: lastEntry.percentages.total.usd,
+        calculatedUSDReturn: totalUsdReturn,
+        calculatedEURReturn: totalEurReturn
+    });
     
     const totalUsdReturn = calculateReturn(firstEntry.percentages.total.usd, lastEntry.percentages.total.usd);
     const totalEurReturn = calculateReturn(firstEntry.percentages.total.eur, lastEntry.percentages.total.eur);
@@ -1425,6 +1441,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     updateHistoricalPnlAssets(filteredData, isEur);
 }
 
+
     function getDateRangeForYear(year) {
         const now = new Date();
         const currentYear = now.getFullYear();
@@ -1455,8 +1472,9 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         return endValue - startValue;
     }
 
-    function updateHistoricalPnlAssets(data, isEur) {
-    // Data is now already sorted chronologically
+    
+function updateHistoricalPnlAssets(data, isEur) {
+    // Data is already sorted by date (oldest first) from updateHistoricalPnlDisplay
     const firstEntry = data[0]; // Oldest entry (start date)
     const lastEntry = data[data.length - 1]; // Newest entry (end date)
     
