@@ -1349,98 +1349,93 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             console.log('Error loading PnL history:', error);
         }
     }
-function updateHistoricalPnlDisplay() {
-    // Check if elements exist
-    if (!historicalTotalReturnEl || !historicalExclSgovReturnEl || !historicalPeriodTextEl || !historicalPnlAssetsEl) {
-        initializeHistoricalPnlElements();
-        return;
+
+    function updateHistoricalPnlDisplay() {
+        // Check if elements exist
+        if (!historicalTotalReturnEl || !historicalExclSgovReturnEl || !historicalPeriodTextEl || !historicalPnlAssetsEl) {
+            initializeHistoricalPnlElements();
+            return;
+        }
+
+        if (!pnlHistoryData || !pnlHistoryData.history || pnlHistoryData.history.length === 0) {
+            historicalTotalReturnEl.textContent = 'No data';
+            historicalExclSgovReturnEl.textContent = 'No data';
+            historicalPeriodTextEl.textContent = 'No data available';
+            historicalPnlAssetsEl.innerHTML = '';
+            return;
+        }
+
+        // Get date range based on selected year or custom range
+        const dateRange = customDateRange || getDateRangeForYear(selectedYear);
+        if (!dateRange) {
+            historicalTotalReturnEl.textContent = 'Invalid date range';
+            historicalExclSgovReturnEl.textContent = 'Invalid date range';
+            historicalPeriodTextEl.textContent = 'Invalid date range';
+            return;
+        }
+
+        // Filter data for the selected timeframe
+        const filteredData = pnlHistoryData.history.filter(entry => {
+            const entryDate = new Date(entry.date + 'T00:00:00');
+            const startDate = new Date(dateRange.start);
+            const endDate = new Date(dateRange.end);
+            
+            // Normalize dates to midnight for comparison
+            startDate.setHours(0, 0, 0, 0);
+            endDate.setHours(0, 0, 0, 0);
+            entryDate.setHours(0, 0, 0, 0);
+            
+            return entryDate >= startDate && entryDate <= endDate;
+        });
+
+        if (filteredData.length < 2) {
+            historicalTotalReturnEl.textContent = 'Insufficient data';
+            historicalExclSgovReturnEl.textContent = 'Insufficient data';
+            historicalPeriodTextEl.textContent = 'Insufficient data for selected period';
+            historicalPnlAssetsEl.innerHTML = '';
+            return;
+        }
+
+        // Sort filtered data by date to ensure chronological order (oldest first)
+        filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        // Calculate returns
+        const firstEntry = filteredData[0]; // Oldest entry (start date)
+        const lastEntry = filteredData[filteredData.length - 1]; // Newest entry (end date)
+        
+
+        const totalUsdReturn = calculateReturn(firstEntry.percentages.total.usd, lastEntry.percentages.total.usd);
+        const totalEurReturn = calculateReturn(firstEntry.percentages.total.eur, lastEntry.percentages.total.eur);
+        const exclSgovUsdReturn = calculateReturn(firstEntry.percentages.excl_sgov.usd, lastEntry.percentages.excl_sgov.usd);
+        const exclSgovEurReturn = calculateReturn(firstEntry.percentages.excl_sgov.eur, lastEntry.percentages.excl_sgov.eur);
+
+        // Update display based on current currency
+        const isEur = displayCurrency === 'EUR';
+        const totalReturn = isEur ? totalEurReturn : totalUsdReturn;
+        const exclSgovReturn = isEur ? exclSgovEurReturn : exclSgovUsdReturn;
+
+        historicalTotalReturnEl.textContent = `${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%`;
+        historicalTotalReturnEl.className = `ytd-value ${totalReturn >= 0 ? 'positive' : 'negative'}`;
+        
+        historicalExclSgovReturnEl.textContent = `${exclSgovReturn >= 0 ? '+' : ''}${exclSgovReturn.toFixed(2)}%`;
+        historicalExclSgovReturnEl.className = `ytd-value ${exclSgovReturn >= 0 ? 'positive' : 'negative'}`;
+
+        // Update period text
+        const startDate = new Date(dateRange.start).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+        });
+        const endDate = new Date(dateRange.end).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric' 
+        });
+        historicalPeriodTextEl.textContent = `${startDate} - ${endDate}`;
+
+        // Update individual assets
+        updateHistoricalPnlAssets(filteredData, isEur);
     }
-
-    if (!pnlHistoryData || !pnlHistoryData.history || pnlHistoryData.history.length === 0) {
-        historicalTotalReturnEl.textContent = 'No data';
-        historicalExclSgovReturnEl.textContent = 'No data';
-        historicalPeriodTextEl.textContent = 'No data available';
-        historicalPnlAssetsEl.innerHTML = '';
-        return;
-    }
-
-    // Get date range based on selected year or custom range
-    const dateRange = customDateRange || getDateRangeForYear(selectedYear);
-    if (!dateRange) {
-        historicalTotalReturnEl.textContent = 'Invalid date range';
-        historicalExclSgovReturnEl.textContent = 'Invalid date range';
-        historicalPeriodTextEl.textContent = 'Invalid date range';
-        return;
-    }
-
-    // Filter data for the selected timeframe
-    const filteredData = pnlHistoryData.history.filter(entry => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= dateRange.start && entryDate <= dateRange.end;
-    });
-
-    if (filteredData.length < 2) {
-        historicalTotalReturnEl.textContent = 'Insufficient data';
-        historicalExclSgovReturnEl.textContent = 'Insufficient data';
-        historicalPeriodTextEl.textContent = 'Insufficient data for selected period';
-        historicalPnlAssetsEl.innerHTML = '';
-        return;
-    }
-
-    // Sort filtered data by date to ensure correct order (oldest first)
-    filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    // Now we can safely get first (oldest) and last (newest) entries
-    const firstEntry = filteredData[0]; // Oldest entry (start date)
-    const lastEntry = filteredData[filteredData.length - 1]; // Newest entry (end date)
-    
-    // Debug logging to verify correct data selection
-    console.log('Historical PnL Calculation Debug:', {
-        dateRangeStart: dateRange.start.toISOString().split('T')[0],
-        dateRangeEnd: dateRange.end.toISOString().split('T')[0],
-        totalDataPoints: pnlHistoryData.history.length,
-        filteredDataPoints: filteredData.length,
-        firstEntryDate: firstEntry.date,
-        lastEntryDate: lastEntry.date,
-        firstEntryTotalUSD: firstEntry.percentages.total.usd,
-        lastEntryTotalUSD: lastEntry.percentages.total.usd,
-        calculatedUSDReturn: totalUsdReturn,
-        calculatedEURReturn: totalEurReturn
-    });
-    
-    const totalUsdReturn = calculateReturn(firstEntry.percentages.total.usd, lastEntry.percentages.total.usd);
-    const totalEurReturn = calculateReturn(firstEntry.percentages.total.eur, lastEntry.percentages.total.eur);
-    const exclSgovUsdReturn = calculateReturn(firstEntry.percentages.excl_sgov.usd, lastEntry.percentages.excl_sgov.usd);
-    const exclSgovEurReturn = calculateReturn(firstEntry.percentages.excl_sgov.eur, lastEntry.percentages.excl_sgov.eur);
-
-    // Update display based on current currency
-    const isEur = displayCurrency === 'EUR';
-    const totalReturn = isEur ? totalEurReturn : totalUsdReturn;
-    const exclSgovReturn = isEur ? exclSgovEurReturn : exclSgovUsdReturn;
-
-    historicalTotalReturnEl.textContent = `${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%`;
-    historicalTotalReturnEl.className = `ytd-value ${totalReturn >= 0 ? 'positive' : 'negative'}`;
-    
-    historicalExclSgovReturnEl.textContent = `${exclSgovReturn >= 0 ? '+' : ''}${exclSgovReturn.toFixed(2)}%`;
-    historicalExclSgovReturnEl.className = `ytd-value ${exclSgovReturn >= 0 ? 'positive' : 'negative'}`;
-
-    // Update period text
-    const startDate = new Date(dateRange.start).toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-    });
-    const endDate = new Date(dateRange.end).toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
-    });
-    historicalPeriodTextEl.textContent = `${startDate} - ${endDate}`;
-
-    // Update individual assets
-    updateHistoricalPnlAssets(filteredData, isEur);
-}
-
 
     function getDateRangeForYear(year) {
         const now = new Date();
@@ -1472,41 +1467,39 @@ function updateHistoricalPnlDisplay() {
         return endValue - startValue;
     }
 
-    
-function updateHistoricalPnlAssets(data, isEur) {
-    // Data is already sorted by date (oldest first) from updateHistoricalPnlDisplay
-    const firstEntry = data[0]; // Oldest entry (start date)
-    const lastEntry = data[data.length - 1]; // Newest entry (end date)
-    
-    const assets = [
-        { key: 'btc', name: 'BTC' },
-        { key: 'voo', name: 'VOO' },
-        { key: 'iau', name: 'IAU' },
-        { key: 'nanc', name: 'NANC' },
-        { key: 'sgov', name: 'SGOV' }
-    ];
+    function updateHistoricalPnlAssets(data, isEur) {
+        const firstEntry = data[0]; // Oldest entry (start date)
+        const lastEntry = data[data.length - 1]; // Newest entry (end date)
+        
+        const assets = [
+            { key: 'btc', name: 'BTC' },
+            { key: 'voo', name: 'VOO' },
+            { key: 'iau', name: 'IAU' },
+            { key: 'nanc', name: 'NANC' },
+            { key: 'sgov', name: 'SGOV' }
+        ];
 
-    let assetsHtml = '';
-    assetsHtml += '<div class="ytd-assets-grid">';
+        let assetsHtml = '';
+        assetsHtml += '<div class="ytd-assets-grid">';
 
-    assets.forEach(asset => {
-        const usdReturn = calculateReturn(firstEntry.percentages[asset.key].usd, lastEntry.percentages[asset.key].usd);
-        const eurReturn = calculateReturn(firstEntry.percentages[asset.key].eur, lastEntry.percentages[asset.key].eur);
-        const returnValue = isEur ? eurReturn : usdReturn;
+        assets.forEach(asset => {
+            const usdReturn = calculateReturn(firstEntry.percentages[asset.key].usd, lastEntry.percentages[asset.key].usd);
+            const eurReturn = calculateReturn(firstEntry.percentages[asset.key].eur, lastEntry.percentages[asset.key].eur);
+            const returnValue = isEur ? eurReturn : usdReturn;
 
-        assetsHtml += `
-            <div class="ytd-asset-item">
-                <span class="ytd-asset-name">${asset.name}</span>
-                <span class="ytd-asset-value ${returnValue >= 0 ? 'positive' : 'negative'}">
-                    ${returnValue >= 0 ? '+' : ''}${returnValue.toFixed(2)}%
-                </span>
-            </div>
-        `;
-    });
+            assetsHtml += `
+                <div class="ytd-asset-item">
+                    <span class="ytd-asset-name">${asset.name}</span>
+                    <span class="ytd-asset-value ${returnValue >= 0 ? 'positive' : 'negative'}">
+                        ${returnValue >= 0 ? '+' : ''}${returnValue.toFixed(2)}%
+                    </span>
+                </div>
+            `;
+        });
 
-    assetsHtml += '</div>';
-    historicalPnlAssetsEl.innerHTML = assetsHtml;
-}
+        assetsHtml += '</div>';
+        historicalPnlAssetsEl.innerHTML = assetsHtml;
+    }
 
     function updateYearSelector() {
         if (!yearDisplayEl || !yearPrevBtn || !yearNextBtn) {
