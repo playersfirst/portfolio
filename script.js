@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         ytdCard.innerHTML = `
             <div class="ytd-header">
                 <div class="ytd-title-section">
-                    <h3>AVERAGE YEARLY RETURN</h3>
+                    <h3>ANNUALIZED RETURNS</h3>
                 </div>
             </div>
             <div class="ytd-values">
