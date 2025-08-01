@@ -1,6 +1,39 @@
 {
   "history": [
     {
+      "date": "2025-08-01",
+      "percentages": {
+        "total": {
+          "usd": 19.1,
+          "eur": 16.23
+        },
+        "excl_sgov": {
+          "usd": 47.02,
+          "eur": 41.85
+        },
+        "btc": {
+          "usd": 96.59,
+          "eur": 85.96
+        },
+        "voo": {
+          "usd": 14.9,
+          "eur": 11.08
+        },
+        "iau": {
+          "usd": 6.15,
+          "eur": 3.97
+        },
+        "nanc": {
+          "usd": 8.86,
+          "eur": 8.15
+        },
+        "sgov": {
+          "usd": 0.82,
+          "eur": -0.87
+        }
+      }
+    },
+    {
       "date": "2025-07-31",
       "percentages": {
         "total": {
