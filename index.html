@@ -260,326 +260,354 @@
     
     <script src="script.js"></script>
       <script>
-    // GitHub API configuration
-    const GITHUB_API_BASE = 'https://api.github.com';
-    const REPO_OWNER = 'playersfirst';
-    const REPO_NAME = 'portfolio';
-    const FILE_PATH = 'portfolio_config.json';
-    const BUY_SELL_FILE_PATH = 'buy_sell.json';
-    const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d 53 6a 52 45 55 46 6b 77 54 30 46 57 5a 32 6c 55 51 57 68 55 62 45 4a 4a 58 7a 5a 53 56 6c 6c 30 61 32 4a 6b 57 55 39 59 5a 55 5a 6c 63 6a 52 36 62 56 4a 48 5a 55 5a 54 53 31 42 54 61 58 70 42 62 56 70 42 4d 48 4a 4d 4d 44 5a 43 4d 57 35 4f 56 6e 41 79 51 6c 55 32 53 6b 64 48 53 45 52 33 4d 56 68 43 64 66 51 77'.replace(/\s/g, '').match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));
-    let currentConfig = {};
-    let currentSha = '';
-    let isConnected = false;
+        // GitHub API configuration
+        const GITHUB_API_BASE = 'https://api.github.com';
+        const REPO_OWNER = 'playersfirst';
+        const REPO_NAME = 'portfolio';
+        const FILE_PATH = 'portfolio_config.json';
+        const BUY_SELL_FILE_PATH = 'buy_sell.json';
+const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d 53 6a 52 45 55 46 6b 77 54 30 46 57 5a 32 6c 55 51 57 68 55 62 45 4a 4a 58 7a 5a 53 56 6c 6c 30 61 32 4a 6b 57 55 39 59 5a 55 5a 6c 63 6a 52 36 62 56 4a 48 5a 55 5a 54 53 31 42 54 61 58 70 42 62 56 70 42 4d 48 4a 4d 4d 44 5a 43 4d 57 35 4f 56 6e 41 79 51 6c 55 32 53 6b 64 48 53 45 52 33 4d 56 68 43 64 46 51 77'.replace(/\s/g, '').match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));        
+        let currentConfig = {};
+        let currentSha = '';
+        let buySellSha = '';
+        let isConnected = false;
 
-    function showConfigAlert(message, type) {
-        const alert = document.getElementById('config-alert');
-        alert.textContent = message;
-        alert.className = `config-alert config-alert-${type}`;
-        alert.style.display = 'block';
-        
-        setTimeout(() => {
-            alert.style.display = 'none';
-        }, 5000);
-    }
-
-    function showConfigLoading(text) {
-        document.getElementById('config-loading-text').textContent = text;
-        document.getElementById('config-loading').style.display = 'block';
-    }
-
-    function hideConfigLoading() {
-        document.getElementById('config-loading').style.display = 'none';
-    }
-
-    function updateConnectionStatus(connected) {
-        isConnected = connected;
-        const statusIndicator = document.getElementById('connectionStatus');
-        const connectButton = document.querySelector('.config-btn-primary');
-        
-        if (connected) {
-            statusIndicator.className = 'status-indicator status-connected';
-            connectButton.textContent = 'Connected';
-        } else {
-            statusIndicator.className = 'status-indicator status-disconnected';
-            connectButton.textContent = 'Connect';
+        function showConfigAlert(message, type) {
+            const alert = document.getElementById('config-alert');
+            alert.textContent = message;
+            alert.className = `config-alert config-alert-${type}`;
+            alert.style.display = 'block';
+            
+            setTimeout(() => {
+                alert.style.display = 'none';
+            }, 5000);
         }
-    }
 
-    async function connectToGitHub() {
-        showConfigLoading('Testing connection to GitHub...');
+        function showConfigLoading(text) {
+            document.getElementById('config-loading-text').textContent = text;
+            document.getElementById('config-loading').style.display = 'block';
+        }
 
-        try {
-            const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-                headers: {
-                    'Authorization': `token ${FLABOX}`,
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-            });
+        function hideConfigLoading() {
+            document.getElementById('config-loading').style.display = 'none';
+        }
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('Invalid token. Please check your Personal Access Token.');
-                } else if (response.status === 404) {
-                    throw new Error('File not found. Please check the repository and file path.');
-                } else {
-                    throw new Error(`GitHub API error: ${response.status}`);
-                }
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            const statusIndicator = document.getElementById('connectionStatus');
+            const connectButton = document.querySelector('.config-btn-primary');
+            
+            if (connected) {
+                statusIndicator.className = 'status-indicator status-connected';
+                connectButton.textContent = 'Connected';
+            } else {
+                statusIndicator.className = 'status-indicator status-disconnected';
+                connectButton.textContent = 'Connect';
             }
-
-            const fileData = await response.json();
-            currentSha = fileData.sha;
-            
-            const content = atob(fileData.content);
-            currentConfig = JSON.parse(content);
-            
-            populateConfigForm(currentConfig);
-            
-            document.getElementById('configForm').classList.remove('hidden');
-            updateConnectionStatus(true);
-            
-        } catch (error) {
-            showConfigAlert('Connection failed: ' + error.message, 'error');
-        } finally {
-            hideConfigLoading();
         }
-    }
 
-    function populateConfigForm(config) {
-        document.getElementById('originalEuroInvestment').value = config.originalEuroInvestment || 0;
-        document.getElementById('originalEuroInvestment-current').textContent = 
-            `Current value: €${config.originalEuroInvestment || 0}`;
-
-        populateConfigTickerSection('initialInvestments', config.initialInvestments || {}, 'USD');
-        populateConfigTickerSection('initialEuroInvestments', config.initialEuroInvestments || {}, '€');
-        populateConfigTickerSection('currentPortfolio', config.currentPortfolio || {}, 'units');
-    }
-
-    function populateConfigTickerSection(containerId, data, unit) {
-        const container = document.getElementById(containerId);
-        container.innerHTML = '';
-
-        Object.keys(data).forEach(ticker => {
-            const tickerItem = document.createElement('div');
-            tickerItem.className = 'config-ticker-item';
-            
-            const label = document.createElement('label');
-            label.textContent = `${ticker} (${unit})`;
-            
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.step = '0.00000001';
-            input.name = `${containerId}_${ticker}`;
-            input.value = data[ticker];
-            input.required = true;
-            
-            const currentValue = document.createElement('div');
-            currentValue.className = 'current-value';
-            currentValue.textContent = `Current value: ${data[ticker]} ${unit}`;
-            
-            tickerItem.appendChild(label);
-            tickerItem.appendChild(input);
-            tickerItem.appendChild(currentValue);
-            container.appendChild(tickerItem);
-        });
-    }
-    
-    // The corrected function definition is no longer necessary, as the variables are in scope.
-    async function updateBuySellLog(oldConfig, newConfig) {
-        try {
-            // 1. Fetch the current buy_sell.json
-            const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
+        async function getFileFromGitHub(filePath) {
+            const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${filePath}`, {
                 headers: {
                     'Authorization': `token ${FLABOX}`,
                     'Accept': 'application/vnd.github.v3+json'
                 }
             });
-            
-            let fileData = null;
-            let currentBuySellSha = null;
-            let logData = [];
-            
-            if (response.ok) {
-                fileData = await response.json();
-                currentBuySellSha = fileData.sha;
+            return response;
+        }
+
+        async function connectToGitHub() {
+            showConfigLoading('Testing connection to GitHub...');
+
+            try {
+                const response = await getFileFromGitHub(FILE_PATH);
+
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Invalid token. Please check your Personal Access Token.');
+                    } else if (response.status === 404) {
+                        throw new Error('File not found. Please check the repository and file path.');
+                    } else {
+                        throw new Error(`GitHub API error: ${response.status}`);
+                    }
+                }
+
+                const fileData = await response.json();
+                currentSha = fileData.sha;
+                
                 const content = atob(fileData.content);
+                currentConfig = JSON.parse(content);
                 
-                // Check if the file is not empty before parsing
-                if (content) {
-                    logData = JSON.parse(content);
+                // Also get the buy_sell.json SHA for future updates
+                try {
+                    const buySellResponse = await getFileFromGitHub(BUY_SELL_FILE_PATH);
+                    if (buySellResponse.ok) {
+                        const buySellData = await buySellResponse.json();
+                        buySellSha = buySellData.sha;
+                    }
+                } catch (error) {
+                    console.log('buy_sell.json might not exist yet, will create it');
                 }
                 
-            } else if (response.status !== 404) {
-                throw new Error(`Failed to fetch ${BUY_SELL_FILE_PATH}: ${response.status}`);
+                populateConfigForm(currentConfig);
+                
+                document.getElementById('configForm').classList.remove('hidden');
+                updateConnectionStatus(true);
+                
+            } catch (error) {
+                showConfigAlert('Connection failed: ' + error.message, 'error');
+            } finally {
+                hideConfigLoading();
+            }
+        }
+
+        function populateConfigForm(config) {
+            document.getElementById('originalEuroInvestment').value = config.originalEuroInvestment || 0;
+            document.getElementById('originalEuroInvestment-current').textContent = 
+                `Current value: €${config.originalEuroInvestment || 0}`;
+
+            populateConfigTickerSection('initialInvestments', config.initialInvestments || {}, 'USD');
+            populateConfigTickerSection('initialEuroInvestments', config.initialEuroInvestments || {}, '€');
+            populateConfigTickerSection('currentPortfolio', config.currentPortfolio || {}, 'units');
+        }
+
+        function populateConfigTickerSection(containerId, data, unit) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            Object.keys(data).forEach(ticker => {
+                const tickerItem = document.createElement('div');
+                tickerItem.className = 'config-ticker-item';
+                
+                const label = document.createElement('label');
+                label.textContent = `${ticker} (${unit})`;
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.step = '0.00000001';
+                input.name = `${containerId}_${ticker}`;
+                input.value = data[ticker];
+                input.required = true;
+                
+                const currentValue = document.createElement('div');
+                currentValue.className = 'current-value';
+                currentValue.textContent = `Current value: ${data[ticker]} ${unit}`;
+                
+                tickerItem.appendChild(label);
+                tickerItem.appendChild(input);
+                tickerItem.appendChild(currentValue);
+                container.appendChild(tickerItem);
+            });
+        }
+
+        function calculatePortfolioDifferences(oldConfig, newConfig) {
+            const differences = {
+                timestamp: new Date().toISOString(),
+                transactions: []
+            };
+
+            // Check currentPortfolio for changes (this is what matters for buy/sell)
+            const oldPortfolio = oldConfig.currentPortfolio || {};
+            const newPortfolio = newConfig.currentPortfolio || {};
+            
+            // Get all unique tickers from both old and new portfolios
+            const allTickers = new Set([...Object.keys(oldPortfolio), ...Object.keys(newPortfolio)]);
+            
+            allTickers.forEach(ticker => {
+                const oldAmount = oldPortfolio[ticker] || 0;
+                const newAmount = newPortfolio[ticker] || 0;
+                const difference = newAmount - oldAmount;
+                
+                if (Math.abs(difference) > 0.00000001) { // Account for floating point precision
+                    differences.transactions.push({
+                        ticker: ticker,
+                        type: difference > 0 ? 'BUY' : 'SELL',
+                        amount: Math.abs(difference),
+                        oldAmount: oldAmount,
+                        newAmount: newAmount,
+                        difference: difference
+                    });
+                }
+            });
+
+            return differences;
+        }
+
+        async function updateBuySellLog(differences) {
+            if (differences.transactions.length === 0) {
+                console.log('No portfolio changes detected, skipping buy_sell.json update');
+                return;
             }
 
-            // 2. Calculate the differences
-            const changes = {
-                originalEuroInvestment: newConfig.originalEuroInvestment - (oldConfig.originalEuroInvestment || 0),
+            showConfigLoading('Updating transaction log...');
+            
+            try {
+                let existingBuySellData = { transactions: [] };
+                
+                // Try to get existing buy_sell.json data
+                try {
+                    const buySellResponse = await getFileFromGitHub(BUY_SELL_FILE_PATH);
+                    if (buySellResponse.ok) {
+                        const buySellFileData = await buySellResponse.json();
+                        buySellSha = buySellFileData.sha;
+                        const existingContent = atob(buySellFileData.content);
+                        existingBuySellData = JSON.parse(existingContent);
+                    }
+                } catch (error) {
+                    console.log('Creating new buy_sell.json file');
+                }
+
+                // Add new transaction entry
+                existingBuySellData.transactions.push(differences);
+
+                const buySellContent = JSON.stringify(existingBuySellData, null, 2);
+                const encodedBuySellContent = btoa(unescape(encodeURIComponent(buySellContent)));
+
+                const requestBody = {
+                    message: `Add transaction log entry - ${differences.transactions.length} changes`,
+                    content: encodedBuySellContent
+                };
+
+                // Include SHA if file exists
+                if (buySellSha) {
+                    requestBody.sha = buySellSha;
+                }
+
+                const buySellResponse = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${FLABOX}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!buySellResponse.ok) {
+                    const errorData = await buySellResponse.json();
+                    throw new Error(`Failed to update buy_sell.json: ${errorData.message}`);
+                }
+
+                const buySellResult = await buySellResponse.json();
+                buySellSha = buySellResult.content.sha;
+                
+                console.log('Successfully updated buy_sell.json with transaction log');
+                
+            } catch (error) {
+                console.error('Failed to update buy_sell.json:', error);
+                showConfigAlert('Warning: Portfolio updated but transaction log failed: ' + error.message, 'warning');
+            }
+        }
+
+        async function saveToGitHub() {
+            if (!isConnected) {
+                showConfigAlert('Please connect to GitHub first', 'error');
+                return;
+            }
+            
+            const form = document.getElementById('configForm');
+            const formData = new FormData(form);
+            
+            const newConfig = {
+                originalEuroInvestment: parseFloat(formData.get('originalEuroInvestment')),
                 initialInvestments: {},
                 initialEuroInvestments: {},
                 currentPortfolio: {}
             };
-            
-            const allTickers = new Set([...Object.keys(oldConfig.currentPortfolio || {}), ...Object.keys(newConfig.currentPortfolio)]);
-            
-            allTickers.forEach(ticker => {
-                const oldPortfolioValue = oldConfig.currentPortfolio[ticker] || 0;
-                const oldInitialInvestment = oldConfig.initialInvestments[ticker] || 0;
-                const oldEuroInvestment = oldConfig.initialEuroInvestments[ticker] || 0;
 
-                const newPortfolioValue = newConfig.currentPortfolio[ticker] || 0;
-                const newInitialInvestment = newConfig.initialInvestments[ticker] || 0;
-                const newEuroInvestment = newConfig.initialEuroInvestments[ticker] || 0;
+            const tickers = Object.keys(currentConfig.initialInvestments || {});
+            
+            tickers.forEach(ticker => {
+                const initialValue = formData.get(`initialInvestments_${ticker}`);
+                const euroValue = formData.get(`initialEuroInvestments_${ticker}`);
+                const portfolioValue = formData.get(`currentPortfolio_${ticker}`);
                 
-                changes.currentPortfolio[ticker] = newPortfolioValue - oldPortfolioValue;
-                changes.initialInvestments[ticker] = newInitialInvestment - oldInitialInvestment;
-                changes.initialEuroInvestments[ticker] = newEuroInvestment - oldEuroInvestment;
-            });
-            
-            // 3. Create a new log entry
-            const newLogEntry = {
-                timestamp: new Date().toISOString(),
-                changes: changes
-            };
-            
-            // 4. Append the new entry to the log and save
-            logData.push(newLogEntry);
-            const newContent = JSON.stringify(logData, null, 2);
-            const encodedNewContent = btoa(unescape(encodeURIComponent(newContent)));
-            
-            const saveResponse = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${FLABOX}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: `Log portfolio changes at ${newLogEntry.timestamp}`,
-                    content: encodedNewContent,
-                    sha: currentBuySellSha
-                })
-            });
-            
-            if (!saveResponse.ok) {
-                const errorData = await saveResponse.json();
-                throw new Error(errorData.message || `Failed to save ${BUY_SELL_FILE_PATH}: ${saveResponse.status}`);
-            }
-            
-            showConfigAlert('Portfolio configuration and transaction log saved!', 'success');
-            
-        } catch (error) {
-            showConfigAlert(`Failed to update transaction log: ${error.message}`, 'error');
-        }
-    }
-
-    async function saveToGitHub() {
-        if (!isConnected) {
-            showConfigAlert('Please connect to GitHub first', 'error');
-            return;
-        }
-        
-        const form = document.getElementById('configForm');
-        const formData = new FormData(form);
-        
-        const newConfig = {
-            originalEuroInvestment: parseFloat(formData.get('originalEuroInvestment')),
-            initialInvestments: {},
-            initialEuroInvestments: {},
-            currentPortfolio: {}
-        };
-
-        const tickers = Object.keys(currentConfig.initialInvestments || {});
-        
-        tickers.forEach(ticker => {
-            const initialValue = formData.get(`initialInvestments_${ticker}`);
-            const euroValue = formData.get(`initialEuroInvestments_${ticker}`);
-            const portfolioValue = formData.get(`currentPortfolio_${ticker}`);
-            
-            newConfig.initialInvestments[ticker] = parseFloat(initialValue);
-            newConfig.initialEuroInvestments[ticker] = parseFloat(euroValue);
-            newConfig.currentPortfolio[ticker] = parseFloat(portfolioValue);
-        });
-
-        showConfigLoading('Saving to GitHub...');
-
-        try {
-            // Save portfolio_config.json
-            const content = JSON.stringify(newConfig, null, 2);
-            const encodedContent = btoa(unescape(encodeURIComponent(content)));
-
-            const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${FLABOX}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: 'Update portfolio configuration via web editor',
-                    content: encodedContent,
-                    sha: currentSha
-                })
+                newConfig.initialInvestments[ticker] = parseFloat(initialValue);
+                newConfig.initialEuroInvestments[ticker] = parseFloat(euroValue);
+                newConfig.currentPortfolio[ticker] = parseFloat(portfolioValue);
             });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || `GitHub API error: ${response.status}`);
-            }
+            // Calculate differences before saving
+            const differences = calculatePortfolioDifferences(currentConfig, newConfig);
 
-            const result = await response.json();
-            currentSha = result.content.sha;
+            showConfigLoading('Saving to GitHub...');
 
-            await updateBuySellLog(currentConfig, newConfig);
+            try {
+                const content = JSON.stringify(newConfig, null, 2);
+                const encodedContent = btoa(unescape(encodeURIComponent(content)));
 
-            currentConfig = newConfig;
+                const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${FLABOX}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'Update portfolio configuration via web editor',
+                        content: encodedContent,
+                        sha: currentSha
+                    })
+                });
 
-            setTimeout(() => {
-                window.location.reload();
-            }, 4000);
-            
-        } catch (error) {
-            showConfigAlert('Failed to save: ' + error.message, 'error');
-        } finally {
-            hideConfigLoading();
-        }
-    }
-
-    async function loadFromGitHub() {
-        if (!isConnected) {
-            showConfigAlert('Please connect to GitHub first', 'error');
-            return;
-        }
-
-        showConfigLoading('Reloading from GitHub...');
-
-        try {
-            const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
-                headers: {
-                    'Authorization': `token ${FLABOX}`,
-                    'Accept': 'application/vnd.github.v3+json'
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `GitHub API error: ${response.status}`);
                 }
-            });
 
-            if (!response.ok) {
-                throw new Error(`Failed to load file: ${response.status}`);
+                const result = await response.json();
+                currentSha = result.content.sha;
+                
+                // Update buy_sell.json with the differences
+                await updateBuySellLog(differences);
+                
+                currentConfig = newConfig;
+                
+                showConfigAlert('Portfolio and transaction log updated successfully!', 'success');
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 4000);
+                
+            } catch (error) {
+                showConfigAlert('Failed to save: ' + error.message, 'error');
+            } finally {
+                hideConfigLoading();
+            }
+        }
+
+        async function loadFromGitHub() {
+            if (!isConnected) {
+                showConfigAlert('Please connect to GitHub first', 'error');
+                return;
             }
 
-            const fileData = await response.json();
-            currentSha = fileData.sha;
-            
-            const content = atob(fileData.content);
-            currentConfig = JSON.parse(content);
-            
-            populateConfigForm(currentConfig);
-            
-        } catch (error) {
-            showConfigAlert('Failed to reload: ' + error.message, 'error');
-        } finally {
-            hideConfigLoading();
+            showConfigLoading('Reloading from GitHub...');
+
+            try {
+                const response = await getFileFromGitHub(FILE_PATH);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to load file: ${response.status}`);
+                }
+
+                const fileData = await response.json();
+                currentSha = fileData.sha;
+                
+                const content = atob(fileData.content);
+                currentConfig = JSON.parse(content);
+                
+                populateConfigForm(currentConfig);
+                
+                showConfigAlert('Data reloaded successfully!', 'success');
+                
+            } catch (error) {
+                showConfigAlert('Failed to reload: ' + error.message, 'error');
+            } finally {
+                hideConfigLoading();
+            }
         }
-    }
-</script>
+    </script>
 
 <br></body>
 </html>
