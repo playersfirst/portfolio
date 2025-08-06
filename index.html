@@ -521,13 +521,28 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             try {
                 // Calculate differences for buy_sell.json
                 const differences = calculatePortfolioDifferences(currentConfig, newConfig);
+                console.log('Calculated differences:', differences);
                 
-                // Update buy_sell.json if there are differences
+                // ALWAYS update buy_sell.json, even if no differences (to ensure file exists)
+                const buySellData = await loadBuySellData();
+                console.log('Loaded buy_sell data:', buySellData);
+                
                 if (differences.length > 0) {
-                    const buySellData = await loadBuySellData();
                     buySellData.transactions.push(...differences);
+                    console.log('Updated buy_sell data with new transactions:', buySellData);
+                }
+                
+                // Save buy_sell.json first (before config)
+                try {
                     await saveBuySellData(buySellData);
-                    showConfigAlert(`Recorded ${differences.length} transaction(s) in buy_sell.json`, 'success');
+                    console.log('Successfully saved buy_sell.json');
+                    if (differences.length > 0) {
+                        showConfigAlert(`Recorded ${differences.length} transaction(s) in buy_sell.json`, 'success');
+                    }
+                } catch (buySellError) {
+                    console.error('Failed to save buy_sell.json:', buySellError);
+                    showConfigAlert('Warning: Failed to update transaction log - ' + buySellError.message, 'error');
+                    // Continue with config save even if buy_sell fails
                 }
 
                 // Save the main portfolio config
@@ -564,6 +579,7 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 }, 4000);
                 
             } catch (error) {
+                console.error('Save error:', error);
                 showConfigAlert('Failed to save: ' + error.message, 'error');
             } finally {
                 hideConfigLoading();
@@ -610,6 +626,5 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             }
         }
     </script>
-
 <br></body>
 </html>
