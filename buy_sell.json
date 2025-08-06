@@ -32,6 +32,17 @@
       "newAmount": 31591,
       "difference": 1,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-06T22:04:28.989Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "decrease",
+      "amount": 1,
+      "oldAmount": 31591,
+      "newAmount": 31590,
+      "difference": -1,
+      "currency": "EUR"
     }
   ]
 }
