@@ -265,7 +265,9 @@
         const REPO_OWNER = 'playersfirst';
         const REPO_NAME = 'portfolio';
         const FILE_PATH = 'portfolio_config.json';
-const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d 53 6a 52 45 55 46 6b 77 54 30 46 57 5a 32 6c 55 51 57 68 55 62 45 4a 4a 58 7a 5a 53 56 6c 6c 30 61 32 4a 6b 57 55 39 59 5a 55 5a 6c 63 6a 52 36 62 56 4a 48 5a 55 5a 54 53 31 42 54 61 58 70 42 62 56 70 42 4d 48 4a 4d 4d 44 5a 43 4d 57 35 4f 56 6e 41 79 51 6c 55 32 53 6b 64 48 53 45 52 33 4d 56 68 43 64 46 51 77'.replace(/\s/g, '').match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));        let currentConfig = {};
+        const BUY_SELL_FILE_PATH = 'buy_sell.json'; // New file path
+        const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d 53 6a 52 45 55 46 6b 77 54 30 46 57 5a 32 6c 55 51 57 68 55 62 45 4a 4a 58 7a 5a 53 56 6c 6c 30 61 32 4a 6b 57 55 39 59 5a 55 5a 6c 63 6a 52 36 62 56 4a 48 5a 55 5a 54 53 31 42 54 61 58 70 42 62 56 70 42 4d 48 4a 4d 4d 44 5a 43 4d 57 35 4f 56 6e 41 79 51 6c 55 32 53 6b 64 48 53 45 52 33 4d 56 68 43 64 46 51 77'.replace(/\s/g, '').match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));
+        let currentConfig = {};
         let currentSha = '';
         let isConnected = false;
 
@@ -380,6 +382,90 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 container.appendChild(tickerItem);
             });
         }
+        
+        async function updateBuySellLog(oldConfig, newConfig) {
+            try {
+                // 1. Fetch the current buy_sell.json
+                const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
+                    headers: {
+                        'Authorization': `token ${FLABOX}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                let fileData = null;
+                let currentBuySellSha = null;
+                let logData = [];
+                
+                if (response.ok) {
+                    fileData = await response.json();
+                    currentBuySellSha = fileData.sha;
+                    const content = atob(fileData.content);
+                    logData = JSON.parse(content);
+                } else if (response.status !== 404) {
+                    // If file exists but there's another error, throw it
+                    throw new Error(`Failed to fetch ${BUY_SELL_FILE_PATH}: ${response.status}`);
+                }
+
+                // 2. Calculate the differences
+                const changes = {
+                    originalEuroInvestment: newConfig.originalEuroInvestment - (oldConfig.originalEuroInvestment || 0),
+                    initialInvestments: {},
+                    initialEuroInvestments: {},
+                    currentPortfolio: {}
+                };
+                
+                const tickers = Object.keys(newConfig.currentPortfolio);
+                tickers.forEach(ticker => {
+                    const oldPortfolioValue = oldConfig.currentPortfolio[ticker] || 0;
+                    const oldInitialInvestment = oldConfig.initialInvestments[ticker] || 0;
+                    const oldEuroInvestment = oldConfig.initialEuroInvestments[ticker] || 0;
+
+                    const newPortfolioValue = newConfig.currentPortfolio[ticker];
+                    const newInitialInvestment = newConfig.initialInvestments[ticker];
+                    const newEuroInvestment = newConfig.initialEuroInvestments[ticker];
+                    
+                    changes.currentPortfolio[ticker] = newPortfolioValue - oldPortfolioValue;
+                    changes.initialInvestments[ticker] = newInitialInvestment - oldInitialInvestment;
+                    changes.initialEuroInvestments[ticker] = newEuroInvestment - oldEuroInvestment;
+                });
+                
+                // 3. Create a new log entry
+                const newLogEntry = {
+                    timestamp: new Date().toISOString(),
+                    changes: changes
+                };
+                
+                // 4. Append the new entry to the log and save
+                logData.push(newLogEntry);
+                const newContent = JSON.stringify(logData, null, 2);
+                const encodedNewContent = btoa(unescape(encodeURIComponent(newContent)));
+                
+                const saveResponse = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${FLABOX}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: `Log portfolio changes at ${newLogEntry.timestamp}`,
+                        content: encodedNewContent,
+                        sha: currentBuySellSha // Use the SHA of the buy_sell.json file
+                    })
+                });
+                
+                if (!saveResponse.ok) {
+                    const errorData = await saveResponse.json();
+                    throw new Error(errorData.message || `Failed to save ${BUY_SELL_FILE_PATH}: ${saveResponse.status}`);
+                }
+                
+                showConfigAlert('Portfolio configuration and transaction log saved!', 'success');
+                
+            } catch (error) {
+                showConfigAlert(`Failed to update transaction log: ${error.message}`, 'error');
+            }
+        }
 
         async function saveToGitHub() {
             if (!isConnected) {
@@ -412,6 +498,7 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             showConfigLoading('Saving to GitHub...');
 
             try {
+                // Save portfolio_config.json
                 const content = JSON.stringify(newConfig, null, 2);
                 const encodedContent = btoa(unescape(encodeURIComponent(content)));
 
@@ -436,8 +523,15 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
 
                 const result = await response.json();
                 currentSha = result.content.sha;
+
+                // --- NEW LOGIC: Update the buy_sell.json file ---
+                await updateBuySellLog(currentConfig, newConfig);
+                // ----------------------------------------------------
+
+                // Update currentConfig after successful save
                 currentConfig = newConfig;
-                
+
+                // Reload the page after a successful save
                 setTimeout(() => {
                     window.location.reload();
                 }, 4000);
