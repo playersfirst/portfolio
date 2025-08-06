@@ -383,6 +383,7 @@
             });
         }
         
+        // --- NEW FUNCTION: Updates the buy_sell.json transaction log ---
         async function updateBuySellLog(oldConfig, newConfig) {
             try {
                 // 1. Fetch the current buy_sell.json
@@ -402,14 +403,11 @@
                     currentBuySellSha = fileData.sha;
                     const content = atob(fileData.content);
                     
-                    // --- CORRECTED LOGIC: Check if content is not empty before parsing ---
                     if (content) {
                         logData = JSON.parse(content);
                     }
-                    // ----------------------------------------------------------------------
                     
                 } else if (response.status !== 404) {
-                    // If file exists but there's another error, throw it
                     throw new Error(`Failed to fetch ${BUY_SELL_FILE_PATH}: ${response.status}`);
                 }
 
@@ -421,15 +419,16 @@
                     currentPortfolio: {}
                 };
                 
-                const tickers = Object.keys(newConfig.currentPortfolio);
-                tickers.forEach(ticker => {
+                const allTickers = new Set([...Object.keys(oldConfig.currentPortfolio), ...Object.keys(newConfig.currentPortfolio)]);
+                
+                allTickers.forEach(ticker => {
                     const oldPortfolioValue = oldConfig.currentPortfolio[ticker] || 0;
                     const oldInitialInvestment = oldConfig.initialInvestments[ticker] || 0;
                     const oldEuroInvestment = oldConfig.initialEuroInvestments[ticker] || 0;
 
-                    const newPortfolioValue = newConfig.currentPortfolio[ticker];
-                    const newInitialInvestment = newConfig.initialInvestments[ticker];
-                    const newEuroInvestment = newConfig.initialEuroInvestments[ticker];
+                    const newPortfolioValue = newConfig.currentPortfolio[ticker] || 0;
+                    const newInitialInvestment = newConfig.initialInvestments[ticker] || 0;
+                    const newEuroInvestment = newConfig.initialEuroInvestments[ticker] || 0;
                     
                     changes.currentPortfolio[ticker] = newPortfolioValue - oldPortfolioValue;
                     changes.initialInvestments[ticker] = newInitialInvestment - oldInitialInvestment;
@@ -457,7 +456,7 @@
                     body: JSON.stringify({
                         message: `Log portfolio changes at ${newLogEntry.timestamp}`,
                         content: encodedNewContent,
-                        sha: currentBuySellSha // Use the SHA of the buy_sell.json file
+                        sha: currentBuySellSha
                     })
                 });
                 
@@ -472,6 +471,7 @@
                 showConfigAlert(`Failed to update transaction log: ${error.message}`, 'error');
             }
         }
+        // ------------------------------------------------------------------
 
         async function saveToGitHub() {
             if (!isConnected) {
@@ -530,9 +530,9 @@
                 const result = await response.json();
                 currentSha = result.content.sha;
 
-                // --- NEW LOGIC: Update the buy_sell.json file ---
+                // --- NEW LOGIC: Call the new function to update the transaction log ---
                 await updateBuySellLog(currentConfig, newConfig);
-                // ----------------------------------------------------
+                // --------------------------------------------------------------------
 
                 // Update currentConfig after successful save
                 currentConfig = newConfig;
