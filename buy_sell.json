@@ -10,6 +10,28 @@
       "newAmount": 2266,
       "difference": -1,
       "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-06T22:04:02.225Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 1,
+      "oldAmount": 2266,
+      "newAmount": 2267,
+      "difference": 1,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-06T22:04:02.225Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 1,
+      "oldAmount": 31590,
+      "newAmount": 31591,
+      "difference": 1,
+      "currency": "EUR"
     }
   ]
 }
