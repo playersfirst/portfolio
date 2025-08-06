@@ -443,6 +443,7 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             
             try {
                 let existingBuySellData = { transactions: [] };
+                let fileExists = false;
                 
                 // Try to get existing buy_sell.json data
                 try {
@@ -452,9 +453,13 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                         buySellSha = buySellFileData.sha;
                         const existingContent = atob(buySellFileData.content);
                         existingBuySellData = JSON.parse(existingContent);
+                        fileExists = true;
+                        console.log('Found existing buy_sell.json file');
                     }
                 } catch (error) {
-                    console.log('Creating new buy_sell.json file');
+                    console.log('buy_sell.json does not exist, will create new file');
+                    fileExists = false;
+                    buySellSha = null;
                 }
 
                 // Add new transaction entry
@@ -464,14 +469,19 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 const encodedBuySellContent = btoa(unescape(encodeURIComponent(buySellContent)));
 
                 const requestBody = {
-                    message: `Add transaction log entry - ${differences.transactions.length} changes`,
+                    message: `Add transaction log entry - ${differences.transactions.length} changes at ${differences.timestamp}`,
                     content: encodedBuySellContent
                 };
 
-                // Include SHA if file exists
-                if (buySellSha) {
+                // Critical: Only include SHA if file exists
+                if (fileExists && buySellSha) {
                     requestBody.sha = buySellSha;
+                    console.log('Updating existing file with SHA:', buySellSha);
+                } else {
+                    console.log('Creating new file (no SHA required)');
                 }
+
+                console.log('Request body:', JSON.stringify(requestBody, null, 2));
 
                 const buySellResponse = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
                     method: 'PUT',
@@ -485,17 +495,20 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
 
                 if (!buySellResponse.ok) {
                     const errorData = await buySellResponse.json();
-                    throw new Error(`Failed to update buy_sell.json: ${errorData.message}`);
+                    console.error('GitHub API Error:', errorData);
+                    throw new Error(`Failed to update buy_sell.json: ${errorData.message || buySellResponse.status}`);
                 }
 
                 const buySellResult = await buySellResponse.json();
                 buySellSha = buySellResult.content.sha;
                 
                 console.log('Successfully updated buy_sell.json with transaction log');
+                showConfigAlert(`Transaction log updated successfully! Added ${differences.transactions.length} changes.`, 'success');
                 
             } catch (error) {
                 console.error('Failed to update buy_sell.json:', error);
                 showConfigAlert('Warning: Portfolio updated but transaction log failed: ' + error.message, 'warning');
+                throw error; // Re-throw so we can see the full error
             }
         }
 
