@@ -259,17 +259,19 @@
     </div>  
     
     <script src="script.js"></script>
-       <script>
-        // GitHub API configuration
-        const GITHUB_API_BASE = 'https://api.github.com';
-        const REPO_OWNER = 'playersfirst';
-        const REPO_NAME = 'portfolio';
-        const FILE_PATH = 'portfolio_config.json';
-const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d 53 6a 52 45 55 46 6b 77 54 30 46 57 5a 32 6c 55 51 57 68 55 62 45 4a 4a 58 7a 5a 53 56 6c 6c 30 61 32 4a 6b 57 55 39 59 5a 55 5a 6c 63 6a 52 36 62 56 4a 48 5a 55 5a 54 53 31 42 54 61 58 70 42 62 56 70 42 4d 48 4a 4d 4d 44 5a 43 4d 57 35 4f 56 6e 41 79 51 6c 55 32 53 6b 64 48 53 45 52 33 4d 56 68 43 64 46 51 77'.replace(/\s/g, '').match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));        let currentConfig = {};
-        let currentSha = '';
-        let isConnected = false;
+      <script>
+    // GitHub API configuration
+    const GITHUB_API_BASE = 'https://api.github.com';
+    const REPO_OWNER = 'playersfirst';
+    const REPO_NAME = 'portfolio';
+    const FILE_PATH = 'portfolio_config.json';
+    const BUY_SELL_FILE_PATH = 'buy_sell.json';
+    const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d 53 6a 52 45 55 46 6b 77 54 30 46 57 5a 32 6c 55 51 57 68 55 62 45 4a 4a 58 7a 5a 53 56 6c 6c 30 61 32 4a 6b 57 55 39 59 5a 55 5a 6c 63 6a 52 36 62 56 4a 48 5a 55 5a 54 53 31 42 54 61 58 70 42 62 56 70 42 4d 48 4a 4d 4d 44 5a 43 4d 57 35 4f 56 6e 41 79 51 6c 55 32 53 6b 64 48 53 45 52 33 4d 56 68 43 64 66 51 77'.replace(/\s/g, '').match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));
+    let currentConfig = {};
+    let currentSha = '';
+    let isConnected = false;
 
-            function showConfigAlert(message, type) {
+    function showConfigAlert(message, type) {
         const alert = document.getElementById('config-alert');
         alert.textContent = message;
         alert.className = `config-alert config-alert-${type}`;
@@ -381,8 +383,8 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
         });
     }
     
-    // The corrected function definition now accepts BUY_SELL_FILE_PATH and FLABOX
-    async function updateBuySellLog(oldConfig, newConfig, BUY_SELL_FILE_PATH, FLABOX) {
+    // The corrected function definition is no longer necessary, as the variables are in scope.
+    async function updateBuySellLog(oldConfig, newConfig) {
         try {
             // 1. Fetch the current buy_sell.json
             const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
@@ -528,8 +530,7 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             const result = await response.json();
             currentSha = result.content.sha;
 
-            // The corrected function call now passes BUY_SELL_FILE_PATH and FLABOX
-            await updateBuySellLog(currentConfig, newConfig, BUY_SELL_FILE_PATH, FLABOX);
+            await updateBuySellLog(currentConfig, newConfig);
 
             currentConfig = newConfig;
 
