@@ -259,7 +259,7 @@
     </div>  
     
     <script src="script.js"></script>
-     <script>
+    <script>
         // GitHub API configuration
         const GITHUB_API_BASE = 'https://api.github.com';
         const REPO_OWNER = 'playersfirst';
@@ -383,33 +383,8 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             });
         }
 
-        async function saveBuySellData(oldPortfolio, newPortfolio) {
-            const transactions = [];
-            const timestamp = new Date().toISOString();
-            
-            // Find all changes
-            const allTickers = [...new Set([...Object.keys(oldPortfolio), ...Object.keys(newPortfolio)])];
-            
-            for (const ticker of allTickers) {
-                const oldAmount = oldPortfolio[ticker] || 0;
-                const newAmount = newPortfolio[ticker] || 0;
-                const difference = newAmount - oldAmount;
-                
-                if (Math.abs(difference) > 0.0001) {
-                    transactions.push({
-                        ticker: ticker,
-                        type: difference > 0 ? 'BUY' : 'SELL',
-                        amount: Math.abs(difference),
-                        oldAmount: oldAmount,
-                        newAmount: newAmount,
-                        difference: difference
-                    });
-                }
-            }
-            
-            if (transactions.length === 0) return;
-            
-            // Get existing buy_sell.json or create empty structure
+        async function updateBuySellFile(differences) {
+            // Get existing buy_sell.json or create new
             let buySellData = { transactions: [] };
             let sha = null;
             
@@ -424,30 +399,28 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 if (response.ok) {
                     const data = await response.json();
                     sha = data.sha;
-                    buySellData = JSON.parse(atob(data.content));
+                    const content = atob(data.content);
+                    buySellData = JSON.parse(content);
                 }
             } catch (e) {
-                // File doesn't exist, will create new
+                // File doesn't exist or is empty, will create new
             }
             
             // Add new transaction entry
-            buySellData.transactions.push({
-                timestamp: timestamp,
-                transactions: transactions
-            });
+            buySellData.transactions.push(differences);
             
-            // Save to GitHub
+            // Save back to GitHub
             const content = JSON.stringify(buySellData, null, 2);
-            const encodedContent = btoa(unescape(encodeURIComponent(content)));
+            const encodedContent = btoa(content);
             
             const body = {
-                message: `Transaction log: ${transactions.length} changes at ${timestamp}`,
+                message: `Transaction log: ${differences.transactions.length} changes`,
                 content: encodedContent
             };
             
             if (sha) body.sha = sha;
             
-            await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
+            const saveResponse = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `token ${FLABOX}`,
@@ -456,6 +429,11 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 },
                 body: JSON.stringify(body)
             });
+            
+            if (!saveResponse.ok) {
+                const errorData = await saveResponse.json();
+                throw new Error(`Buy/sell update failed: ${errorData.message}`);
+            }
         }
 
         async function saveToGitHub() {
@@ -486,15 +464,43 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 newConfig.currentPortfolio[ticker] = parseFloat(portfolioValue);
             });
 
-            showConfigLoading('Saving changes...');
+            showConfigLoading('Saving to GitHub...');
 
             try {
-                // Save buy_sell data FIRST
-                await saveBuySellData(currentConfig.currentPortfolio || {}, newConfig.currentPortfolio || {});
+                // Calculate what changed
+                const oldPortfolio = currentConfig.currentPortfolio || {};
+                const newPortfolio = newConfig.currentPortfolio || {};
+                const transactions = [];
                 
-                // Then save portfolio config
+                Object.keys({...oldPortfolio, ...newPortfolio}).forEach(ticker => {
+                    const oldAmount = oldPortfolio[ticker] || 0;
+                    const newAmount = newPortfolio[ticker] || 0;
+                    const diff = newAmount - oldAmount;
+                    
+                    if (Math.abs(diff) > 0.001) {
+                        transactions.push({
+                            ticker: ticker,
+                            type: diff > 0 ? 'BUY' : 'SELL',
+                            amount: Math.abs(diff),
+                            oldAmount: oldAmount,
+                            newAmount: newAmount,
+                            difference: diff
+                        });
+                    }
+                });
+                
+                // Update buy_sell.json if there are changes
+                if (transactions.length > 0) {
+                    const transactionEntry = {
+                        timestamp: new Date().toISOString(),
+                        transactions: transactions
+                    };
+                    await updateBuySellFile(transactionEntry);
+                }
+                
+                // Save portfolio config
                 const content = JSON.stringify(newConfig, null, 2);
-                const encodedContent = btoa(unescape(encodeURIComponent(content)));
+                const encodedContent = btoa(content);
 
                 const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
                     method: 'PUT',
@@ -519,11 +525,11 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 currentSha = result.content.sha;
                 currentConfig = newConfig;
                 
-                showConfigAlert('Portfolio and transaction log updated successfully!', 'success');
+                showConfigAlert('Portfolio and transactions updated successfully!', 'success');
                 
                 setTimeout(() => {
                     window.location.reload();
-                }, 2000);
+                }, 3000);
                 
             } catch (error) {
                 showConfigAlert('Failed to save: ' + error.message, 'error');
@@ -559,8 +565,6 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 currentConfig = JSON.parse(content);
                 
                 populateConfigForm(currentConfig);
-                
-                showConfigAlert('Data reloaded successfully!', 'success');
                 
             } catch (error) {
                 showConfigAlert('Failed to reload: ' + error.message, 'error');
