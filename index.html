@@ -266,9 +266,9 @@
         const REPO_NAME = 'portfolio';
         const FILE_PATH = 'portfolio_config.json';
         const BUY_SELL_FILE_PATH = 'buy_sell.json';
-const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d 53 6a 52 45 55 46 6b 77 54 30 46 57 5a 32 6c 55 51 57 68 55 62 45 4a 4a 58 7a 5a 53 56 6c 6c 30 61 32 4a 6b 57 55 39 59 5a 55 5a 6c 63 6a 52 36 62 56 4a 48 5a 55 5a 54 53 31 42 54 61 58 70 42 62 56 70 42 4d 48 4a 4d 4d 44 5a 43 4d 57 35 4f 56 6e 41 79 51 6c 55 32 53 6b 64 48 53 45 52 33 4d 56 68 43 64 46 51 77'.replace(/\s/g, '').match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));        
-        let currentConfig = {};
+const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d 53 6a 52 45 55 46 6b 77 54 30 46 57 5a 32 6c 55 51 57 68 55 62 45 4a 4a 58 7a 5a 53 56 6c 6c 30 61 32 4a 6b 57 55 39 59 5a 55 5a 6c 63 6a 52 36 62 56 4a 48 5a 55 5a 54 53 31 42 54 61 58 70 42 62 56 70 42 4d 48 4a 4d 4d 44 5a 43 4d 57 35 4f 56 6e 41 79 51 6c 55 32 53 6b 64 48 53 45 52 33 4d 56 68 43 64 46 51 77'.replace(/\s/g, '').match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));        let currentConfig = {};
         let currentSha = '';
+        let buySellSha = '';
         let isConnected = false;
 
         function showConfigAlert(message, type) {
@@ -305,6 +305,108 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             }
         }
 
+        async function loadBuySellData() {
+            try {
+                const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
+                    headers: {
+                        'Authorization': `token ${FLABOX}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if (response.ok) {
+                    const fileData = await response.json();
+                    buySellSha = fileData.sha;
+                    const content = atob(fileData.content);
+                    return content.trim() ? JSON.parse(content) : { transactions: [] };
+                } else if (response.status === 404) {
+                    // File doesn't exist yet, return empty structure
+                    buySellSha = '';
+                    return { transactions: [] };
+                } else {
+                    throw new Error(`Failed to load buy_sell.json: ${response.status}`);
+                }
+            } catch (error) {
+                console.warn('Could not load buy_sell.json:', error.message);
+                buySellSha = '';
+                return { transactions: [] };
+            }
+        }
+
+        async function saveBuySellData(data) {
+            try {
+                const content = JSON.stringify(data, null, 2);
+                const encodedContent = btoa(unescape(encodeURIComponent(content)));
+
+                const requestBody = {
+                    message: 'Update buy/sell transaction log',
+                    content: encodedContent
+                };
+
+                // Only include sha if we have one (file exists)
+                if (buySellSha) {
+                    requestBody.sha = buySellSha;
+                }
+
+                const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${FLABOX}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || `Failed to save buy_sell.json: ${response.status}`);
+                }
+
+                const result = await response.json();
+                buySellSha = result.content.sha;
+                return true;
+            } catch (error) {
+                console.error('Failed to save buy_sell.json:', error);
+                throw error;
+            }
+        }
+
+        function calculatePortfolioDifferences(oldConfig, newConfig) {
+            const differences = [];
+            const timestamp = new Date().toISOString();
+
+            // Check for differences in currentPortfolio
+            const oldPortfolio = oldConfig.currentPortfolio || {};
+            const newPortfolio = newConfig.currentPortfolio || {};
+            
+            // Get all unique tickers from both old and new portfolios
+            const allTickers = new Set([
+                ...Object.keys(oldPortfolio),
+                ...Object.keys(newPortfolio)
+            ]);
+
+            allTickers.forEach(ticker => {
+                const oldAmount = oldPortfolio[ticker] || 0;
+                const newAmount = newPortfolio[ticker] || 0;
+                const difference = newAmount - oldAmount;
+
+                if (Math.abs(difference) > 0.00000001) { // Account for floating point precision
+                    differences.push({
+                        timestamp: timestamp,
+                        ticker: ticker,
+                        action: difference > 0 ? 'buy' : 'sell',
+                        amount: Math.abs(difference),
+                        oldAmount: oldAmount,
+                        newAmount: newAmount,
+                        difference: difference
+                    });
+                }
+            });
+
+            return differences;
+        }
+
         async function connectToGitHub() {
             showConfigLoading('Testing connection to GitHub...');
 
@@ -331,6 +433,9 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 
                 const content = atob(fileData.content);
                 currentConfig = JSON.parse(content);
+                
+                // Load buy_sell.json data
+                await loadBuySellData();
                 
                 populateConfigForm(currentConfig);
                 
@@ -383,59 +488,6 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             });
         }
 
-        async function updateBuySellFile(differences) {
-            // Get existing buy_sell.json or create new
-            let buySellData = { transactions: [] };
-            let sha = null;
-            
-            try {
-                const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
-                    headers: {
-                        'Authorization': `token ${FLABOX}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    sha = data.sha;
-                    const content = atob(data.content);
-                    buySellData = JSON.parse(content);
-                }
-            } catch (e) {
-                // File doesn't exist or is empty, will create new
-            }
-            
-            // Add new transaction entry
-            buySellData.transactions.push(differences);
-            
-            // Save back to GitHub
-            const content = JSON.stringify(buySellData, null, 2);
-            const encodedContent = btoa(content);
-            
-            const body = {
-                message: `Transaction log: ${differences.transactions.length} changes`,
-                content: encodedContent
-            };
-            
-            if (sha) body.sha = sha;
-            
-            const saveResponse = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${FLABOX}`,
-                    'Accept': 'application/vnd.github.v3+json',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
-            });
-            
-            if (!saveResponse.ok) {
-                const errorData = await saveResponse.json();
-                throw new Error(`Buy/sell update failed: ${errorData.message}`);
-            }
-        }
-
         async function saveToGitHub() {
             if (!isConnected) {
                 showConfigAlert('Please connect to GitHub first', 'error');
@@ -464,43 +516,23 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 newConfig.currentPortfolio[ticker] = parseFloat(portfolioValue);
             });
 
-            showConfigLoading('Saving to GitHub...');
+            showConfigLoading('Calculating differences and saving...');
 
             try {
-                // Calculate what changed
-                const oldPortfolio = currentConfig.currentPortfolio || {};
-                const newPortfolio = newConfig.currentPortfolio || {};
-                const transactions = [];
+                // Calculate differences for buy_sell.json
+                const differences = calculatePortfolioDifferences(currentConfig, newConfig);
                 
-                Object.keys({...oldPortfolio, ...newPortfolio}).forEach(ticker => {
-                    const oldAmount = oldPortfolio[ticker] || 0;
-                    const newAmount = newPortfolio[ticker] || 0;
-                    const diff = newAmount - oldAmount;
-                    
-                    if (Math.abs(diff) > 0.001) {
-                        transactions.push({
-                            ticker: ticker,
-                            type: diff > 0 ? 'BUY' : 'SELL',
-                            amount: Math.abs(diff),
-                            oldAmount: oldAmount,
-                            newAmount: newAmount,
-                            difference: diff
-                        });
-                    }
-                });
-                
-                // Update buy_sell.json if there are changes
-                if (transactions.length > 0) {
-                    const transactionEntry = {
-                        timestamp: new Date().toISOString(),
-                        transactions: transactions
-                    };
-                    await updateBuySellFile(transactionEntry);
+                // Update buy_sell.json if there are differences
+                if (differences.length > 0) {
+                    const buySellData = await loadBuySellData();
+                    buySellData.transactions.push(...differences);
+                    await saveBuySellData(buySellData);
+                    showConfigAlert(`Recorded ${differences.length} transaction(s) in buy_sell.json`, 'success');
                 }
-                
-                // Save portfolio config
+
+                // Save the main portfolio config
                 const content = JSON.stringify(newConfig, null, 2);
-                const encodedContent = btoa(content);
+                const encodedContent = btoa(unescape(encodeURIComponent(content)));
 
                 const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
                     method: 'PUT',
@@ -525,11 +557,11 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 currentSha = result.content.sha;
                 currentConfig = newConfig;
                 
-                showConfigAlert('Portfolio and transactions updated successfully!', 'success');
+                showConfigAlert('Portfolio saved successfully!', 'success');
                 
                 setTimeout(() => {
                     window.location.reload();
-                }, 3000);
+                }, 4000);
                 
             } catch (error) {
                 showConfigAlert('Failed to save: ' + error.message, 'error');
@@ -564,7 +596,12 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 const content = atob(fileData.content);
                 currentConfig = JSON.parse(content);
                 
+                // Reload buy_sell.json data as well
+                await loadBuySellData();
+                
                 populateConfigForm(currentConfig);
+                
+                showConfigAlert('Configuration reloaded successfully!', 'success');
                 
             } catch (error) {
                 showConfigAlert('Failed to reload: ' + error.message, 'error');
