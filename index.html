@@ -376,33 +376,111 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             const differences = [];
             const timestamp = new Date().toISOString();
 
-            // Check for differences in currentPortfolio
+            // Track changes in initialInvestments (USD values)
+            const oldInitial = oldConfig.initialInvestments || {};
+            const newInitial = newConfig.initialInvestments || {};
+            
+            const allInitialTickers = new Set([
+                ...Object.keys(oldInitial),
+                ...Object.keys(newInitial)
+            ]);
+
+            allInitialTickers.forEach(ticker => {
+                const oldAmount = oldInitial[ticker] || 0;
+                const newAmount = newInitial[ticker] || 0;
+                const difference = newAmount - oldAmount;
+
+                if (Math.abs(difference) > 0.00000001) {
+                    differences.push({
+                        timestamp: timestamp,
+                        ticker: ticker,
+                        type: 'initial_investment',
+                        action: difference > 0 ? 'increase' : 'decrease',
+                        amount: Math.abs(difference),
+                        oldAmount: oldAmount,
+                        newAmount: newAmount,
+                        difference: difference,
+                        currency: 'USD'
+                    });
+                }
+            });
+
+            // Track changes in initialEuroInvestments (Euro values)
+            const oldEuro = oldConfig.initialEuroInvestments || {};
+            const newEuro = newConfig.initialEuroInvestments || {};
+            
+            const allEuroTickers = new Set([
+                ...Object.keys(oldEuro),
+                ...Object.keys(newEuro)
+            ]);
+
+            allEuroTickers.forEach(ticker => {
+                const oldAmount = oldEuro[ticker] || 0;
+                const newAmount = newEuro[ticker] || 0;
+                const difference = newAmount - oldAmount;
+
+                if (Math.abs(difference) > 0.00000001) {
+                    differences.push({
+                        timestamp: timestamp,
+                        ticker: ticker,
+                        type: 'initial_euro_investment',
+                        action: difference > 0 ? 'increase' : 'decrease',
+                        amount: Math.abs(difference),
+                        oldAmount: oldAmount,
+                        newAmount: newAmount,
+                        difference: difference,
+                        currency: 'EUR'
+                    });
+                }
+            });
+
+            // Track changes in currentPortfolio (actual holdings)
             const oldPortfolio = oldConfig.currentPortfolio || {};
             const newPortfolio = newConfig.currentPortfolio || {};
             
-            // Get all unique tickers from both old and new portfolios
-            const allTickers = new Set([
+            const allPortfolioTickers = new Set([
                 ...Object.keys(oldPortfolio),
                 ...Object.keys(newPortfolio)
             ]);
 
-            allTickers.forEach(ticker => {
+            allPortfolioTickers.forEach(ticker => {
                 const oldAmount = oldPortfolio[ticker] || 0;
                 const newAmount = newPortfolio[ticker] || 0;
                 const difference = newAmount - oldAmount;
 
-                if (Math.abs(difference) > 0.00000001) { // Account for floating point precision
+                if (Math.abs(difference) > 0.00000001) {
                     differences.push({
                         timestamp: timestamp,
                         ticker: ticker,
+                        type: 'portfolio_holding',
                         action: difference > 0 ? 'buy' : 'sell',
                         amount: Math.abs(difference),
                         oldAmount: oldAmount,
                         newAmount: newAmount,
-                        difference: difference
+                        difference: difference,
+                        currency: 'units'
                     });
                 }
             });
+
+            // Track changes in originalEuroInvestment
+            const oldOriginalEuro = oldConfig.originalEuroInvestment || 0;
+            const newOriginalEuro = newConfig.originalEuroInvestment || 0;
+            const euroInvestmentDiff = newOriginalEuro - oldOriginalEuro;
+
+            if (Math.abs(euroInvestmentDiff) > 0.00000001) {
+                differences.push({
+                    timestamp: timestamp,
+                    ticker: 'EURO_INVESTMENT',
+                    type: 'original_euro_investment',
+                    action: euroInvestmentDiff > 0 ? 'increase' : 'decrease',
+                    amount: Math.abs(euroInvestmentDiff),
+                    oldAmount: oldOriginalEuro,
+                    newAmount: newOriginalEuro,
+                    difference: euroInvestmentDiff,
+                    currency: 'EUR'
+                });
+            }
 
             return differences;
         }
@@ -521,26 +599,21 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             try {
                 // Calculate differences for buy_sell.json
                 const differences = calculatePortfolioDifferences(currentConfig, newConfig);
-                console.log('Calculated differences:', differences);
                 
                 // ALWAYS update buy_sell.json, even if no differences (to ensure file exists)
                 const buySellData = await loadBuySellData();
-                console.log('Loaded buy_sell data:', buySellData);
                 
                 if (differences.length > 0) {
                     buySellData.transactions.push(...differences);
-                    console.log('Updated buy_sell data with new transactions:', buySellData);
                 }
                 
                 // Save buy_sell.json first (before config)
                 try {
                     await saveBuySellData(buySellData);
-                    console.log('Successfully saved buy_sell.json');
                     if (differences.length > 0) {
                         showConfigAlert(`Recorded ${differences.length} transaction(s) in buy_sell.json`, 'success');
                     }
                 } catch (buySellError) {
-                    console.error('Failed to save buy_sell.json:', buySellError);
                     showConfigAlert('Warning: Failed to update transaction log - ' + buySellError.message, 'error');
                     // Continue with config save even if buy_sell fails
                 }
@@ -579,7 +652,6 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 }, 4000);
                 
             } catch (error) {
-                console.error('Save error:', error);
                 showConfigAlert('Failed to save: ' + error.message, 'error');
             } finally {
                 hideConfigLoading();
