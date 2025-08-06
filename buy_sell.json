@@ -1,3 +1,15 @@
 {
-  "transactions": []
+  "transactions": [
+    {
+      "timestamp": "2025-08-06T22:03:01.756Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "decrease",
+      "amount": 1,
+      "oldAmount": 2267,
+      "newAmount": 2266,
+      "difference": -1,
+      "currency": "USD"
+    }
+  ]
 }
