@@ -1462,10 +1462,10 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         }
     }
 
-    function calculateReturn(startValue, endValue) {
-        // Calculate the change in percentage points between two dates
-        return endValue - startValue;
-    }
+// CORRECT - this gives actual return
+function calculateReturn(startValue, endValue) {
+    return (endValue / startValue) - 1;
+}
 
     function updateHistoricalPnlAssets(data, isEur) {
         const firstEntry = data[0]; // Oldest entry (start date)
