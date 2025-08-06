@@ -1462,9 +1462,8 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         }
     }
 
-// CORRECT - this gives actual return
 function calculateReturn(startValue, endValue) {
-    return (endValue / startValue) - 1;
+    return ((endValue / startValue) - 1) * 100;
 }
 
     function updateHistoricalPnlAssets(data, isEur) {
