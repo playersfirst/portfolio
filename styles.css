@@ -771,6 +771,166 @@ tr.excluded .toggle-asset {
 }
 /* --- End Currency Switch Button Styles --- */
 
+/* --- NEW: Floating Dual Currency Toggle Styles --- */
+.floating-currency-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+    border: 1px solid rgba(203, 213, 225, 0.4);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.08),
+        0 1px 3px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    user-select: none;
+}
+
+.floating-currency-toggle:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.12),
+        0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.floating-currency-toggle:focus {
+    outline: none;
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.12),
+        0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.floating-currency-toggle:active {
+    transform: translateY(-1px) scale(1.01);
+    transition-duration: 0.1s;
+}
+
+.currency-primary {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--gray-900);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(1.2);
+    opacity: 1;
+    line-height: 1;
+}
+
+.currency-secondary {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-500);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: scale(0.85);
+    opacity: 0.6;
+    line-height: 1;
+}
+
+.currency-divider {
+    font-size: 14px;
+    font-weight: 300;
+    color: var(--gray-400);
+    margin: 0 2px;
+    transition: all 0.3s ease;
+}
+
+/* Animation classes for swapping */
+.currency-swap-out {
+    animation: swapOut 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.currency-swap-in {
+    animation: swapIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes swapOut {
+    0% {
+        transform: scale(1.1) translateX(0);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(0.8) translateX(-10px);
+        opacity: 0.3;
+    }
+    100% {
+        transform: scale(0.9) translateX(0);
+        opacity: 0.7;
+    }
+}
+
+@keyframes swapIn {
+    0% {
+        transform: scale(0.9) translateX(0);
+        opacity: 0.7;
+    }
+    50% {
+        transform: scale(0.8) translateX(10px);
+        opacity: 0.3;
+    }
+    100% {
+        transform: scale(1.1) translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Mobile adjustments for floating toggle */
+@media (max-width: 768px) {
+    .floating-currency-toggle {
+        bottom: 15px;
+        right: 15px;
+        padding: 8px 12px;
+        gap: 3px;
+    }
+    
+    .currency-primary {
+        font-size: 16px;
+    }
+    
+    .currency-secondary {
+        font-size: 13px;
+    }
+    
+    .currency-divider {
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 576px) {
+    .floating-currency-toggle {
+        bottom: 10px;
+        right: 10px;
+        padding: 6px 10px;
+        gap: 2px;
+    }
+    
+    .currency-primary {
+        font-size: 15px;
+    }
+    
+    .currency-secondary {
+        font-size: 12px;
+    }
+    
+    .currency-divider {
+        font-size: 11px;
+    }
+}
+
+/* Hide the floating toggle on very small screens to avoid overlap with other UI elements */
+@media (max-width: 400px) {
+    .floating-currency-toggle {
+        display: none;
+    }
+}
+/* --- End Floating Currency Toggle Styles --- */
+
 /* --- NEW: Pie Chart Toggle Button Styles --- */
 .pie-chart-toggle {
     width: 24px;
