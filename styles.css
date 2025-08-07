@@ -923,10 +923,26 @@ tr.excluded .toggle-asset {
     }
 }
 
-/* Hide the floating toggle on very small screens to avoid overlap with other UI elements */
+/* Adjust the floating toggle for very small screens instead of hiding it */
 @media (max-width: 400px) {
     .floating-currency-toggle {
-        display: none;
+        bottom: 8px;
+        right: 8px;
+        padding: 6px 8px;
+        gap: 1px;
+        font-size: 12px;
+    }
+    
+    .currency-primary {
+        font-size: 13px;
+    }
+    
+    .currency-secondary {
+        font-size: 11px;
+    }
+    
+    .currency-divider {
+        font-size: 10px;
     }
 }
 /* --- End Floating Currency Toggle Styles --- */
