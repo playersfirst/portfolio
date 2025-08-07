@@ -1,0 +1,103 @@
+{
+  "transactions": [
+    {
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 2150,
+      "oldAmount": 29440,
+      "newAmount": 31590,
+      "difference": 2150,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 301,
+      "oldAmount": 1966,
+      "newAmount": 2267,
+      "difference": 301,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 261,
+      "oldAmount": 1780,
+      "newAmount": 2041,
+      "difference": 261,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "ticker": "NANC",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 727,
+      "oldAmount": 1982,
+      "newAmount": 2709,
+      "difference": 727,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "ticker": "NANC",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 630,
+      "oldAmount": 1746,
+      "newAmount": 2376,
+      "difference": 630,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 551,
+      "oldAmount": 3421,
+      "newAmount": 3972,
+      "difference": 551,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 478,
+      "oldAmount": 3057,
+      "newAmount": 3535,
+      "difference": 478,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "ticker": "SGOV",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 901,
+      "oldAmount": 19836,
+      "newAmount": 20737,
+      "difference": 901,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-05T00:00:00.000Z",
+      "ticker": "SGOV",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 781,
+      "oldAmount": 17657,
+      "newAmount": 18438,
+      "difference": 781,
+      "currency": "EUR"
+    }
+  ]
+}
