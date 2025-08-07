@@ -127,44 +127,29 @@
             </div>
         </div>
 
-        <!-- Historical PnL Returns section -->
+        <!-- Historical Returns section with MWR/TWR -->
         <div class="historical-pnl-card">
             <div class="historical-pnl-header">
                 <h3>HISTORICAL RETURNS</h3>
             </div>
             <div class="historical-pnl-controls">
-                <div class="year-selector">
-                    <button class="year-arrow" id="year-prev" title="Previous Year">‹</button>
-                    <div class="year-display" id="year-display">2025</div>
-                    <button class="year-arrow" id="year-next" title="Next Year">›</button>
+                <div class="date-inputs">
+                    <div class="date-input">
+                        <input type="date" id="startDate" value="2025-08-01" min="2025-08-01" max="">
+                    </div>
+                    <div class="date-input">
+                        <input type="date" id="endDate" value="2025-08-01" min="2025-08-02" max="">
+                    </div>
                 </div>
-                <div class="custom-date-picker">
-                    <button class="calendar-btn" id="calendar-btn" title="Custom Date Range">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                            <line x1="16" y1="2" x2="16" y2="6"></line>
-                            <line x1="8" y1="2" x2="8" y2="6"></line>
-                            <line x1="3" y1="10" x2="21" y2="10"></line>
-                        </svg>
-                    </button>
+
+                <div class="return-type-toggle">
+                    <button class="toggle-btn active" id="mwr-toggle" data-type="mwr">MWR</button>
+                    <button class="toggle-btn" id="twr-toggle" data-type="twr">TWR</button>
                 </div>
-            </div>
-            <div class="historical-pnl-period">
-                <span id="historical-period-text">Loading...</span>
             </div>
             <div class="historical-pnl-content">
-                <div class="ytd-values">
-                    <div class="ytd-value-item">
-                        <span class="ytd-label">Total</span>
-                        <span class="ytd-value" id="historical-total-return">--</span>
-                    </div>
-                    <div class="ytd-value-item">
-                        <span class="ytd-label">Risk Assets</span>
-                        <span class="ytd-value" id="historical-excl-sgov-return">--</span>
-                    </div>
-                </div>
-                <div class="ytd-assets" id="historical-pnl-assets">
-                    <!-- Individual assets will be populated by JavaScript -->
+                <div id="historical-results">
+                    <div class="loading">Loading portfolio data...</div>
                 </div>
             </div>
         </div>
@@ -191,7 +176,7 @@
                 <div id="returns-loading" class="returns-loading" style="display: none;">
                     Loading asset data...
                 </div>
-                <div id="returns-error" class="returns-error" style="display: none;"></div>
+                <div id="returns-error" class="message message-error" style="display: none;"></div>
                 <div id="returns-grid" class="returns-grid">
                     <!-- Asset returns will be populated by JavaScript -->
                 </div>
@@ -265,7 +250,7 @@
         const REPO_OWNER = 'playersfirst';
         const REPO_NAME = 'portfolio';
         const FILE_PATH = 'portfolio_config.json';
-        const BUY_SELL_FILE_PATH = 'buy_sell.json';
+        const portfolio_transactions_FILE_PATH = 'portfolio_transactions.json';
 const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d 53 6a 52 45 55 46 6b 77 54 30 46 57 5a 32 6c 55 51 57 68 55 62 45 4a 4a 58 7a 5a 53 56 6c 6c 30 61 32 4a 6b 57 55 39 59 5a 55 5a 6c 63 6a 52 36 62 56 4a 48 5a 55 5a 54 53 31 42 54 61 58 70 42 62 56 70 42 4d 48 4a 4d 4d 44 5a 43 4d 57 35 4f 56 6e 41 79 51 6c 55 32 53 6b 64 48 53 45 52 33 4d 56 68 43 64 46 51 77'.replace(/\s/g, '').match(/.{2}/g).map(h => String.fromCharCode(parseInt(h, 16))).join(''));        let currentConfig = {};
         let currentSha = '';
         let buySellSha = '';
@@ -307,7 +292,7 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
 
         async function loadBuySellData() {
             try {
-                const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
+                const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${portfolio_transactions_FILE_PATH}`, {
                     headers: {
                         'Authorization': `token ${FLABOX}`,
                         'Accept': 'application/vnd.github.v3+json'
@@ -324,10 +309,9 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                     buySellSha = '';
                     return { transactions: [] };
                 } else {
-                    throw new Error(`Failed to load buy_sell.json: ${response.status}`);
+                    throw new Error(`Failed to load portfolio_transactions.json: ${response.status}`);
                 }
             } catch (error) {
-                console.warn('Could not load buy_sell.json:', error.message);
                 buySellSha = '';
                 return { transactions: [] };
             }
@@ -348,7 +332,7 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                     requestBody.sha = buySellSha;
                 }
 
-                const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${BUY_SELL_FILE_PATH}`, {
+                const response = await fetch(`${GITHUB_API_BASE}/repos/${REPO_OWNER}/${REPO_NAME}/contents/${portfolio_transactions_FILE_PATH}`, {
                     method: 'PUT',
                     headers: {
                         'Authorization': `token ${FLABOX}`,
@@ -360,14 +344,13 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.message || `Failed to save buy_sell.json: ${response.status}`);
+                    throw new Error(errorData.message || `Failed to save portfolio_transactions.json: ${response.status}`);
                 }
 
                 const result = await response.json();
                 buySellSha = result.content.sha;
                 return true;
             } catch (error) {
-                console.error('Failed to save buy_sell.json:', error);
                 throw error;
             }
         }
@@ -512,7 +495,7 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 const content = atob(fileData.content);
                 currentConfig = JSON.parse(content);
                 
-                // Load buy_sell.json data
+                // Load portfolio_transactions.json data
                 await loadBuySellData();
                 
                 populateConfigForm(currentConfig);
@@ -597,25 +580,25 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
             showConfigLoading('Calculating differences and saving...');
 
             try {
-                // Calculate differences for buy_sell.json
+                // Calculate differences for portfolio_transactions.json
                 const differences = calculatePortfolioDifferences(currentConfig, newConfig);
                 
-                // ALWAYS update buy_sell.json, even if no differences (to ensure file exists)
+                // ALWAYS update portfolio_transactions.json, even if no differences (to ensure file exists)
                 const buySellData = await loadBuySellData();
                 
                 if (differences.length > 0) {
                     buySellData.transactions.push(...differences);
                 }
                 
-                // Save buy_sell.json first (before config)
+                // Save portfolio_transactions.json first (before config)
                 try {
                     await saveBuySellData(buySellData);
                     if (differences.length > 0) {
-                        showConfigAlert(`Recorded ${differences.length} transaction(s) in buy_sell.json`, 'success');
+                        showConfigAlert(`Recorded ${differences.length} transaction(s) in portfolio_transactions.json`, 'success');
                     }
                 } catch (buySellError) {
                     showConfigAlert('Warning: Failed to update transaction log - ' + buySellError.message, 'error');
-                    // Continue with config save even if buy_sell fails
+                    // Continue with config save even if portfolio_transactions fails
                 }
 
                 // Save the main portfolio config
@@ -684,7 +667,7 @@ const FLABOX = atob('5a 32 6c 30 61 48 56 69 58 33 42 68 64 46 38 78 4d 55 4a 4d
                 const content = atob(fileData.content);
                 currentConfig = JSON.parse(content);
                 
-                // Reload buy_sell.json data as well
+                // Reload portfolio_transactions.json data as well
                 await loadBuySellData();
                 
                 populateConfigForm(currentConfig);
