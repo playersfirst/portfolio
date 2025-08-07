@@ -219,16 +219,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        const sortedAssets = Object.keys(assetReturns).sort((a, b) => {
-            return assetReturns[b] - assetReturns[a]; // Sort descending (highest first)
-        });
-
-        if (sortedAssets.length === 0) return;
-
+        // Use consistent order: BTC, IAU, VOO, NANC, SGOV
+        const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'SGOV'];
+        
         let html = '';
         html += '<div class="ytd-assets-grid">';
         
-        sortedAssets.forEach(assetName => {
+        orderedAssets.forEach(assetName => {
+            if (!assetReturns[assetName]) return; // Skip if no data for this asset
             const returnValue = assetReturns[assetName];
             
             if (returnValue !== null && returnValue !== undefined) {
@@ -282,7 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const contentEl = document.getElementById('avg-buy-price-content');
         if (!contentEl) return;
 
-        const assets = ['IAU', 'BINANCE:BTCUSDT', 'NANC', 'VOO'];
+        const assets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC'];
         let html = '<div class="avg-buy-price-grid">';
         
         assets.forEach(symbol => {
@@ -355,7 +353,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             createYtdSection(); // Create the average yearly return section
             fetchCbbiData(); // Fetch CBBI data
         } catch (error) {
-            console.error('Error loading portfolio configuration:', error);
             loadingEl.textContent = 'Error loading portfolio configuration. Please refresh.';
             loadingEl.style.display = 'flex';
             portfolioTable.style.display = 'none';
@@ -368,7 +365,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             let data = await response.json();
             usdToEurRate = data.rate;
         } catch (error) {
-            console.warn('Failed to fetch exchange rate, using value of 1.0');
+            // Failed to fetch exchange rate, using value of 1.0
         }
         return usdToEurRate;
     }
@@ -383,7 +380,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             cbbiData = data;
             updateCbbiDisplay();
         } catch (error) {
-            console.warn('Failed to fetch CBBI data:', error);
             cbbiValueEl.textContent = '--';
             cbbiSentimentEl.textContent = 'Error loading data';
             cbbiSentimentEl.className = 'cbbi-sentiment';
@@ -624,10 +620,8 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         updateAssetReturns();
         updateAverageBuyPriceDisplay();
         
-        // Update historical PnL display when currency changes
-        if (pnlHistoryData) {
-            updateHistoricalPnlDisplay();
-        }
+        // Update historical returns display when currency changes
+        calculateHistoricalReturns();
         
         // Update asset returns display when currency changes
         updateAssetReturnsDisplay();
@@ -1028,8 +1022,6 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                 window.historyChart.options.plugins.title.text = finalTitle;
                  window.historyChart.options.plugins.title.color = changeColor; // Also update color
                 window.historyChart.update(); // Update the chart to show the new title
-            } else {
-                  console.error("Could not update chart title, chart instance or title plugin not found.");
             }
             // --- End Title Update --- //
 
@@ -1163,151 +1155,19 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     let selectedYear = new Date().getFullYear();
     let customDateRange = null;
 
-    function showCustomDatePicker() {
-        // Remove existing date picker if it exists
-        const existingPicker = document.getElementById('custom-date-picker-modal');
-        if (existingPicker) {
-            existingPicker.remove();
-        }
-
-        // Create modal overlay
-        const modal = document.createElement('div');
-        modal.id = 'custom-date-picker-modal';
-        modal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        `;
-
-        // Create date picker content
-        const content = document.createElement('div');
-        content.style.cssText = `
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            min-width: 300px;
-        `;
-
-        const today = new Date().toISOString().split('T')[0];
-        const dataStartDate = '2025-07-23'; // July 23, 2025
-        
-        content.innerHTML = `
-            <h3 style="margin: 0 0 15px 0; color: #333;">Select Date Range</h3>
-            <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 500;">Start Date:</label>
-                <input type="date" id="start-date" value="${dataStartDate}" min="${dataStartDate}" max="${today}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-            </div>
-            <div style="margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 500;">End Date:</label>
-                <input type="date" id="end-date" value="${today}" min="${dataStartDate}" max="${today}" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-            </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button id="cancel-date-picker" style="padding: 8px 16px; border: 1px solid #ccc; background: #f8f9fa; border-radius: 4px; cursor: pointer;">Cancel</button>
-                <button id="apply-date-picker" style="padding: 8px 16px; border: none; background: #007bff; color: white; border-radius: 4px; cursor: pointer;">Apply</button>
-            </div>
-        `;
-
-        modal.appendChild(content);
-        document.body.appendChild(modal);
-
-        // Add event listeners
-        document.getElementById('cancel-date-picker').addEventListener('click', () => {
-            modal.remove();
-        });
-
-        document.getElementById('apply-date-picker').addEventListener('click', () => {
-            const startDate = document.getElementById('start-date').value;
-            const endDate = document.getElementById('end-date').value;
-            
-            if (startDate && endDate) {
-                // Validate dates
-                const startDateObj = new Date(startDate);
-                const endDateObj = new Date(endDate);
-                const todayObj = new Date();
-                const dataStartDateObj = new Date(dataStartDate);
-                
-                // Reset time to midnight for accurate comparison
-                todayObj.setHours(0, 0, 0, 0);
-                startDateObj.setHours(0, 0, 0, 0);
-                endDateObj.setHours(0, 0, 0, 0);
-                dataStartDateObj.setHours(0, 0, 0, 0);
-                
-                // Check if dates are valid
-                if (startDateObj < dataStartDateObj || startDateObj > todayObj) {
-                    alert('Start date must be between July 23, 2025 and today.');
-                    return;
-                }
-                
-                if (endDateObj < dataStartDateObj || endDateObj > todayObj) {
-                    alert('End date must be between July 23, 2025 and today.');
-                    return;
-                }
-                
-                if (startDateObj > endDateObj) {
-                    alert('Start date must be before or equal to end date.');
-                    return;
-                }
-                
-                customDateRange = {
-                    start: startDateObj,
-                    end: endDateObj
-                };
-                updateHistoricalPnlDisplay();
-                modal.remove();
-            }
-        });
-
-        // Add input event listeners to enforce constraints
-        const startDateInput = document.getElementById('start-date');
-        const endDateInput = document.getElementById('end-date');
-        
-        startDateInput.addEventListener('change', () => {
-            const startDate = startDateInput.value;
-            const endDate = endDateInput.value;
-            
-            if (startDate && endDate && startDate > endDate) {
-                endDateInput.value = startDate;
-            }
-        });
-        
-        endDateInput.addEventListener('change', () => {
-            const startDate = startDateInput.value;
-            const endDate = endDateInput.value;
-            
-            if (startDate && endDate && endDate < startDate) {
-                startDateInput.value = endDate;
-            }
-        });
-
-        // Close modal when clicking outside
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.remove();
-            }
-        });
-    }
-
     // Historical PnL elements
-    let yearPrevBtn, yearNextBtn, yearDisplayEl, calendarBtn, historicalPeriodTextEl, 
-        historicalTotalReturnEl, historicalExclSgovReturnEl, historicalPnlAssetsEl;
+    let yearPrevBtn, yearNextBtn, yearDisplayEl, historicalPeriodTextEl;
 
     function initializeHistoricalPnlElements() {
         yearPrevBtn = document.getElementById('year-prev');
         yearNextBtn = document.getElementById('year-next');
         yearDisplayEl = document.getElementById('year-display');
-        calendarBtn = document.getElementById('calendar-btn');
+
         historicalPeriodTextEl = document.getElementById('historical-period-text');
-        historicalTotalReturnEl = document.getElementById('historical-total-return');
-        historicalExclSgovReturnEl = document.getElementById('historical-excl-sgov-return');
-        historicalPnlAssetsEl = document.getElementById('historical-pnl-assets');
+        
+        // Get the new toggle buttons
+        const mwrToggle = document.getElementById('mwr-toggle');
+        const twrToggle = document.getElementById('twr-toggle');
 
         // Add event listeners if elements exist
         if (yearPrevBtn) {
@@ -1329,9 +1189,26 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             });
         }
 
-        if (calendarBtn) {
-            calendarBtn.addEventListener('click', () => {
-                showCustomDatePicker();
+        // Add toggle button event listeners
+        if (mwrToggle) {
+            mwrToggle.addEventListener('click', () => {
+                if (currentReturnType !== 'mwr') {
+                    currentReturnType = 'mwr';
+                    mwrToggle.classList.add('active');
+                    twrToggle.classList.remove('active');
+                    updateHistoricalPnlDisplay();
+                }
+            });
+        }
+
+        if (twrToggle) {
+            twrToggle.addEventListener('click', () => {
+                if (currentReturnType !== 'twr') {
+                    currentReturnType = 'twr';
+                    twrToggle.classList.add('active');
+                    mwrToggle.classList.remove('active');
+                    updateHistoricalPnlDisplay();
+                }
             });
         }
     }
@@ -1340,85 +1217,32 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         try {
             const response = await fetch('pnl_history.json');
             if (!response.ok) {
-                console.log('PnL history file not found or empty');
                 return;
             }
             pnlHistoryData = await response.json();
             updateHistoricalPnlDisplay();
         } catch (error) {
-            console.log('Error loading PnL history:', error);
+            // Error loading PnL history
         }
     }
 
     function updateHistoricalPnlDisplay() {
         // Check if elements exist
-        if (!historicalTotalReturnEl || !historicalExclSgovReturnEl || !historicalPeriodTextEl || !historicalPnlAssetsEl) {
+        if (!historicalPeriodTextEl) {
             initializeHistoricalPnlElements();
             return;
         }
 
-        if (!pnlHistoryData || !pnlHistoryData.history || pnlHistoryData.history.length === 0) {
-            historicalTotalReturnEl.textContent = 'No data';
-            historicalExclSgovReturnEl.textContent = 'No data';
-            historicalPeriodTextEl.textContent = 'No data available';
-            historicalPnlAssetsEl.innerHTML = '';
-            return;
-        }
+        const resultsDiv = document.getElementById('historical-results');
+        if (!resultsDiv) return;
 
         // Get date range based on selected year or custom range
         const dateRange = customDateRange || getDateRangeForYear(selectedYear);
         if (!dateRange) {
-            historicalTotalReturnEl.textContent = 'Invalid date range';
-            historicalExclSgovReturnEl.textContent = 'Invalid date range';
+            resultsDiv.innerHTML = '<div class="message message-error">Invalid date range</div>';
             historicalPeriodTextEl.textContent = 'Invalid date range';
             return;
         }
-
-        // Filter data for the selected timeframe
-        const filteredData = pnlHistoryData.history.filter(entry => {
-            const entryDate = new Date(entry.date + 'T00:00:00');
-            const startDate = new Date(dateRange.start);
-            const endDate = new Date(dateRange.end);
-            
-            // Normalize dates to midnight for comparison
-            startDate.setHours(0, 0, 0, 0);
-            endDate.setHours(0, 0, 0, 0);
-            entryDate.setHours(0, 0, 0, 0);
-            
-            return entryDate >= startDate && entryDate <= endDate;
-        });
-
-        if (filteredData.length < 2) {
-            historicalTotalReturnEl.textContent = 'Insufficient data';
-            historicalExclSgovReturnEl.textContent = 'Insufficient data';
-            historicalPeriodTextEl.textContent = 'Insufficient data for selected period';
-            historicalPnlAssetsEl.innerHTML = '';
-            return;
-        }
-
-        // Sort filtered data by date to ensure chronological order (oldest first)
-        filteredData.sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        // Calculate returns
-        const firstEntry = filteredData[0]; // Oldest entry (start date)
-        const lastEntry = filteredData[filteredData.length - 1]; // Newest entry (end date)
-        
-
-        const totalUsdReturn = calculateReturn(firstEntry.percentages.total.usd, lastEntry.percentages.total.usd);
-        const totalEurReturn = calculateReturn(firstEntry.percentages.total.eur, lastEntry.percentages.total.eur);
-        const exclSgovUsdReturn = calculateReturn(firstEntry.percentages.excl_sgov.usd, lastEntry.percentages.excl_sgov.usd);
-        const exclSgovEurReturn = calculateReturn(firstEntry.percentages.excl_sgov.eur, lastEntry.percentages.excl_sgov.eur);
-
-        // Update display based on current currency
-        const isEur = displayCurrency === 'EUR';
-        const totalReturn = isEur ? totalEurReturn : totalUsdReturn;
-        const exclSgovReturn = isEur ? exclSgovEurReturn : exclSgovUsdReturn;
-
-        historicalTotalReturnEl.textContent = `${totalReturn >= 0 ? '+' : ''}${totalReturn.toFixed(2)}%`;
-        historicalTotalReturnEl.className = `ytd-value ${totalReturn >= 0 ? 'positive' : 'negative'}`;
-        
-        historicalExclSgovReturnEl.textContent = `${exclSgovReturn >= 0 ? '+' : ''}${exclSgovReturn.toFixed(2)}%`;
-        historicalExclSgovReturnEl.className = `ytd-value ${exclSgovReturn >= 0 ? 'positive' : 'negative'}`;
 
         // Update period text
         const startDate = new Date(dateRange.start).toLocaleDateString('en-US', { 
@@ -1433,28 +1257,31 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         });
         historicalPeriodTextEl.textContent = `${startDate} - ${endDate}`;
 
-        // Update individual assets
-        updateHistoricalPnlAssets(filteredData, isEur);
+        resultsDiv.innerHTML = '<div class="historical-loading">Calculating returns...</div>';
+
+        calculateHistoricalReturnsWithDates(dateRange.start, dateRange.end);
     }
 
     function getDateRangeForYear(year) {
         const now = new Date();
+        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]; // Yesterday as string
         const currentYear = now.getFullYear();
-        const dataStartDate = new Date(2025, 6, 23); // July 23, 2025 (month is 0-indexed)
         
         if (year === currentYear) {
-            // Current year: Jan 1 to today (or data start date if it's 2025)
-            const startDate = year === 2025 ? dataStartDate : new Date(year, 0, 1);
+            // Current year: Aug 1 to yesterday (for 2025)
+            const startDateStr = year === 2025 ? '2025-08-01' : `${year}-01-01`;
+            const endDateStr = yesterday;
             return {
-                start: startDate,
-                end: now
+                start: new Date(startDateStr + 'T00:00:00'),
+                end: new Date(endDateStr + 'T00:00:00')
             };
         } else if (year < currentYear) {
-            // Past year: Jan 1 to Dec 31 (or data start date if it's 2025)
-            const startDate = year === 2025 ? dataStartDate : new Date(year, 0, 1);
+            // Past year: Jan 1 to Dec 31 (or Aug 1 to Dec 31 for 2025)
+            const startDateStr = year === 2025 ? '2025-08-01' : `${year}-01-01`;
+            const endDateStr = `${year}-12-31`;
             return {
-                start: startDate,
-                end: new Date(year, 11, 31)
+                start: new Date(startDateStr + 'T00:00:00'),
+                end: new Date(endDateStr + 'T00:00:00')
             };
         } else {
             // Future year: no data
@@ -1466,39 +1293,7 @@ function calculateReturn(startValue, endValue) {
     return ((endValue / startValue) - 1) * 100;
 }
 
-    function updateHistoricalPnlAssets(data, isEur) {
-        const firstEntry = data[0]; // Oldest entry (start date)
-        const lastEntry = data[data.length - 1]; // Newest entry (end date)
-        
-        const assets = [
-            { key: 'btc', name: 'BTC' },
-            { key: 'voo', name: 'VOO' },
-            { key: 'iau', name: 'IAU' },
-            { key: 'nanc', name: 'NANC' },
-            { key: 'sgov', name: 'SGOV' }
-        ];
 
-        let assetsHtml = '';
-        assetsHtml += '<div class="ytd-assets-grid">';
-
-        assets.forEach(asset => {
-            const usdReturn = calculateReturn(firstEntry.percentages[asset.key].usd, lastEntry.percentages[asset.key].usd);
-            const eurReturn = calculateReturn(firstEntry.percentages[asset.key].eur, lastEntry.percentages[asset.key].eur);
-            const returnValue = isEur ? eurReturn : usdReturn;
-
-            assetsHtml += `
-                <div class="ytd-asset-item">
-                    <span class="ytd-asset-name">${asset.name}</span>
-                    <span class="ytd-asset-value ${returnValue >= 0 ? 'positive' : 'negative'}">
-                        ${returnValue >= 0 ? '+' : ''}${returnValue.toFixed(2)}%
-                    </span>
-                </div>
-            `;
-        });
-
-        assetsHtml += '</div>';
-        historicalPnlAssetsEl.innerHTML = assetsHtml;
-    }
 
     function updateYearSelector() {
         if (!yearDisplayEl || !yearPrevBtn || !yearNextBtn) {
@@ -1528,22 +1323,965 @@ function calculateReturn(startValue, endValue) {
         updateHistoricalPnlDisplay();
     }
 
-    // Initialize historical PnL elements and year selector
-    initializeHistoricalPnlElements();
-    updateYearSelector();
+    // Initialize historical returns with new date inputs
+    window.addEventListener('load', function() {
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        
+        if (startDateInput && endDateInput) {
+            // Set default date range
+            const currentYear = new Date().getFullYear();
+            let startDate;
+            
+            if (currentYear === 2025) {
+                // For 2025, start from August 1st
+                startDate = '2025-08-01';
+            } else {
+                // For other years, start from January 1st
+                startDate = `${currentYear}-01-01`;
+            }
+            
+            startDateInput.value = startDate;
+            endDateInput.value = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+            
+            // Set max dates to yesterday for both inputs
+            startDateInput.max = yesterday;
+            endDateInput.max = yesterday;
+            
+            updateEndDateMin();
+            
+            // Add event listeners
+            startDateInput.addEventListener('change', () => {
+                updateEndDateMin();
+                calculateHistoricalReturns();
+            });
+            
+            startDateInput.addEventListener('input', validateDates);
+            
+            endDateInput.addEventListener('change', calculateHistoricalReturns);
+            endDateInput.addEventListener('input', validateDates);
 
-    // Load PnL history after initial data is loaded
-    setTimeout(() => {
-        loadPnlHistory();
-    }, 2000);
+            // Add toggle button event listeners
+            const mwrToggle = document.getElementById('mwr-toggle');
+            const twrToggle = document.getElementById('twr-toggle');
 
-    // Also try to initialize after a short delay in case elements load later
-    setTimeout(() => {
-        if (!yearPrevBtn || !yearNextBtn || !calendarBtn) {
-            initializeHistoricalPnlElements();
-            updateYearSelector();
+            if (mwrToggle) {
+                mwrToggle.addEventListener('click', () => {
+                    if (currentReturnType !== 'mwr') {
+                        currentReturnType = 'mwr';
+                        mwrToggle.classList.add('active');
+                        twrToggle.classList.remove('active');
+                        calculateHistoricalReturns();
+                    }
+                });
+            }
+
+            if (twrToggle) {
+                twrToggle.addEventListener('click', () => {
+                    if (currentReturnType !== 'twr') {
+                        currentReturnType = 'twr';
+                        twrToggle.classList.add('active');
+                        mwrToggle.classList.remove('active');
+                        calculateHistoricalReturns();
+                    }
+                });
+            }
+            
+            // Initial calculation
+            calculateHistoricalReturns();
         }
-    }, 1000);
+    });
+
+    // Historical returns functionality with direct date inputs from new.html
+    let currentReturnType = 'mwr'; // 'mwr' or 'twr'
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+    
+    function updateEndDateMin() {
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        
+        if (!startDateInput || !endDateInput) return;
+        
+        const startDate = new Date(startDateInput.value);
+        const nextDay = new Date(startDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
+        const minEndDate = nextDay.toISOString().split('T')[0];
+        endDateInput.min = minEndDate;
+        endDateInput.max = yesterday; // Prevent future dates (yesterday max)
+        
+        // If current end date is not after start date or in future, update it
+        const currentEndDate = new Date(endDateInput.value);
+        if (currentEndDate <= startDate || currentEndDate > new Date(yesterday)) {
+            // Set to the earlier of: nextDay or yesterday
+            const validEndDate = nextDay > new Date(yesterday) ? yesterday : minEndDate;
+            endDateInput.value = validEndDate;
+        }
+    }
+    
+    function validateDates() {
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        
+        if (!startDateInput || !endDateInput) return true;
+        
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(endDateInput.value);
+        const yesterdayDate = new Date(yesterday);
+        
+        let dateChanged = false;
+        
+        // Check if start date is in the future (after yesterday)
+        if (startDate > yesterdayDate) {
+            startDateInput.value = yesterday;
+            startDate.setTime(yesterdayDate.getTime());
+            dateChanged = true;
+        }
+        
+        // Check if end date is in the future (after yesterday)
+        if (endDate > yesterdayDate) {
+            endDateInput.value = yesterday;
+            endDate.setTime(yesterdayDate.getTime());
+            dateChanged = true;
+        }
+        
+        // Check if end date is not after start date
+        if (endDate <= startDate) {
+            const nextDay = new Date(startDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+            
+            // If next day would be in future, set end date to yesterday (if possible)
+            if (nextDay > yesterdayDate) {
+                if (startDate.getTime() === yesterdayDate.getTime()) {
+                    // Can't have valid date range - start is yesterday
+                    startDateInput.value = new Date(yesterdayDate.getTime() - 86400000).toISOString().split('T')[0];
+                    endDateInput.value = yesterday;
+                } else {
+                    endDateInput.value = yesterday;
+                }
+            } else {
+                endDateInput.value = nextDay.toISOString().split('T')[0];
+            }
+            dateChanged = true;
+        }
+        
+        return !dateChanged;
+    }
+
+    function calculateHistoricalReturns() {
+        const startDateInput = document.getElementById('startDate');
+        const endDateInput = document.getElementById('endDate');
+        
+        if (!startDateInput || !endDateInput) return;
+        
+        // Validate dates first
+        if (!validateDates()) {
+            return; // Don't calculate if dates were invalid and had to be corrected
+        }
+        
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(endDateInput.value);
+        
+        calculateHistoricalReturnsWithDates(startDate, endDate);
+    }
+    
+    function solveIRR(cashFlows, guess = 0.1, maxIterations = 1000, tolerance = 1e-10) {
+        let rate = guess;
+        
+        for (let i = 0; i < maxIterations; i++) {
+            let npv = 0;
+            let dnpv = 0;
+            
+            for (let j = 0; j < cashFlows.length; j++) {
+                const t = cashFlows[j].time;
+                const cf = cashFlows[j].amount;
+                const factor = Math.pow(1 + rate, -t);
+                
+                npv += cf * factor;
+                dnpv += cf * (-t) * factor / (1 + rate);
+            }
+            
+            if (Math.abs(npv) < tolerance) {
+                return rate;
+            }
+            
+            if (Math.abs(dnpv) < tolerance) {
+                throw new Error("Cannot converge");
+            }
+            
+            const newRate = rate - npv / dnpv;
+            
+            if (Math.abs(newRate - rate) < tolerance) {
+                return newRate;
+            }
+            
+            rate = newRate;
+        }
+        
+        throw new Error("IRR calculation did not converge");
+    }
+
+    function calculateIRRForCurrency(historyData, transactionData, startDate, endDate, currency) {
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+        const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+
+        if (!startEntry || !endEntry) {
+            throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
+        }
+
+        const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+        
+        const calculateTotalValue = (entry) => {
+            let total = 0;
+            for (const asset in entry.assets) {
+                if (entry.assets[asset] && entry.assets[asset][valueKey]) {
+                    total += entry.assets[asset][valueKey];
+                }
+            }
+            return total;
+        };
+
+        let startValue = calculateTotalValue(startEntry);
+        const endValue = calculateTotalValue(endEntry);
+
+        // Check for investments on the start date and include them in the starting value
+        const startDateTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate.getTime() === startDate.getTime() && tx.currency === currency;
+        });
+
+        if (currency === 'USD') {
+            startDateTransactions.forEach(tx => {
+                if (tx.action === 'increase') {
+                    startValue += tx.amount;
+                }
+            });
+        } else if (currency === 'EUR') {
+            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
+            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
+                startValue += euroInvestmentTx.amount;
+            }
+        }
+
+        const relevantTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate > startDate && txDate < endDate && tx.currency === currency;
+        });
+
+        const cashFlows = [];
+        const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+
+        cashFlows.push({ time: 0, amount: -startValue });
+
+        if (currency === 'USD') {
+            const aggregatedTransactions = new Map();
+            
+            relevantTransactions.forEach(tx => {
+                const txDate = new Date(tx.timestamp);
+                const dateKey = txDate.toISOString().split('T')[0];
+                
+                if (!aggregatedTransactions.has(dateKey)) {
+                    aggregatedTransactions.set(dateKey, {
+                        date: txDate,
+                        totalAmount: 0
+                    });
+                }
+                
+                const cashFlowAmount = tx.action === 'increase' ? -tx.amount : tx.amount;
+                aggregatedTransactions.get(dateKey).totalAmount += cashFlowAmount;
+            });
+
+            aggregatedTransactions.forEach((tx, dateKey) => {
+                const daysFromStart = (tx.date - startDate) / (1000 * 60 * 60 * 24);
+                const timeRatio = daysFromStart / totalDays;
+                cashFlows.push({ time: timeRatio, amount: tx.totalAmount });
+            });
+        } else {
+            const euroInvestmentTx = relevantTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
+            
+            if (euroInvestmentTx) {
+                const txDate = new Date(euroInvestmentTx.timestamp);
+                const daysFromStart = (txDate - startDate) / (1000 * 60 * 60 * 24);
+                const timeRatio = daysFromStart / totalDays;
+                const cashFlowAmount = euroInvestmentTx.action === 'increase' ? -euroInvestmentTx.amount : euroInvestmentTx.amount;
+                
+                cashFlows.push({ time: timeRatio, amount: cashFlowAmount });
+            }
+        }
+
+        cashFlows.push({ time: 1, amount: endValue });
+
+        return { irr: solveIRR(cashFlows), cashFlows };
+    }
+
+    function calculateTWRForCurrency(historyData, transactionData, startDate, endDate, currency) {
+        const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+        
+        const calculateTotalValue = (entry) => {
+            let total = 0;
+            for (const asset in entry.assets) {
+                if (entry.assets[asset] && entry.assets[asset][valueKey]) {
+                    total += entry.assets[asset][valueKey];
+                }
+            }
+            return total;
+        };
+
+        const relevantTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate > startDate && txDate < endDate && tx.currency === currency;
+        });
+
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+        const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+        
+        if (!startEntry || !endEntry) {
+            throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
+        }
+        
+        let startValue = calculateTotalValue(startEntry);
+        const endValue = calculateTotalValue(endEntry);
+
+        // Check for investments on the start date and include them in the starting value
+        const startDateTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate.getTime() === startDate.getTime() && tx.currency === currency;
+        });
+
+        if (currency === 'USD') {
+            startDateTransactions.forEach(tx => {
+                if (tx.action === 'increase') {
+                    startValue += tx.amount;
+                }
+            });
+        } else if (currency === 'EUR') {
+            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
+            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
+                startValue += euroInvestmentTx.amount;
+            }
+        }
+
+        if (relevantTransactions.length === 0) {
+            const twr = (endValue / startValue) - 1;
+            return { twr, subPeriodReturns: [twr] };
+        }
+
+        const cashFlowDates = new Set();
+        relevantTransactions.forEach(tx => {
+            const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
+            cashFlowDates.add(dateKey);
+        });
+
+        const sortedCashFlowDates = Array.from(cashFlowDates).sort();
+        const periodDates = [startDate.toISOString().split('T')[0], ...sortedCashFlowDates, endDate.toISOString().split('T')[0]];
+        
+        const subPeriodReturns = [];
+        let cumulativeCashFlow = 0;
+        
+        for (let i = 0; i < periodDates.length - 1; i++) {
+            const periodStartDate = new Date(periodDates[i]);
+            const periodEndDate = new Date(periodDates[i + 1]);
+            
+            const startEntry = historyData.history.find(entry => entry.date === periodDates[i]);
+            const endEntry = historyData.history.find(entry => entry.date === periodDates[i + 1]);
+            
+            if (!startEntry || !endEntry) {
+                continue;
+            }
+            
+            const startValue = calculateTotalValue(startEntry);
+            const endValue = calculateTotalValue(endEntry);
+            
+            let periodCashFlow = 0;
+            relevantTransactions.forEach(tx => {
+                const txDate = new Date(tx.timestamp);
+                if (txDate > periodStartDate && txDate <= periodEndDate) {
+                    if (currency === 'EUR' && tx.ticker !== 'EURO_INVESTMENT') {
+                        return;
+                    }
+                    if (currency === 'USD' || (currency === 'EUR' && tx.ticker === 'EURO_INVESTMENT')) {
+                        const amount = tx.action === 'increase' ? tx.amount : -tx.amount;
+                        periodCashFlow += amount;
+                    }
+                }
+            });
+            
+            let subPeriodReturn;
+            if (i === 0) {
+                subPeriodReturn = (endValue) / startValue - 1;
+            } else {
+                const portfolioValueAfterInvestments = startValue + cumulativeCashFlow;
+                subPeriodReturn = endValue / portfolioValueAfterInvestments - 1;
+            }
+            subPeriodReturns.push(subPeriodReturn);
+            
+            cumulativeCashFlow += periodCashFlow;
+        }
+
+        const twr = subPeriodReturns.reduce((acc, ret) => acc * (1 + ret), 1) - 1;
+        
+        return { twr, subPeriodReturns };
+    }
+
+    // New function to calculate MWR for Risk Assets (excluding SGOV)
+    function calculateIRRForRiskAssets(historyData, transactionData, startDate, endDate, currency) {
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+        const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+
+        if (!startEntry || !endEntry) {
+            throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
+        }
+
+        const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+        
+        const calculateRiskAssetsValue = (entry) => {
+            let total = 0;
+            for (const asset in entry.assets) {
+                if (asset !== 'SGOV' && entry.assets[asset] && entry.assets[asset][valueKey]) {
+                    total += entry.assets[asset][valueKey];
+                }
+            }
+            return total;
+        };
+
+        let startValue = calculateRiskAssetsValue(startEntry);
+        const endValue = calculateRiskAssetsValue(endEntry);
+
+        // Check for investments on the start date and include them in the starting value (excluding SGOV)
+        const startDateTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV';
+        });
+
+        if (currency === 'USD') {
+            startDateTransactions.forEach(tx => {
+                if (tx.action === 'increase' && tx.ticker !== 'SGOV') {
+                    startValue += tx.amount;
+                }
+            });
+        } else if (currency === 'EUR') {
+            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
+            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
+                // For EUR, we need to exclude the SGOV portion from the euro investment
+                // Calculate what portion of the euro investment went to risk assets
+                const totalEuroInvestment = euroInvestmentTx.amount;
+                const sgovEuroInvestment = initialEuroInvestments['SGOV'] || 0;
+                const totalInitialEuroInvestment = Object.values(initialEuroInvestments).reduce((sum, val) => sum + val, 0);
+                const riskAssetsRatio = (totalInitialEuroInvestment - sgovEuroInvestment) / totalInitialEuroInvestment;
+                startValue += totalEuroInvestment * riskAssetsRatio;
+            }
+        }
+
+        const relevantTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker !== 'SGOV';
+        });
+
+        const cashFlows = [];
+        const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+
+        cashFlows.push({ time: 0, amount: -startValue });
+
+        if (currency === 'USD') {
+            const aggregatedTransactions = new Map();
+            
+            relevantTransactions.forEach(tx => {
+                if (tx.ticker !== 'SGOV') {
+                    const txDate = new Date(tx.timestamp);
+                    const dateKey = txDate.toISOString().split('T')[0];
+                    
+                    if (!aggregatedTransactions.has(dateKey)) {
+                        aggregatedTransactions.set(dateKey, {
+                            date: txDate,
+                            totalAmount: 0
+                        });
+                    }
+                    
+                    const cashFlowAmount = tx.action === 'increase' ? -tx.amount : tx.amount;
+                    aggregatedTransactions.get(dateKey).totalAmount += cashFlowAmount;
+                }
+            });
+
+            aggregatedTransactions.forEach((tx, dateKey) => {
+                const daysFromStart = (tx.date - startDate) / (1000 * 60 * 60 * 24);
+                const timeRatio = daysFromStart / totalDays;
+                cashFlows.push({ time: timeRatio, amount: tx.totalAmount });
+            });
+        } else {
+            const euroInvestmentTx = relevantTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
+            
+            if (euroInvestmentTx) {
+                const txDate = new Date(euroInvestmentTx.timestamp);
+                const daysFromStart = (txDate - startDate) / (1000 * 60 * 60 * 24);
+                const timeRatio = daysFromStart / totalDays;
+                
+                // For EUR, exclude SGOV portion from the euro investment
+                const totalEuroInvestment = euroInvestmentTx.amount;
+                const sgovEuroInvestment = initialEuroInvestments['SGOV'] || 0;
+                const totalInitialEuroInvestment = Object.values(initialEuroInvestments).reduce((sum, val) => sum + val, 0);
+                const riskAssetsRatio = (totalInitialEuroInvestment - sgovEuroInvestment) / totalInitialEuroInvestment;
+                const riskAssetsAmount = totalEuroInvestment * riskAssetsRatio;
+                
+                const cashFlowAmount = euroInvestmentTx.action === 'increase' ? -riskAssetsAmount : riskAssetsAmount;
+                cashFlows.push({ time: timeRatio, amount: cashFlowAmount });
+            }
+        }
+
+        cashFlows.push({ time: 1, amount: endValue });
+
+        return { irr: solveIRR(cashFlows), cashFlows };
+    }
+
+    // New function to calculate TWR for Risk Assets (excluding SGOV)
+    function calculateTWRForRiskAssets(historyData, transactionData, startDate, endDate, currency) {
+        const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+        
+        const calculateRiskAssetsValue = (entry) => {
+            let total = 0;
+            for (const asset in entry.assets) {
+                if (asset !== 'SGOV' && entry.assets[asset] && entry.assets[asset][valueKey]) {
+                    total += entry.assets[asset][valueKey];
+                }
+            }
+            return total;
+        };
+
+        const relevantTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker !== 'SGOV';
+        });
+
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+        const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+        
+        if (!startEntry || !endEntry) {
+            throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
+        }
+        
+        let startValue = calculateRiskAssetsValue(startEntry);
+        const endValue = calculateRiskAssetsValue(endEntry);
+
+        // Check for investments on the start date and include them in the starting value (excluding SGOV)
+        const startDateTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV';
+        });
+
+        if (currency === 'USD') {
+            startDateTransactions.forEach(tx => {
+                if (tx.action === 'increase' && tx.ticker !== 'SGOV') {
+                    startValue += tx.amount;
+                }
+            });
+        } else if (currency === 'EUR') {
+            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
+            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
+                // For EUR, we need to exclude the SGOV portion from the euro investment
+                const totalEuroInvestment = euroInvestmentTx.amount;
+                const sgovEuroInvestment = initialEuroInvestments['SGOV'] || 0;
+                const totalInitialEuroInvestment = Object.values(initialEuroInvestments).reduce((sum, val) => sum + val, 0);
+                const riskAssetsRatio = (totalInitialEuroInvestment - sgovEuroInvestment) / totalInitialEuroInvestment;
+                startValue += totalEuroInvestment * riskAssetsRatio;
+            }
+        }
+
+        if (relevantTransactions.length === 0) {
+            const twr = (endValue / startValue) - 1;
+            return { twr, subPeriodReturns: [twr] };
+        }
+
+        const cashFlowDates = new Set();
+        relevantTransactions.forEach(tx => {
+            if (tx.ticker !== 'SGOV') {
+                const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
+                cashFlowDates.add(dateKey);
+            }
+        });
+
+        const sortedCashFlowDates = Array.from(cashFlowDates).sort();
+        const periodDates = [startDate.toISOString().split('T')[0], ...sortedCashFlowDates, endDate.toISOString().split('T')[0]];
+        
+        const subPeriodReturns = [];
+        let cumulativeCashFlow = 0;
+        
+        for (let i = 0; i < periodDates.length - 1; i++) {
+            const periodStartDate = new Date(periodDates[i]);
+            const periodEndDate = new Date(periodDates[i + 1]);
+            
+            const startEntry = historyData.history.find(entry => entry.date === periodDates[i]);
+            const endEntry = historyData.history.find(entry => entry.date === periodDates[i + 1]);
+            
+            if (!startEntry || !endEntry) {
+                continue;
+            }
+            
+            const startValue = calculateRiskAssetsValue(startEntry);
+            const endValue = calculateRiskAssetsValue(endEntry);
+            
+            let periodCashFlow = 0;
+            relevantTransactions.forEach(tx => {
+                const txDate = new Date(tx.timestamp);
+                if (txDate > periodStartDate && txDate <= periodEndDate && tx.ticker !== 'SGOV') {
+                    if (currency === 'EUR' && tx.ticker !== 'EURO_INVESTMENT') {
+                        return;
+                    }
+                    if (currency === 'USD' || (currency === 'EUR' && tx.ticker === 'EURO_INVESTMENT')) {
+                        let amount;
+                        if (currency === 'EUR' && tx.ticker === 'EURO_INVESTMENT') {
+                            // For EUR, exclude SGOV portion
+                            const totalEuroInvestment = tx.amount;
+                            const sgovEuroInvestment = initialEuroInvestments['SGOV'] || 0;
+                            const totalInitialEuroInvestment = Object.values(initialEuroInvestments).reduce((sum, val) => sum + val, 0);
+                            const riskAssetsRatio = (totalInitialEuroInvestment - sgovEuroInvestment) / totalInitialEuroInvestment;
+                            amount = tx.action === 'increase' ? totalEuroInvestment * riskAssetsRatio : -totalEuroInvestment * riskAssetsRatio;
+                        } else {
+                            amount = tx.action === 'increase' ? tx.amount : -tx.amount;
+                        }
+                        periodCashFlow += amount;
+                    }
+                }
+            });
+            
+            let subPeriodReturn;
+            if (i === 0) {
+                subPeriodReturn = (endValue) / startValue - 1;
+            } else {
+                const portfolioValueAfterInvestments = startValue + cumulativeCashFlow;
+                subPeriodReturn = endValue / portfolioValueAfterInvestments - 1;
+            }
+            subPeriodReturns.push(subPeriodReturn);
+            
+            cumulativeCashFlow += periodCashFlow;
+        }
+
+        const twr = subPeriodReturns.reduce((acc, ret) => acc * (1 + ret), 1) - 1;
+        
+        return { twr, subPeriodReturns };
+    }
+
+    // New function to calculate MWR for individual assets
+    function calculateIRRForAsset(historyData, transactionData, startDate, endDate, currency, assetSymbol) {
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+        const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+
+        if (!startEntry || !endEntry) {
+            throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
+        }
+
+        const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+        
+        const calculateAssetValue = (entry) => {
+            if (entry.assets[assetSymbol] && entry.assets[assetSymbol][valueKey]) {
+                return entry.assets[assetSymbol][valueKey];
+            }
+            return 0;
+        };
+
+        let startValue = calculateAssetValue(startEntry);
+        const endValue = calculateAssetValue(endEntry);
+
+        // Check for investments on the start date for this specific asset
+        const startDateTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker === assetSymbol;
+        });
+
+        if (currency === 'USD') {
+            startDateTransactions.forEach(tx => {
+                if (tx.action === 'increase' && tx.ticker === assetSymbol) {
+                    startValue += tx.amount;
+                }
+            });
+        } else if (currency === 'EUR') {
+            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === assetSymbol);
+            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
+                startValue += euroInvestmentTx.amount;
+            }
+        }
+
+        const relevantTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker === assetSymbol;
+        });
+
+        const cashFlows = [];
+        const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+
+        cashFlows.push({ time: 0, amount: -startValue });
+
+        relevantTransactions.forEach(tx => {
+            if (tx.ticker === assetSymbol) {
+                const txDate = new Date(tx.timestamp);
+                const daysFromStart = (txDate - startDate) / (1000 * 60 * 60 * 24);
+                const timeRatio = daysFromStart / totalDays;
+                const cashFlowAmount = tx.action === 'increase' ? -tx.amount : tx.amount;
+                cashFlows.push({ time: timeRatio, amount: cashFlowAmount });
+            }
+        });
+
+        cashFlows.push({ time: 1, amount: endValue });
+
+        return { irr: solveIRR(cashFlows), cashFlows };
+    }
+
+    // New function to calculate TWR for individual assets
+    function calculateTWRForAsset(historyData, transactionData, startDate, endDate, currency, assetSymbol) {
+        const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+        
+        const calculateAssetValue = (entry) => {
+            if (entry.assets[assetSymbol] && entry.assets[assetSymbol][valueKey]) {
+                return entry.assets[assetSymbol][valueKey];
+            }
+            return 0;
+        };
+
+        const relevantTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker === assetSymbol;
+        });
+
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+        const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+        
+        if (!startEntry || !endEntry) {
+            throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
+        }
+        
+        let startValue = calculateAssetValue(startEntry);
+        const endValue = calculateAssetValue(endEntry);
+
+        // Check for investments on the start date for this specific asset
+        const startDateTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker === assetSymbol;
+        });
+
+        if (currency === 'USD') {
+            startDateTransactions.forEach(tx => {
+                if (tx.action === 'increase' && tx.ticker === assetSymbol) {
+                    startValue += tx.amount;
+                }
+            });
+        } else if (currency === 'EUR') {
+            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === assetSymbol);
+            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
+                startValue += euroInvestmentTx.amount;
+            }
+        }
+
+        if (relevantTransactions.length === 0) {
+            const twr = (endValue / startValue) - 1;
+            return { twr, subPeriodReturns: [twr] };
+        }
+
+        const cashFlowDates = new Set();
+        relevantTransactions.forEach(tx => {
+            if (tx.ticker === assetSymbol) {
+                const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
+                cashFlowDates.add(dateKey);
+            }
+        });
+
+        const sortedCashFlowDates = Array.from(cashFlowDates).sort();
+        const periodDates = [startDate.toISOString().split('T')[0], ...sortedCashFlowDates, endDate.toISOString().split('T')[0]];
+        
+        const subPeriodReturns = [];
+        let cumulativeCashFlow = 0;
+        
+        for (let i = 0; i < periodDates.length - 1; i++) {
+            const periodStartDate = new Date(periodDates[i]);
+            const periodEndDate = new Date(periodDates[i + 1]);
+            
+            const startEntry = historyData.history.find(entry => entry.date === periodDates[i]);
+            const endEntry = historyData.history.find(entry => entry.date === periodDates[i + 1]);
+            
+            if (!startEntry || !endEntry) {
+                continue;
+            }
+            
+            const startValue = calculateAssetValue(startEntry);
+            const endValue = calculateAssetValue(endEntry);
+            
+            let periodCashFlow = 0;
+            relevantTransactions.forEach(tx => {
+                const txDate = new Date(tx.timestamp);
+                if (txDate > periodStartDate && txDate <= periodEndDate && tx.ticker === assetSymbol) {
+                    const amount = tx.action === 'increase' ? tx.amount : -tx.amount;
+                    periodCashFlow += amount;
+                }
+            });
+            
+            let subPeriodReturn;
+            if (i === 0) {
+                subPeriodReturn = (endValue) / startValue - 1;
+            } else {
+                const portfolioValueAfterInvestments = startValue + cumulativeCashFlow;
+                subPeriodReturn = endValue / portfolioValueAfterInvestments - 1;
+            }
+            subPeriodReturns.push(subPeriodReturn);
+            
+            cumulativeCashFlow += periodCashFlow;
+        }
+
+        const twr = subPeriodReturns.reduce((acc, ret) => acc * (1 + ret), 1) - 1;
+        
+        return { twr, subPeriodReturns };
+    }
+
+    async function calculateHistoricalReturnsWithDates(startDate, endDate) {
+        const resultsDiv = document.getElementById('historical-results');
+        
+        try {
+            const historyResponse = await fetch('portfolio_history.json');
+            const transactionResponse = await fetch('portfolio_transactions.json');
+            
+            if (!historyResponse.ok || !transactionResponse.ok) {
+                throw new Error('Failed to load portfolio data');
+            }
+            
+            const historyData = await historyResponse.json();
+            const transactionData = await transactionResponse.json();
+            
+            let usdResult, eurResult, usdRiskResult, eurRiskResult;
+            const assetResults = {};
+            const assets = ['VOO', 'NANC', 'IAU', 'SGOV', 'BINANCE:BTCUSDT'];
+
+            if (currentReturnType === 'mwr') {
+                // Total portfolio
+                usdResult = calculateIRRForCurrency(historyData, transactionData, startDate, endDate, 'USD');
+                eurResult = calculateIRRForCurrency(historyData, transactionData, startDate, endDate, 'EUR');
+                
+                // Risk Assets (excluding SGOV)
+                usdRiskResult = calculateIRRForRiskAssets(historyData, transactionData, startDate, endDate, 'USD');
+                eurRiskResult = calculateIRRForRiskAssets(historyData, transactionData, startDate, endDate, 'EUR');
+                
+                // Individual assets
+                assets.forEach(asset => {
+                    try {
+                        assetResults[asset] = {
+                            usd: calculateIRRForAsset(historyData, transactionData, startDate, endDate, 'USD', asset),
+                            eur: calculateIRRForAsset(historyData, transactionData, startDate, endDate, 'EUR', asset)
+                        };
+                    } catch (error) {
+                        assetResults[asset] = { usd: null, eur: null };
+                    }
+                });
+            } else {
+                // Total portfolio
+                usdResult = calculateTWRForCurrency(historyData, transactionData, startDate, endDate, 'USD');
+                eurResult = calculateTWRForCurrency(historyData, transactionData, startDate, endDate, 'EUR');
+                
+                // Risk Assets (excluding SGOV)
+                usdRiskResult = calculateTWRForRiskAssets(historyData, transactionData, startDate, endDate, 'USD');
+                eurRiskResult = calculateTWRForRiskAssets(historyData, transactionData, startDate, endDate, 'EUR');
+                
+                // Individual assets
+                assets.forEach(asset => {
+                    try {
+                        assetResults[asset] = {
+                            usd: calculateTWRForAsset(historyData, transactionData, startDate, endDate, 'USD', asset),
+                            eur: calculateTWRForAsset(historyData, transactionData, startDate, endDate, 'EUR', asset)
+                        };
+                    } catch (error) {
+                        assetResults[asset] = { usd: null, eur: null };
+                    }
+                });
+            }
+
+            const usdValue = currentReturnType === 'mwr' ? usdResult.irr : usdResult.twr;
+            const eurValue = currentReturnType === 'mwr' ? eurResult.irr : eurResult.twr;
+            const usdRiskValue = currentReturnType === 'mwr' ? usdRiskResult.irr : usdRiskResult.twr;
+            const eurRiskValue = currentReturnType === 'mwr' ? eurRiskResult.irr : eurRiskResult.twr;
+
+            // Show only the currency that matches the current display currency
+            let htmlContent = '';
+            const currency = displayCurrency;
+            const totalValue = currency === 'EUR' ? eurValue : usdValue;
+            const riskValue = currency === 'EUR' ? eurRiskValue : usdRiskValue;
+            
+            htmlContent = `
+                <div class="historical-results-container">
+                    <div class="historical-portfolio-values">
+                        <div class="historical-value-item">
+                            <span class="historical-label">Total</span>
+                            <span class="historical-value ${totalValue >= 0 ? 'positive' : 'negative'}">
+                                ${totalValue >= 0 ? '+' : ''}${(totalValue * 100).toFixed(2)}%
+                            </span>
+                        </div>
+                        <div class="historical-value-item">
+                            <span class="historical-label">Risk Assets</span>
+                            <span class="historical-value ${riskValue >= 0 ? 'positive' : 'negative'}">
+                                ${riskValue >= 0 ? '+' : ''}${(riskValue * 100).toFixed(2)}%
+                            </span>
+                        </div>
+                    </div>
+                    <div class="historical-assets">
+                        <div class="historical-assets-grid">
+            `;
+            
+            // Use consistent order: BTC, IAU, VOO, NANC, SGOV
+            const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'SGOV'];
+
+            orderedAssets.forEach(asset => {
+                const assetResult = assetResults[asset];
+                const assetValue = assetResult && assetResult[currency.toLowerCase()] ? 
+                    (currentReturnType === 'mwr' ? assetResult[currency.toLowerCase()].irr : assetResult[currency.toLowerCase()].twr) : null;
+                const displayName = asset === 'BINANCE:BTCUSDT' ? 'BTC' : asset;
+                
+                if (assetValue !== null) {
+                    htmlContent += `
+                        <div class="historical-asset-item">
+                            <span class="historical-asset-name">${displayName}</span>
+                            <span class="historical-asset-value ${assetValue >= 0 ? 'positive' : 'negative'}">
+                                ${assetValue >= 0 ? '+' : ''}${(assetValue * 100).toFixed(2)}%
+                            </span>
+                        </div>
+                    `;
+                } else {
+                    htmlContent += `
+                        <div class="historical-asset-item">
+                            <span class="historical-asset-name">${displayName}</span>
+                            <span class="historical-asset-value neutral">N/A</span>
+                        </div>
+                    `;
+                }
+            });
+            
+            htmlContent += `
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            resultsDiv.innerHTML = htmlContent;
+
+        } catch (error) {
+            resultsDiv.innerHTML = `
+                <div class="message message-error">
+                    Error: ${error.message}
+                </div>
+            `;
+        }
+    }
 
     fetchInitialData(); // Start the process
 
@@ -1859,6 +2597,7 @@ function calculateReturn(startValue, endValue) {
         const errorDiv = document.getElementById('returns-error');
         if (errorDiv) {
             errorDiv.innerHTML = 'Failed to load data. <a href="#" onclick="loadAssetReturns(); return false;" style="color: inherit; text-decoration: underline;">Retry</a>';
+            errorDiv.className = 'message message-error';
             errorDiv.style.display = 'block';
         }
     }
@@ -1883,3 +2622,9 @@ function calculateReturn(startValue, endValue) {
     }, 1000);
 
 });
+
+
+
+
+
+
