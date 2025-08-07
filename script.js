@@ -49,7 +49,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const mainEuroValueEl = document.getElementById('main-euro-value');
     const mainTotalPnlEl = document.getElementById('main-total-pnl');
     const mainPnlBadgeEl = document.getElementById('main-pnl-badge');
-    const currencySwitchBtn = document.getElementById('currency-switch-btn');
+    const floatingCurrencySwitchBtn = document.getElementById('floating-currency-switch-btn');
+    const currencyPrimary = document.getElementById('currency-primary');
+    const currencySecondary = document.getElementById('currency-secondary');
     const tableHeaders = portfolioTable.querySelectorAll('th');
     const timeframeSelectEl = document.getElementById('timeframe-select'); // New timeframe selector
     
@@ -627,6 +629,37 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         updateAssetReturnsDisplay();
     }
 
+    function updateDualCurrencyButton() {
+        if (displayCurrency === 'USD') {
+            currencyPrimary.textContent = '$';
+            currencySecondary.textContent = '€';
+            currencyPrimary.className = 'currency-primary';
+            currencySecondary.className = 'currency-secondary';
+        } else {
+            currencyPrimary.textContent = '€';
+            currencySecondary.textContent = '$';
+            currencyPrimary.className = 'currency-primary';
+            currencySecondary.className = 'currency-secondary';
+        }
+    }
+
+    function toggleCurrencyWithAnimation() {
+        // Add animation classes
+        currencyPrimary.classList.add('currency-swap-out');
+        currencySecondary.classList.add('currency-swap-in');
+        
+        // Wait for animation to reach midpoint, then swap content
+        setTimeout(() => {
+            toggleCurrency();
+            
+            // Remove animation classes and reset
+            setTimeout(() => {
+                currencyPrimary.classList.remove('currency-swap-out');
+                currencySecondary.classList.remove('currency-swap-in');
+            }, 150);
+        }, 150);
+    }
+
     function togglePieChartView() {
         pieChartViewMode = (pieChartViewMode === 'market') ? 'invested' : 'market';
         
@@ -1120,7 +1153,8 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         mainTotalPnlEl.className = totalPnlPrimary >= 0 ? 'positive' : 'negative';
         mainPnlBadgeEl.textContent = `${totalPnLPercentagePrimary >= 0 ? '+' : ''}${totalPnLPercentagePrimary.toFixed(2)}%`;
         mainPnlBadgeEl.className = `badge ${totalPnLPercentagePrimary >= 0 ? 'positive' : 'negative'}`;
-        currencySwitchBtn.textContent = `${secondaryCurrency}`;
+        // Update dual currency button display
+        updateDualCurrencyButton();
 
         createPieChart();
         loadHistoryChart();
@@ -1138,7 +1172,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     tableHeaders.forEach((header, index) => {
         header.addEventListener('click', () => sortTable(index));
     });
-    currencySwitchBtn.addEventListener('click', toggleCurrency);
+    floatingCurrencySwitchBtn.addEventListener('click', toggleCurrencyWithAnimation);
 
     // --- Event Listener for Pie Chart Toggle --- //
     const pieChartToggleBtn = document.getElementById('pie-chart-toggle-btn');
@@ -1760,31 +1794,18 @@ function calculateReturn(startValue, endValue) {
         // Check for investments on the start date and include them in the starting value (excluding SGOV)
         const startDateTransactions = transactionData.transactions.filter(tx => {
             const txDate = new Date(tx.timestamp);
-            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV';
+            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'EURO_INVESTMENT';
         });
 
-        if (currency === 'USD') {
-            startDateTransactions.forEach(tx => {
-                if (tx.action === 'increase' && tx.ticker !== 'SGOV') {
-                    startValue += tx.amount;
-                }
-            });
-        } else if (currency === 'EUR') {
-            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
-            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
-                // For EUR, we need to exclude the SGOV portion from the euro investment
-                // Calculate what portion of the euro investment went to risk assets
-                const totalEuroInvestment = euroInvestmentTx.amount;
-                const sgovEuroInvestment = initialEuroInvestments['SGOV'] || 0;
-                const totalInitialEuroInvestment = Object.values(initialEuroInvestments).reduce((sum, val) => sum + val, 0);
-                const riskAssetsRatio = (totalInitialEuroInvestment - sgovEuroInvestment) / totalInitialEuroInvestment;
-                startValue += totalEuroInvestment * riskAssetsRatio;
+        startDateTransactions.forEach(tx => {
+            if (tx.action === 'increase') {
+                startValue += tx.amount;
             }
-        }
+        });
 
         const relevantTransactions = transactionData.transactions.filter(tx => {
             const txDate = new Date(tx.timestamp);
-            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker !== 'SGOV';
+            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'EURO_INVESTMENT';
         });
 
         const cashFlows = [];
@@ -1818,23 +1839,30 @@ function calculateReturn(startValue, endValue) {
                 cashFlows.push({ time: timeRatio, amount: tx.totalAmount });
             });
         } else {
-            const euroInvestmentTx = relevantTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
+            const aggregatedTransactions = new Map();
             
-            if (euroInvestmentTx) {
-                const txDate = new Date(euroInvestmentTx.timestamp);
-                const daysFromStart = (txDate - startDate) / (1000 * 60 * 60 * 24);
+            relevantTransactions.forEach(tx => {
+                const txDate = new Date(tx.timestamp);
+                const dateKey = txDate.toISOString().split('T')[0];
+                
+                if (!aggregatedTransactions.has(dateKey)) {
+                    aggregatedTransactions.set(dateKey, {
+                        date: txDate,
+                        totalAmount: 0
+                    });
+                }
+                
+                const amount = tx.action === 'increase' ? tx.amount : -tx.amount;
+                aggregatedTransactions.get(dateKey).totalAmount += amount;
+            });
+            
+            aggregatedTransactions.forEach(({ date, totalAmount }) => {
+                const daysFromStart = (date - startDate) / (1000 * 60 * 60 * 24);
                 const timeRatio = daysFromStart / totalDays;
                 
-                // For EUR, exclude SGOV portion from the euro investment
-                const totalEuroInvestment = euroInvestmentTx.amount;
-                const sgovEuroInvestment = initialEuroInvestments['SGOV'] || 0;
-                const totalInitialEuroInvestment = Object.values(initialEuroInvestments).reduce((sum, val) => sum + val, 0);
-                const riskAssetsRatio = (totalInitialEuroInvestment - sgovEuroInvestment) / totalInitialEuroInvestment;
-                const riskAssetsAmount = totalEuroInvestment * riskAssetsRatio;
-                
-                const cashFlowAmount = euroInvestmentTx.action === 'increase' ? -riskAssetsAmount : riskAssetsAmount;
+                const cashFlowAmount = -totalAmount;
                 cashFlows.push({ time: timeRatio, amount: cashFlowAmount });
-            }
+            });
         }
 
         cashFlows.push({ time: 1, amount: endValue });
@@ -1858,7 +1886,7 @@ function calculateReturn(startValue, endValue) {
 
         const relevantTransactions = transactionData.transactions.filter(tx => {
             const txDate = new Date(tx.timestamp);
-            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker !== 'SGOV';
+            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'EURO_INVESTMENT';
         });
 
         const startDateStr = startDate.toISOString().split('T')[0];
@@ -1877,26 +1905,14 @@ function calculateReturn(startValue, endValue) {
         // Check for investments on the start date and include them in the starting value (excluding SGOV)
         const startDateTransactions = transactionData.transactions.filter(tx => {
             const txDate = new Date(tx.timestamp);
-            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV';
+            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'EURO_INVESTMENT';
         });
 
-        if (currency === 'USD') {
-            startDateTransactions.forEach(tx => {
-                if (tx.action === 'increase' && tx.ticker !== 'SGOV') {
-                    startValue += tx.amount;
-                }
-            });
-        } else if (currency === 'EUR') {
-            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
-            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
-                // For EUR, we need to exclude the SGOV portion from the euro investment
-                const totalEuroInvestment = euroInvestmentTx.amount;
-                const sgovEuroInvestment = initialEuroInvestments['SGOV'] || 0;
-                const totalInitialEuroInvestment = Object.values(initialEuroInvestments).reduce((sum, val) => sum + val, 0);
-                const riskAssetsRatio = (totalInitialEuroInvestment - sgovEuroInvestment) / totalInitialEuroInvestment;
-                startValue += totalEuroInvestment * riskAssetsRatio;
+        startDateTransactions.forEach(tx => {
+            if (tx.action === 'increase') {
+                startValue += tx.amount;
             }
-        }
+        });
 
         if (relevantTransactions.length === 0) {
             const twr = (endValue / startValue) - 1;
@@ -1905,10 +1921,8 @@ function calculateReturn(startValue, endValue) {
 
         const cashFlowDates = new Set();
         relevantTransactions.forEach(tx => {
-            if (tx.ticker !== 'SGOV') {
-                const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
-                cashFlowDates.add(dateKey);
-            }
+            const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
+            cashFlowDates.add(dateKey);
         });
 
         const sortedCashFlowDates = Array.from(cashFlowDates).sort();
@@ -1934,24 +1948,9 @@ function calculateReturn(startValue, endValue) {
             let periodCashFlow = 0;
             relevantTransactions.forEach(tx => {
                 const txDate = new Date(tx.timestamp);
-                if (txDate > periodStartDate && txDate <= periodEndDate && tx.ticker !== 'SGOV') {
-                    if (currency === 'EUR' && tx.ticker !== 'EURO_INVESTMENT') {
-                        return;
-                    }
-                    if (currency === 'USD' || (currency === 'EUR' && tx.ticker === 'EURO_INVESTMENT')) {
-                        let amount;
-                        if (currency === 'EUR' && tx.ticker === 'EURO_INVESTMENT') {
-                            // For EUR, exclude SGOV portion
-                            const totalEuroInvestment = tx.amount;
-                            const sgovEuroInvestment = initialEuroInvestments['SGOV'] || 0;
-                            const totalInitialEuroInvestment = Object.values(initialEuroInvestments).reduce((sum, val) => sum + val, 0);
-                            const riskAssetsRatio = (totalInitialEuroInvestment - sgovEuroInvestment) / totalInitialEuroInvestment;
-                            amount = tx.action === 'increase' ? totalEuroInvestment * riskAssetsRatio : -totalEuroInvestment * riskAssetsRatio;
-                        } else {
-                            amount = tx.action === 'increase' ? tx.amount : -tx.amount;
-                        }
-                        periodCashFlow += amount;
-                    }
+                if (txDate > periodStartDate && txDate <= periodEndDate) {
+                    const amount = tx.action === 'increase' ? tx.amount : -tx.amount;
+                    periodCashFlow += amount;
                 }
             });
             
