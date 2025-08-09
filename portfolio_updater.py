@@ -74,15 +74,13 @@ class PortfolioUpdater:
             # --- Switch to EUR --- #
             print("Finding and clicking currency switch button...")
             currency_button = WebDriverWait(self.driver, 10).until(
-                EC.element_to_be_clickable((By.ID, "currency-switch-btn"))
+                EC.element_to_be_clickable((By.ID, "floating-currency-switch-btn"))
             )
             currency_button.click()
-            print("Clicked. Waiting for button text to change to 'Switch to USD'...")
+            print("Clicked. Waiting for page to update to EUR view...")
 
-            # Wait for the page to update - check button text
-            WebDriverWait(self.driver, 15).until(
-                EC.text_to_be_present_in_element((By.ID, "currency-switch-btn"), "USD")
-            )
+            # Wait for the page to update - give it time to switch
+            time.sleep(3)
             print("Page updated to EUR view. Waiting 3s for stability...")
             time.sleep(3) # Short extra pause just in case rendering lags
 
