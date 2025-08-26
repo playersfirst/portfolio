@@ -153,6 +153,116 @@
       "newAmount": 31999,
       "difference": 409,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "NANC",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 1150,
+      "oldAmount": 2709,
+      "newAmount": 3859,
+      "difference": 1150,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 350,
+      "oldAmount": 3972,
+      "newAmount": 4322,
+      "difference": 350,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "SGOV",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 820,
+      "oldAmount": 20737,
+      "newAmount": 21557,
+      "difference": 820,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "NANC",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 991,
+      "oldAmount": 2376,
+      "newAmount": 3367,
+      "difference": 991,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 302,
+      "oldAmount": 3535,
+      "newAmount": 3837,
+      "difference": 302,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "SGOV",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 991,
+      "oldAmount": 18438,
+      "newAmount": 19429,
+      "difference": 991,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "NANC",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 26.565600000000003,
+      "oldAmount": 68.0375,
+      "newAmount": 94.6031,
+      "difference": 26.565600000000003,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 5.499200000000002,
+      "oldAmount": 67.1965,
+      "newAmount": 72.6957,
+      "difference": 5.499200000000002,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 8.145800000000008,
+      "oldAmount": 208.0238,
+      "newAmount": 216.1696,
+      "difference": 8.145800000000008,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-08-26T13:55:45.279Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 2000,
+      "oldAmount": 31999,
+      "newAmount": 33999,
+      "difference": 2000,
+      "currency": "EUR"
     }
   ]
 }
