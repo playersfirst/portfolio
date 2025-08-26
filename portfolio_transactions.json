@@ -274,6 +274,39 @@
       "newAmount": 19145,
       "difference": -284,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-26T14:10:50.070Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 6,
+      "oldAmount": 2267,
+      "newAmount": 2273,
+      "difference": 6,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-08-26T14:10:50.070Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 5,
+      "oldAmount": 2041,
+      "newAmount": 2046,
+      "difference": 5,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-08-26T14:10:50.070Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.009399999999999409,
+      "oldAmount": 4.4046,
+      "newAmount": 4.414,
+      "difference": 0.009399999999999409,
+      "currency": "units"
     }
   ]
 }
