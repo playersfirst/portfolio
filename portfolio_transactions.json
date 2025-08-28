@@ -214,10 +214,10 @@
       "ticker": "SGOV",
       "type": "initial_euro_investment",
       "action": "increase",
-      "amount": 991,
+      "amount": 707,
       "oldAmount": 18438,
-      "newAmount": 19429,
-      "difference": 991,
+      "newAmount": 19145,
+      "difference": 707,
       "currency": "EUR"
     },
     {
@@ -262,17 +262,6 @@
       "oldAmount": 31999,
       "newAmount": 33999,
       "difference": 2000,
-      "currency": "EUR"
-    },
-    {
-      "timestamp": "2025-08-26T14:01:20.187Z",
-      "ticker": "SGOV",
-      "type": "initial_euro_investment",
-      "action": "decrease",
-      "amount": 284,
-      "oldAmount": 19429,
-      "newAmount": 19145,
-      "difference": -284,
       "currency": "EUR"
     },
     {
