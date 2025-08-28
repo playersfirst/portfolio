@@ -1673,10 +1673,10 @@ function calculateTWRForCurrency(historyData, transactionData, startDate, endDat
         return total;
     };
 
-    // Get all relevant transactions (excluding start date transactions from cash flows)
+    // Get relevant transactions (AFTER start, BEFORE end)
     const relevantTransactions = transactionData.transactions.filter(tx => {
         const txDate = new Date(tx.timestamp);
-        return txDate > startDate && txDate <= endDate && tx.currency === currency; // Changed to <= for end date
+        return txDate > startDate && txDate < endDate && tx.currency === currency;
     });
 
     const startDateStr = startDate.toISOString().split('T')[0];
@@ -1689,11 +1689,10 @@ function calculateTWRForCurrency(historyData, transactionData, startDate, endDat
         throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
     }
     
-    // Starting value includes any investments made on the start date
     let startValue = calculateTotalValue(startEntry);
     const endValue = calculateTotalValue(endEntry);
 
-    // Add start date investments to starting value (these are not cash flows)
+    // Include start date investments in starting value
     const startDateTransactions = transactionData.transactions.filter(tx => {
         const txDate = new Date(tx.timestamp);
         return txDate.getTime() === startDate.getTime() && tx.currency === currency;
@@ -1706,15 +1705,15 @@ function calculateTWRForCurrency(historyData, transactionData, startDate, endDat
             }
         });
     } else if (currency === 'EUR') {
-        // For EUR, handle EURO_INVESTMENT transactions
         const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
         if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
             startValue += euroInvestmentTx.amount;
         }
     }
 
-    // If no cash flows during period, simple calculation
+    // If no cash flows during the period
     if (relevantTransactions.length === 0) {
+        if (startValue === 0) return { twr: 0, subPeriodReturns: [0] };
         const twr = (endValue / startValue) - 1;
         return { twr, subPeriodReturns: [twr] };
     }
@@ -1740,7 +1739,7 @@ function calculateTWRForCurrency(historyData, transactionData, startDate, endDat
     });
 
     const cashFlowDates = Array.from(cashFlowsByDate.keys()).sort();
-    const periodDates = [startDate.toISOString().split('T')[0], ...cashFlowDates, endDate.toISOString().split('T')[0]];
+    const periodDates = [startDateStr, ...cashFlowDates, endDateStr];
     
     const subPeriodReturns = [];
     
@@ -1748,29 +1747,29 @@ function calculateTWRForCurrency(historyData, transactionData, startDate, endDat
         const periodStartEntry = historyData.history.find(entry => entry.date === periodDates[i]);
         const periodEndEntry = historyData.history.find(entry => entry.date === periodDates[i + 1]);
         
-        if (!periodStartEntry || !periodEndEntry) {
-            continue;
-        }
+        if (!periodStartEntry || !periodEndEntry) continue;
         
         const periodStartValue = calculateTotalValue(periodStartEntry);
         const periodEndValue = calculateTotalValue(periodEndEntry);
         
-        // Cash flows occur at the END of each period (before period end value)
+        // Cash flows occur at the end of the period
         const periodCashFlow = cashFlowsByDate.get(periodDates[i + 1]) || 0;
         
-        // TWR formula: (End Value) / (Start Value + Cash Flow) - 1
-        const adjustedStartValue = periodStartValue;
-        const subPeriodReturn = (periodEndValue) / (adjustedStartValue + periodCashFlow) - 1;
-        
-        subPeriodReturns.push(subPeriodReturn);
+        // TWR: End Value / (Start Value + Cash Flow) - 1
+        const denominator = periodStartValue + periodCashFlow;
+        if (denominator === 0) {
+            subPeriodReturns.push(0);
+        } else {
+            const subPeriodReturn = (periodEndValue / denominator) - 1;
+            subPeriodReturns.push(subPeriodReturn);
+        }
     }
 
-    // Calculate compound return
+    // Compound the returns
     const twr = subPeriodReturns.reduce((acc, ret) => acc * (1 + ret), 1) - 1;
     
     return { twr, subPeriodReturns };
 }
-
     // New function to calculate MWR for Risk Assets (excluding SGOV)
     function calculateIRRForRiskAssets(historyData, transactionData, startDate, endDate, currency) {
         const startDateStr = startDate.toISOString().split('T')[0];
@@ -1879,104 +1878,105 @@ function calculateTWRForCurrency(historyData, transactionData, startDate, endDat
 
     // New function to calculate TWR for Risk Assets (excluding SGOV)
     function calculateTWRForRiskAssets(historyData, transactionData, startDate, endDate, currency) {
-        const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
-        
-        const calculateRiskAssetsValue = (entry) => {
-            let total = 0;
-            for (const asset in entry.assets) {
-                if (asset !== 'SGOV' && entry.assets[asset] && entry.assets[asset][valueKey]) {
-                    total += entry.assets[asset][valueKey];
-                }
+    const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+    
+    const calculateRiskAssetsValue = (entry) => {
+        let total = 0;
+        for (const asset in entry.assets) {
+            if (asset !== 'SGOV' && entry.assets[asset] && entry.assets[asset][valueKey]) {
+                total += entry.assets[asset][valueKey];
             }
-            return total;
-        };
-
-        const relevantTransactions = transactionData.transactions.filter(tx => {
-            const txDate = new Date(tx.timestamp);
-            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'EURO_INVESTMENT';
-        });
-
-        const startDateStr = startDate.toISOString().split('T')[0];
-        const endDateStr = endDate.toISOString().split('T')[0];
-        
-        const startEntry = historyData.history.find(entry => entry.date === startDateStr);
-        const endEntry = historyData.history.find(entry => entry.date === endDateStr);
-        
-        if (!startEntry || !endEntry) {
-            throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
         }
-        
-        let startValue = calculateRiskAssetsValue(startEntry);
-        const endValue = calculateRiskAssetsValue(endEntry);
+        return total;
+    };
 
-        // Check for investments on the start date and include them in the starting value (excluding SGOV)
-        const startDateTransactions = transactionData.transactions.filter(tx => {
-            const txDate = new Date(tx.timestamp);
-            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'EURO_INVESTMENT';
-        });
+    // Get relevant transactions (excluding SGOV and EURO_INVESTMENT)
+    const relevantTransactions = transactionData.transactions.filter(tx => {
+        const txDate = new Date(tx.timestamp);
+        return txDate > startDate && txDate < endDate && 
+               tx.currency === currency && 
+               tx.ticker !== 'SGOV' && 
+               tx.ticker !== 'EURO_INVESTMENT';
+    });
 
-        startDateTransactions.forEach(tx => {
-            if (tx.action === 'increase') {
-                startValue += tx.amount;
-            }
-        });
-
-        if (relevantTransactions.length === 0) {
-            const twr = (endValue / startValue) - 1;
-            return { twr, subPeriodReturns: [twr] };
-        }
-
-        const cashFlowDates = new Set();
-        relevantTransactions.forEach(tx => {
-            const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
-            cashFlowDates.add(dateKey);
-        });
-
-        const sortedCashFlowDates = Array.from(cashFlowDates).sort();
-        const periodDates = [startDate.toISOString().split('T')[0], ...sortedCashFlowDates, endDate.toISOString().split('T')[0]];
-        
-        const subPeriodReturns = [];
-        let cumulativeCashFlow = 0;
-        
-        for (let i = 0; i < periodDates.length - 1; i++) {
-            const periodStartDate = new Date(periodDates[i]);
-            const periodEndDate = new Date(periodDates[i + 1]);
-            
-            const startEntry = historyData.history.find(entry => entry.date === periodDates[i]);
-            const endEntry = historyData.history.find(entry => entry.date === periodDates[i + 1]);
-            
-            if (!startEntry || !endEntry) {
-                continue;
-            }
-            
-            const startValue = calculateRiskAssetsValue(startEntry);
-            const endValue = calculateRiskAssetsValue(endEntry);
-            
-            let periodCashFlow = 0;
-            relevantTransactions.forEach(tx => {
-                const txDate = new Date(tx.timestamp);
-                if (txDate > periodStartDate && txDate <= periodEndDate) {
-                    const amount = tx.action === 'increase' ? tx.amount : -tx.amount;
-                    periodCashFlow += amount;
-                }
-            });
-            
-            let subPeriodReturn;
-            if (i === 0) {
-                subPeriodReturn = (endValue) / startValue - 1;
-            } else {
-                const portfolioValueAfterInvestments = startValue + cumulativeCashFlow;
-                subPeriodReturn = endValue / portfolioValueAfterInvestments - 1;
-            }
-            subPeriodReturns.push(subPeriodReturn);
-            
-            cumulativeCashFlow += periodCashFlow;
-        }
-
-        const twr = subPeriodReturns.reduce((acc, ret) => acc * (1 + ret), 1) - 1;
-        
-        return { twr, subPeriodReturns };
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+    
+    const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+    const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+    
+    if (!startEntry || !endEntry) {
+        throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
     }
+    
+    let startValue = calculateRiskAssetsValue(startEntry);
+    const endValue = calculateRiskAssetsValue(endEntry);
+
+    // Include start date risk asset investments
+    const startDateTransactions = transactionData.transactions.filter(tx => {
+        const txDate = new Date(tx.timestamp);
+        return txDate.getTime() === startDate.getTime() && 
+               tx.currency === currency && 
+               tx.ticker !== 'SGOV' && 
+               tx.ticker !== 'EURO_INVESTMENT';
+    });
+
+    startDateTransactions.forEach(tx => {
+        if (tx.action === 'increase') {
+            startValue += tx.amount;
+        }
+    });
+
+    // If no cash flows during the period
+    if (relevantTransactions.length === 0) {
+        if (startValue === 0) return { twr: 0, subPeriodReturns: [0] };
+        const twr = (endValue / startValue) - 1;
+        return { twr, subPeriodReturns: [twr] };
+    }
+
+    // Group cash flows by date
+    const cashFlowsByDate = new Map();
+    relevantTransactions.forEach(tx => {
+        const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
+        if (!cashFlowsByDate.has(dateKey)) {
+            cashFlowsByDate.set(dateKey, 0);
+        }
+        const amount = tx.action === 'increase' ? tx.amount : -tx.amount;
+        cashFlowsByDate.set(dateKey, cashFlowsByDate.get(dateKey) + amount);
+    });
+
+    const cashFlowDates = Array.from(cashFlowsByDate.keys()).sort();
+    const periodDates = [startDateStr, ...cashFlowDates, endDateStr];
+    
+    const subPeriodReturns = [];
+    
+    for (let i = 0; i < periodDates.length - 1; i++) {
+        const periodStartEntry = historyData.history.find(entry => entry.date === periodDates[i]);
+        const periodEndEntry = historyData.history.find(entry => entry.date === periodDates[i + 1]);
+        
+        if (!periodStartEntry || !periodEndEntry) continue;
+        
+        const periodStartValue = calculateRiskAssetsValue(periodStartEntry);
+        const periodEndValue = calculateRiskAssetsValue(periodEndEntry);
+        
+        // Cash flows occur at the end of the period
+        const periodCashFlow = cashFlowsByDate.get(periodDates[i + 1]) || 0;
+        
+        // TWR: End Value / (Start Value + Cash Flow) - 1
+        const denominator = periodStartValue + periodCashFlow;
+        if (denominator === 0) {
+            subPeriodReturns.push(0);
+        } else {
+            const subPeriodReturn = (periodEndValue / denominator) - 1;
+            subPeriodReturns.push(subPeriodReturn);
+        }
+    }
+
+    // Compound the returns
+    const twr = subPeriodReturns.reduce((acc, ret) => acc * (1 + ret), 1) - 1;
+    
+    return { twr, subPeriodReturns };
+}
 
     // New function to calculate MWR for individual assets
     function calculateIRRForAsset(historyData, transactionData, startDate, endDate, currency, assetSymbol) {
@@ -2048,20 +2048,57 @@ function calculateTWRForCurrency(historyData, transactionData, startDate, endDat
 
     // New function to calculate TWR for individual assets
     function calculateTWRForAsset(historyData, transactionData, startDate, endDate, currency, assetSymbol) {
-    // Get transactions that occur AFTER start date and BEFORE end date (not on end date)
+    const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+    
+    // Define the asset value calculation function
+    const calculateAssetValue = (entry) => {
+        if (entry.assets[assetSymbol] && entry.assets[assetSymbol][valueKey]) {
+            return entry.assets[assetSymbol][valueKey];
+        }
+        return 0;
+    };
+
+    // Get relevant transactions (AFTER start, BEFORE end)
     const relevantTransactions = transactionData.transactions.filter(tx => {
         const txDate = new Date(tx.timestamp);
-        return txDate > startDate && txDate < endDate && // Changed <= to 
+        return txDate > startDate && txDate < endDate && 
                tx.currency === currency && tx.ticker === assetSymbol;
     });
 
-    // If no cash flows, simple calculation
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+    
+    const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+    const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+    
+    if (!startEntry || !endEntry) {
+        throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
+    }
+    
+    let startValue = calculateAssetValue(startEntry);
+    const endValue = calculateAssetValue(endEntry);
+
+    // Include start date transactions in the starting value
+    const startDateTransactions = transactionData.transactions.filter(tx => {
+        const txDate = new Date(tx.timestamp);
+        return txDate.getTime() === startDate.getTime() && 
+               tx.currency === currency && tx.ticker === assetSymbol;
+    });
+
+    startDateTransactions.forEach(tx => {
+        if (tx.action === 'increase') {
+            startValue += tx.amount;
+        }
+    });
+
+    // If no cash flows during the period, simple calculation
     if (relevantTransactions.length === 0) {
+        if (startValue === 0) return { twr: 0, subPeriodReturns: [0] };
         const twr = (endValue / startValue) - 1;
         return { twr, subPeriodReturns: [twr] };
     }
 
-    // Group cash flows by date and calculate period-by-period returns
+    // Group cash flows by date
     const cashFlowsByDate = new Map();
     relevantTransactions.forEach(tx => {
         const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
@@ -2073,7 +2110,7 @@ function calculateTWRForCurrency(historyData, transactionData, startDate, endDat
     });
 
     const cashFlowDates = Array.from(cashFlowsByDate.keys()).sort();
-    const periodDates = [startDate.toISOString().split('T')[0], ...cashFlowDates, endDate.toISOString().split('T')[0]];
+    const periodDates = [startDateStr, ...cashFlowDates, endDateStr];
     
     const subPeriodReturns = [];
     
@@ -2086,22 +2123,24 @@ function calculateTWRForCurrency(historyData, transactionData, startDate, endDat
         const periodStartValue = calculateAssetValue(periodStartEntry);
         const periodEndValue = calculateAssetValue(periodEndEntry);
         
-        // Cash flows occur at END of period (just before period end measurement)
+        // Cash flows occur at the end of the period
         const periodCashFlow = cashFlowsByDate.get(periodDates[i + 1]) || 0;
         
-        // TWR formula: End Value / (Start Value + Cash Flow) - 1
-        const adjustedStartValue = periodStartValue + periodCashFlow;
-        const subPeriodReturn = (periodEndValue / adjustedStartValue) - 1;
-        
-        subPeriodReturns.push(subPeriodReturn);
+        // TWR: End Value / (Start Value + Cash Flow) - 1
+        const denominator = periodStartValue + periodCashFlow;
+        if (denominator === 0) {
+            subPeriodReturns.push(0);
+        } else {
+            const subPeriodReturn = (periodEndValue / denominator) - 1;
+            subPeriodReturns.push(subPeriodReturn);
+        }
     }
 
-    // Compound the sub-period returns
+    // Compound the returns
     const twr = subPeriodReturns.reduce((acc, ret) => acc * (1 + ret), 1) - 1;
     
     return { twr, subPeriodReturns };
 }
-
     async function calculateHistoricalReturnsWithDates(startDate, endDate) {
         const resultsDiv = document.getElementById('historical-results');
         
