@@ -1557,212 +1557,219 @@ function calculateReturn(startValue, endValue) {
     }
 
     function calculateIRRForCurrency(historyData, transactionData, startDate, endDate, currency) {
-        const startDateStr = startDate.toISOString().split('T')[0];
-        const endDateStr = endDate.toISOString().split('T')[0];
-        
-        const startEntry = historyData.history.find(entry => entry.date === startDateStr);
-        const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+    
+    const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+    const endEntry = historyData.history.find(entry => entry.date === endDateStr);
 
-        if (!startEntry || !endEntry) {
-            throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
-        }
-
-        const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
-        
-        const calculateTotalValue = (entry) => {
-            let total = 0;
-            for (const asset in entry.assets) {
-                if (entry.assets[asset] && entry.assets[asset][valueKey]) {
-                    total += entry.assets[asset][valueKey];
-                }
-            }
-            return total;
-        };
-
-        let startValue = calculateTotalValue(startEntry);
-        const endValue = calculateTotalValue(endEntry);
-
-        // Check for investments on the start date and include them in the starting value
-        const startDateTransactions = transactionData.transactions.filter(tx => {
-            const txDate = new Date(tx.timestamp);
-            return txDate.getTime() === startDate.getTime() && tx.currency === currency;
-        });
-
-        if (currency === 'USD') {
-            startDateTransactions.forEach(tx => {
-                if (tx.action === 'increase') {
-                    startValue += tx.amount;
-                }
-            });
-        } else if (currency === 'EUR') {
-            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
-            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
-                startValue += euroInvestmentTx.amount;
-            }
-        }
-
-        const relevantTransactions = transactionData.transactions.filter(tx => {
-            const txDate = new Date(tx.timestamp);
-            return txDate > startDate && txDate < endDate && tx.currency === currency;
-        });
-
-        const cashFlows = [];
-        const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
-
-        cashFlows.push({ time: 0, amount: -startValue });
-
-        if (currency === 'USD') {
-            const aggregatedTransactions = new Map();
-            
-            relevantTransactions.forEach(tx => {
-                const txDate = new Date(tx.timestamp);
-                const dateKey = txDate.toISOString().split('T')[0];
-                
-                if (!aggregatedTransactions.has(dateKey)) {
-                    aggregatedTransactions.set(dateKey, {
-                        date: txDate,
-                        totalAmount: 0
-                    });
-                }
-                
-                const cashFlowAmount = tx.action === 'increase' ? -tx.amount : tx.amount;
-                aggregatedTransactions.get(dateKey).totalAmount += cashFlowAmount;
-            });
-
-            aggregatedTransactions.forEach((tx, dateKey) => {
-                const daysFromStart = (tx.date - startDate) / (1000 * 60 * 60 * 24);
-                const timeRatio = daysFromStart / totalDays;
-                cashFlows.push({ time: timeRatio, amount: tx.totalAmount });
-            });
-        } else {
-            const euroInvestmentTx = relevantTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
-            
-            if (euroInvestmentTx) {
-                const txDate = new Date(euroInvestmentTx.timestamp);
-                const daysFromStart = (txDate - startDate) / (1000 * 60 * 60 * 24);
-                const timeRatio = daysFromStart / totalDays;
-                const cashFlowAmount = euroInvestmentTx.action === 'increase' ? -euroInvestmentTx.amount : euroInvestmentTx.amount;
-                
-                cashFlows.push({ time: timeRatio, amount: cashFlowAmount });
-            }
-        }
-
-        cashFlows.push({ time: 1, amount: endValue });
-
-        return { irr: solveIRR(cashFlows), cashFlows };
+    if (!startEntry || !endEntry) {
+        throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
     }
 
-    function calculateTWRForCurrency(historyData, transactionData, startDate, endDate, currency) {
-        const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
-        
-        const calculateTotalValue = (entry) => {
-            let total = 0;
-            for (const asset in entry.assets) {
-                if (entry.assets[asset] && entry.assets[asset][valueKey]) {
-                    total += entry.assets[asset][valueKey];
-                }
-            }
-            return total;
-        };
-
-        const relevantTransactions = transactionData.transactions.filter(tx => {
-            const txDate = new Date(tx.timestamp);
-            return txDate > startDate && txDate < endDate && tx.currency === currency;
-        });
-
-        const startDateStr = startDate.toISOString().split('T')[0];
-        const endDateStr = endDate.toISOString().split('T')[0];
-        
-        const startEntry = historyData.history.find(entry => entry.date === startDateStr);
-        const endEntry = historyData.history.find(entry => entry.date === endDateStr);
-        
-        if (!startEntry || !endEntry) {
-            throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
-        }
-        
-        let startValue = calculateTotalValue(startEntry);
-        const endValue = calculateTotalValue(endEntry);
-
-        // Check for investments on the start date and include them in the starting value
-        const startDateTransactions = transactionData.transactions.filter(tx => {
-            const txDate = new Date(tx.timestamp);
-            return txDate.getTime() === startDate.getTime() && tx.currency === currency;
-        });
-
-        if (currency === 'USD') {
-            startDateTransactions.forEach(tx => {
-                if (tx.action === 'increase') {
-                    startValue += tx.amount;
-                }
-            });
-        } else if (currency === 'EUR') {
-            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
-            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
-                startValue += euroInvestmentTx.amount;
+    const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+    
+    const calculateTotalValue = (entry) => {
+        let total = 0;
+        for (const asset in entry.assets) {
+            if (entry.assets[asset] && entry.assets[asset][valueKey]) {
+                total += entry.assets[asset][valueKey];
             }
         }
+        return total;
+    };
 
-        if (relevantTransactions.length === 0) {
-            const twr = (endValue / startValue) - 1;
-            return { twr, subPeriodReturns: [twr] };
-        }
+    let startValue = calculateTotalValue(startEntry);
+    const endValue = calculateTotalValue(endEntry);
 
-        const cashFlowDates = new Set();
+    // Handle start date transactions - these increase the initial investment
+    const startDateTransactions = transactionData.transactions.filter(tx => {
+        const txDate = new Date(tx.timestamp);
+        return txDate.getTime() === startDate.getTime() && tx.currency === currency;
+    });
+
+    if (currency === 'USD') {
+        startDateTransactions.forEach(tx => {
+            if (tx.action === 'increase') {
+                startValue += tx.amount;
+            }
+        });
+    } else if (currency === 'EUR') {
+        // For EUR, only count EURO_INVESTMENT transactions
+        startDateTransactions.forEach(tx => {
+            if (tx.ticker === 'EURO_INVESTMENT' && tx.action === 'increase') {
+                startValue += tx.amount;
+            }
+        });
+    }
+
+    // Get transactions between start and end dates
+    const relevantTransactions = transactionData.transactions.filter(tx => {
+        const txDate = new Date(tx.timestamp);
+        return txDate > startDate && txDate < endDate && tx.currency === currency;
+    });
+
+    const cashFlows = [];
+    const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
+
+    // Initial investment (negative cash flow)
+    cashFlows.push({ time: 0, amount: -startValue });
+
+    if (currency === 'USD') {
+        // Aggregate USD transactions by date
+        const aggregatedTransactions = new Map();
+        
         relevantTransactions.forEach(tx => {
-            const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
-            cashFlowDates.add(dateKey);
+            const txDate = new Date(tx.timestamp);
+            const dateKey = txDate.toISOString().split('T')[0];
+            
+            if (!aggregatedTransactions.has(dateKey)) {
+                aggregatedTransactions.set(dateKey, {
+                    date: txDate,
+                    totalAmount: 0
+                });
+            }
+            
+            const cashFlowAmount = tx.action === 'increase' ? -tx.amount : tx.amount;
+            aggregatedTransactions.get(dateKey).totalAmount += cashFlowAmount;
         });
 
-        const sortedCashFlowDates = Array.from(cashFlowDates).sort();
-        const periodDates = [startDate.toISOString().split('T')[0], ...sortedCashFlowDates, endDate.toISOString().split('T')[0]];
+        aggregatedTransactions.forEach((tx) => {
+            const daysFromStart = (tx.date - startDate) / (1000 * 60 * 60 * 24);
+            const timeRatio = daysFromStart / totalDays;
+            cashFlows.push({ time: timeRatio, amount: tx.totalAmount });
+        });
+    } else {
+        // For EUR, only process EURO_INVESTMENT transactions
+        const euroTransactions = relevantTransactions.filter(tx => tx.ticker === 'EURO_INVESTMENT');
         
-        const subPeriodReturns = [];
-        let cumulativeCashFlow = 0;
-        
-        for (let i = 0; i < periodDates.length - 1; i++) {
-            const periodStartDate = new Date(periodDates[i]);
-            const periodEndDate = new Date(periodDates[i + 1]);
+        euroTransactions.forEach(tx => {
+            const txDate = new Date(tx.timestamp);
+            const daysFromStart = (txDate - startDate) / (1000 * 60 * 60 * 24);
+            const timeRatio = daysFromStart / totalDays;
+            const cashFlowAmount = tx.action === 'increase' ? -tx.amount : tx.amount;
             
-            const startEntry = historyData.history.find(entry => entry.date === periodDates[i]);
-            const endEntry = historyData.history.find(entry => entry.date === periodDates[i + 1]);
-            
-            if (!startEntry || !endEntry) {
-                continue;
-            }
-            
-            const startValue = calculateTotalValue(startEntry);
-            const endValue = calculateTotalValue(endEntry);
-            
-            let periodCashFlow = 0;
-            relevantTransactions.forEach(tx => {
-                const txDate = new Date(tx.timestamp);
-                if (txDate > periodStartDate && txDate <= periodEndDate) {
-                    if (currency === 'EUR' && tx.ticker !== 'EURO_INVESTMENT') {
-                        return;
-                    }
-                    if (currency === 'USD' || (currency === 'EUR' && tx.ticker === 'EURO_INVESTMENT')) {
-                        const amount = tx.action === 'increase' ? tx.amount : -tx.amount;
-                        periodCashFlow += amount;
-                    }
-                }
-            });
-            
-            let subPeriodReturn;
-            if (i === 0) {
-                subPeriodReturn = (endValue) / startValue - 1;
-            } else {
-                const portfolioValueAfterInvestments = startValue + cumulativeCashFlow;
-                subPeriodReturn = endValue / portfolioValueAfterInvestments - 1;
-            }
-            subPeriodReturns.push(subPeriodReturn);
-            
-            cumulativeCashFlow += periodCashFlow;
-        }
-
-        const twr = subPeriodReturns.reduce((acc, ret) => acc * (1 + ret), 1) - 1;
-        
-        return { twr, subPeriodReturns };
+            cashFlows.push({ time: timeRatio, amount: cashFlowAmount });
+        });
     }
+
+    // Final value (positive cash flow)
+    cashFlows.push({ time: 1, amount: endValue });
+
+    return { irr: solveIRR(cashFlows), cashFlows };
+}
+
+    // Fixed TWR calculation with proper cash flow handling
+function calculateTWRForCurrency(historyData, transactionData, startDate, endDate, currency) {
+    const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+    
+    const calculateTotalValue = (entry) => {
+        let total = 0;
+        for (const asset in entry.assets) {
+            if (entry.assets[asset] && entry.assets[asset][valueKey]) {
+                total += entry.assets[asset][valueKey];
+            }
+        }
+        return total;
+    };
+
+    // Get all relevant transactions (excluding start date transactions from cash flows)
+    const relevantTransactions = transactionData.transactions.filter(tx => {
+        const txDate = new Date(tx.timestamp);
+        return txDate > startDate && txDate <= endDate && tx.currency === currency; // Changed to <= for end date
+    });
+
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+    
+    const startEntry = historyData.history.find(entry => entry.date === startDateStr);
+    const endEntry = historyData.history.find(entry => entry.date === endDateStr);
+    
+    if (!startEntry || !endEntry) {
+        throw new Error(`Could not find portfolio values for ${currency} on the specified dates`);
+    }
+    
+    // Starting value includes any investments made on the start date
+    let startValue = calculateTotalValue(startEntry);
+    const endValue = calculateTotalValue(endEntry);
+
+    // Add start date investments to starting value (these are not cash flows)
+    const startDateTransactions = transactionData.transactions.filter(tx => {
+        const txDate = new Date(tx.timestamp);
+        return txDate.getTime() === startDate.getTime() && tx.currency === currency;
+    });
+
+    if (currency === 'USD') {
+        startDateTransactions.forEach(tx => {
+            if (tx.action === 'increase') {
+                startValue += tx.amount;
+            }
+        });
+    } else if (currency === 'EUR') {
+        // For EUR, handle EURO_INVESTMENT transactions
+        const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === 'EURO_INVESTMENT');
+        if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
+            startValue += euroInvestmentTx.amount;
+        }
+    }
+
+    // If no cash flows during period, simple calculation
+    if (relevantTransactions.length === 0) {
+        const twr = (endValue / startValue) - 1;
+        return { twr, subPeriodReturns: [twr] };
+    }
+
+    // Group cash flows by date
+    const cashFlowsByDate = new Map();
+    relevantTransactions.forEach(tx => {
+        const dateKey = new Date(tx.timestamp).toISOString().split('T')[0];
+        
+        if (!cashFlowsByDate.has(dateKey)) {
+            cashFlowsByDate.set(dateKey, 0);
+        }
+        
+        let amount = 0;
+        if (currency === 'EUR' && tx.ticker !== 'EURO_INVESTMENT') {
+            return; // Skip non-EURO_INVESTMENT transactions for EUR
+        }
+        
+        if (currency === 'USD' || (currency === 'EUR' && tx.ticker === 'EURO_INVESTMENT')) {
+            amount = tx.action === 'increase' ? tx.amount : -tx.amount;
+            cashFlowsByDate.set(dateKey, cashFlowsByDate.get(dateKey) + amount);
+        }
+    });
+
+    const cashFlowDates = Array.from(cashFlowsByDate.keys()).sort();
+    const periodDates = [startDate.toISOString().split('T')[0], ...cashFlowDates, endDate.toISOString().split('T')[0]];
+    
+    const subPeriodReturns = [];
+    
+    for (let i = 0; i < periodDates.length - 1; i++) {
+        const periodStartEntry = historyData.history.find(entry => entry.date === periodDates[i]);
+        const periodEndEntry = historyData.history.find(entry => entry.date === periodDates[i + 1]);
+        
+        if (!periodStartEntry || !periodEndEntry) {
+            continue;
+        }
+        
+        const periodStartValue = calculateTotalValue(periodStartEntry);
+        const periodEndValue = calculateTotalValue(periodEndEntry);
+        
+        // Cash flows occur at the END of each period (before period end value)
+        const periodCashFlow = cashFlowsByDate.get(periodDates[i + 1]) || 0;
+        
+        // TWR formula: (End Value) / (Start Value + Cash Flow) - 1
+        const adjustedStartValue = periodStartValue;
+        const subPeriodReturn = (periodEndValue) / (adjustedStartValue + periodCashFlow) - 1;
+        
+        subPeriodReturns.push(subPeriodReturn);
+    }
+
+    // Calculate compound return
+    const twr = subPeriodReturns.reduce((acc, ret) => acc * (1 + ret), 1) - 1;
+    
+    return { twr, subPeriodReturns };
+}
 
     // New function to calculate MWR for Risk Assets (excluding SGOV)
     function calculateIRRForRiskAssets(historyData, transactionData, startDate, endDate, currency) {
