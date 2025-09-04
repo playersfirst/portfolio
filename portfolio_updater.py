@@ -60,7 +60,7 @@ class PortfolioUpdater:
                         symbol_container = cells[0].find_element(By.CLASS_NAME, "symbol-container")
                         raw_symbol_text = symbol_container.text
                         symbol = raw_symbol_text.replace('⊕', '').replace('⊖', '').strip()
-                        internal_symbol = 'BINANCE:BTCUSDT' if symbol == 'BTC' else symbol
+                        internal_symbol = 'BINANCE:BTCUSDT' if symbol == 'BTC' else ('IWDE' if symbol == 'IWDE.L' else symbol)
 
                         value_text_usd = cells[3].text # Value is in the 4th column (index 3)
                         value_usd = float(value_text_usd.replace('$', '').replace(',', ''))
@@ -102,7 +102,7 @@ class PortfolioUpdater:
                         symbol_container = cells[0].find_element(By.CLASS_NAME, "symbol-container")
                         raw_symbol_text = symbol_container.text
                         symbol = raw_symbol_text.replace('⊕', '').replace('⊖', '').strip()
-                        internal_symbol = 'BINANCE:BTCUSDT' if symbol == 'BTC' else symbol
+                        internal_symbol = 'BINANCE:BTCUSDT' if symbol == 'BTC' else ('IWDE' if symbol == 'IWDE.L' else symbol)
 
                         value_text_eur_raw = cells[3].text # Value is still in the 4th column
                         print(f"  Raw EUR Text for {internal_symbol}: '{value_text_eur_raw}'") # DEBUG PRINT
