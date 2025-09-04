@@ -2039,11 +2039,12 @@ label[for="timeframe-select"] {
 }
 
 .returns-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 200px);
+  display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   max-width: 100%;
   justify-content: center;
+  align-items: center;
 }
 
 .returns-item {
@@ -2056,6 +2057,8 @@ label[for="timeframe-select"] {
   border-radius: var(--border-radius-sm);
   border: 1px solid var(--gray-200);
   transition: var(--transition);
+  width: 200px;
+  flex-shrink: 0;
 }
 
 .returns-item:hover {
@@ -2093,17 +2096,24 @@ label[for="timeframe-select"] {
   color: var(--gray-600);
 }
 
-/* 3 items per row - when screen gets smaller but not too small */
+/* 4 items per row - when screen gets smaller but not too small */
+@media (max-width: 1200px) {
+  .returns-item {
+    width: 180px;
+  }
+}
+
+/* 3 items per row - when screen gets smaller */
 @media (max-width: 920px) {
-  .returns-grid {
-    grid-template-columns: repeat(3, 200px);
+  .returns-item {
+    width: 160px;
   }
 }
 
 /* 2 items per row - when screen gets even smaller */
 @media (max-width: 720px) {
-  .returns-grid {
-    grid-template-columns: repeat(2, 200px);
+  .returns-item {
+    width: 140px;
   }
   
   .returns-item {
