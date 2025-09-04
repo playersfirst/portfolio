@@ -11,7 +11,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         'VOO': '#36A2EB',
         'NANC': '#36A2EB',
         'IAU': '#FFCE56',
-        'SGOV': '#4BC0C0'
+        'SGOV': '#4BC0C0',
+        'IWDE': '#36A2EB'
     };
 
     const assetClassLabels = {
@@ -19,7 +20,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         'VOO': 'Equities',
         'NANC': 'Equities',
         'IAU': 'Commodities',
-        'SGOV': 'Savings'
+        'SGOV': 'Savings',
+        'IWDE': 'Equities'
     };
 
     let displayCurrency = 'USD';
