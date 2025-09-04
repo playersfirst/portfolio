@@ -298,7 +298,7 @@
       "currency": "units"
     },
     {
-      "timestamp": "2025-01-27T00:00:00.000Z",
+      "timestamp": "2025-09-04T08:00:00.000Z",
       "ticker": "IWDE",
       "type": "initial_investment",
       "action": "increase",
@@ -309,7 +309,7 @@
       "currency": "USD"
     },
     {
-      "timestamp": "2025-01-27T00:00:00.000Z",
+      "timestamp": "2025-09-04T08:00:00.000Z",
       "ticker": "IWDE",
       "type": "initial_euro_investment",
       "action": "increase",
@@ -320,7 +320,7 @@
       "currency": "EUR"
     },
     {
-      "timestamp": "2025-01-27T00:00:00.000Z",
+      "timestamp": "2025-09-04T08:00:00.000Z",
       "ticker": "IWDE",
       "type": "portfolio_holding",
       "action": "buy",
@@ -331,7 +331,7 @@
       "currency": "units"
     },
     {
-      "timestamp": "2025-01-27T00:00:00.000Z",
+      "timestamp": "2025-09-04T08:00:00.000Z",
       "ticker": "EURO_INVESTMENT",
       "type": "original_euro_investment",
       "action": "increase",
@@ -343,3 +343,4 @@
     }
   ]
 }
+
