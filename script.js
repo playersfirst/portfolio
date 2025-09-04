@@ -2443,10 +2443,13 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
         clearReturnsGrid();
 
         try {
+            console.log('Loading asset returns for period:', selectedPeriod);
             const returns = await fetchAssetReturns(selectedPeriod);
+            console.log('Asset returns loaded successfully:', returns);
             currentAssetReturns = returns;
             displayAssetReturns(returns, selectedPeriod);
         } catch (error) {
+            console.error('Error loading asset returns:', error);
             showReturnsError();
         } finally {
             showReturnsLoading(false);
@@ -2478,7 +2481,8 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
         }
 
         // Try to get real data first
-        for (const asset of ASSETS_RETURNS) {
+        for (let i = 0; i < ASSETS_RETURNS.length; i++) {
+            const asset = ASSETS_RETURNS[i];
             try {
                 const usdReturn = await calculateAssetReturn(asset.symbol, startDate, endDate);
                 
@@ -2488,7 +2492,13 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
                 
                 returns.usd[asset.symbol] = usdReturn;
                 returns.eur[asset.symbol] = roundedEurReturn;
+                
+                // Small delay between assets to avoid overwhelming proxies
+                if (i < ASSETS_RETURNS.length - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
+                }
             } catch (error) {
+                console.error(`Failed to fetch data for ${asset.symbol}:`, error);
                 useFallback = true;
                 break; // If any asset fails, use fallback for all
             }
@@ -2563,10 +2573,28 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
         const baseUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${Math.floor(startDate.getTime() / 1000)}&period2=${Math.floor(endDate.getTime() / 1000)}&interval=1d`;
         
         const proxies = [
+            `https://corsproxy.io/?${encodeURIComponent(baseUrl)}`,
             `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl)}`,
             `https://cors-anywhere.herokuapp.com/${baseUrl}`,
             `https://thingproxy.freeboard.io/fetch/${baseUrl}`
         ];
+        
+        // Different User-Agent strings to make requests look like different browsers
+        const userAgents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ];
+        
+        // Get a different User-Agent for each symbol to avoid rate limiting
+        const symbolIndex = ASSETS_RETURNS.findIndex(asset => asset.symbol === symbol);
+        const userAgent = userAgents[symbolIndex % userAgents.length];
+        
+        // Add small random delay to make requests more unique
+        const randomDelay = Math.random() * 500; // 0-500ms random delay
+        await new Promise(resolve => setTimeout(resolve, randomDelay));
         
         let lastError;
         let data;
@@ -2577,6 +2605,8 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
+                        'User-Agent': userAgent,
+                        'Accept-Language': 'en-US,en;q=0.9'
                     }
                 });
                 
