@@ -1773,6 +1773,7 @@ function calculateReturn(startValue, endValue) {
             const txDate = new Date(tx.timestamp);
             return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'EURO_INVESTMENT';
         });
+    
 
         startDateTransactions.forEach(tx => {
             if (tx.action === 'increase') {
@@ -1873,25 +1874,10 @@ function calculateReturn(startValue, endValue) {
         let startValue = calculateAssetValue(startEntry);
         const endValue = calculateAssetValue(endEntry);
 
-        // Check if asset was owned during the period
+        // Get transactions for this asset during the period
         const assetTransactions = transactionData.transactions.filter(tx => 
             tx.ticker === assetSymbol && tx.currency === currency
         );
-        
-        if (assetTransactions.length === 0) {
-            // Asset was never owned, return 0% return
-            return { irr: 0, cashFlows: [] };
-        }
-        
-        // Check if asset was purchased before or during the period
-        const firstPurchase = assetTransactions.find(tx => tx.action === 'increase' || tx.action === 'buy');
-        if (firstPurchase) {
-            const purchaseDate = new Date(firstPurchase.timestamp);
-            if (purchaseDate > endDate) {
-                // Asset was purchased after the end date, return 0% return
-                return { irr: 0, cashFlows: [] };
-            }
-        }
 
         // Check for investments on the start date for this specific asset
         const startDateTransactions = transactionData.transactions.filter(tx => {
@@ -1933,6 +1919,10 @@ function calculateReturn(startValue, endValue) {
         });
 
         cashFlows.push({ time: 1, amount: endValue });
+
+        if (startValue === 0 && endValue === 0 && relevantTransactions.length === 0) {
+            return { irr: 0, cashFlows };
+        }
 
         return { irr: solveIRR(cashFlows), cashFlows };
     }
