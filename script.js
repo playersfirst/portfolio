@@ -2484,14 +2484,24 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
         for (let i = 0; i < ASSETS_RETURNS.length; i++) {
             const asset = ASSETS_RETURNS[i];
             try {
-                const usdReturn = await calculateAssetReturn(asset.symbol, startDate, endDate);
+                let usdReturn, eurReturn;
                 
-                // Calculate EUR return: (1 + USD return) / (1 + EUR/USD return) - 1
-                const eurReturn = ((1 + usdReturn / 100) / (1 + eurUsdReturn / 100) - 1) * 100;
-                const roundedEurReturn = Math.round(eurReturn * 100) / 100;
+                if (asset.symbol === 'IWDE.L') {
+                    // IWDE is EUR-denominated, so calculate return directly in EUR
+                    eurReturn = await calculateAssetReturn(asset.symbol, startDate, endDate);
+                    // Convert EUR return to USD: (1 + EUR return) * (1 + EUR/USD return) - 1
+                    usdReturn = ((1 + eurReturn / 100) * (1 + eurUsdReturn / 100) - 1) * 100;
+                    usdReturn = Math.round(usdReturn * 100) / 100;
+                } else {
+                    // Other assets are USD-denominated
+                    usdReturn = await calculateAssetReturn(asset.symbol, startDate, endDate);
+                    // Calculate EUR return: (1 + USD return) / (1 + EUR/USD return) - 1
+                    eurReturn = ((1 + usdReturn / 100) / (1 + eurUsdReturn / 100) - 1) * 100;
+                    eurReturn = Math.round(eurReturn * 100) / 100;
+                }
                 
                 returns.usd[asset.symbol] = usdReturn;
-                returns.eur[asset.symbol] = roundedEurReturn;
+                returns.eur[asset.symbol] = eurReturn;
                 
                 // Small delay between assets to avoid overwhelming proxies
                 if (i < ASSETS_RETURNS.length - 1) {
