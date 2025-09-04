@@ -1294,11 +1294,12 @@ label[for="timeframe-select"] {
 }
 
 .avg-buy-price-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 200px);
+  display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   max-width: 100%;
   justify-content: center;
+  align-items: center;
 }
 
 .avg-buy-price-item {
@@ -1311,6 +1312,8 @@ label[for="timeframe-select"] {
   border-radius: var(--border-radius-sm);
   border: 1px solid var(--gray-200);
   transition: var(--transition);
+  width: 200px;
+  flex-shrink: 0;
 }
 
 .avg-buy-price-item:hover {
@@ -1364,24 +1367,25 @@ label[for="timeframe-select"] {
   color: var(--danger);
 }
 
-/* 3 items per row - when screen gets smaller but not too small */
+/* 4 items per row - when screen gets smaller but not too small */
+@media (max-width: 1200px) {
+  .avg-buy-price-item {
+    width: 180px;
+  }
+}
+
+/* 3 items per row - when screen gets smaller */
 @media (max-width: 920px) {
-  .avg-buy-price-grid {
-    grid-template-columns: repeat(3, 200px);
+  .avg-buy-price-item {
+    width: 160px;
   }
 }
 
 /* 2 items per row - for smaller screens */
 @media (max-width: 720px) {
-  .avg-buy-price-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
-    max-width: 100%;
-  }
-  
   .avg-buy-price-item {
-    padding: 1rem;
-    min-width: 0;
+    width: 140px;
+    padding: 0.75rem;
   }
   
   .avg-buy-price-name {
@@ -1395,6 +1399,28 @@ label[for="timeframe-select"] {
   
   .avg-buy-price-row {
     gap: 0.5rem;
+  }
+}
+
+/* 1 item per row - mobile */
+@media (max-width: 480px) {
+  .avg-buy-price-grid {
+    max-width: 300px;
+    margin: 0 auto;
+  }
+  
+  .avg-buy-price-item {
+    width: 100%;
+    padding: 1rem;
+  }
+  
+  .avg-buy-price-name {
+    font-size: 1rem;
+  }
+  
+  .avg-buy-price-label,
+  .avg-buy-price-value {
+    font-size: 0.875rem;
   }
 }
 
