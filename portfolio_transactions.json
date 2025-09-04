@@ -296,6 +296,50 @@
       "newAmount": 4.414,
       "difference": 0.009399999999999409,
       "currency": "units"
+    },
+    {
+      "timestamp": "2025-01-27T00:00:00.000Z",
+      "ticker": "IWDE",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 1165,
+      "oldAmount": 0,
+      "newAmount": 1165,
+      "difference": 1165,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-01-27T00:00:00.000Z",
+      "ticker": "IWDE",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 1000,
+      "oldAmount": 0,
+      "newAmount": 1000,
+      "difference": 1000,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-01-27T00:00:00.000Z",
+      "ticker": "IWDE",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 9.8617,
+      "oldAmount": 0,
+      "newAmount": 9.8617,
+      "difference": 9.8617,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-01-27T00:00:00.000Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 1000,
+      "oldAmount": 33999,
+      "newAmount": 34999,
+      "difference": 1000,
+      "currency": "EUR"
     }
   ]
 }
