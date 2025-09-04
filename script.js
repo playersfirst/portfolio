@@ -223,8 +223,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // Use consistent order: BTC, IAU, VOO, NANC, SGOV
-        const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'SGOV'];
+        // Use consistent order: BTC, IAU, VOO, NANC, IWDE, SGOV
+        const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE', 'SGOV'];
         
         let html = '';
         html += '<div class="ytd-assets-grid">';
@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const contentEl = document.getElementById('avg-buy-price-content');
         if (!contentEl) return;
 
-        const assets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC'];
+        const assets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE'];
         let html = '<div class="avg-buy-price-grid">';
         
         assets.forEach(symbol => {
@@ -295,12 +295,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             if (shares && initialInvestment) {
                 const avgBuyPrice = initialInvestment / shares;
-                const currentPrice = portfolioData[symbol]?.price;
+                const assetData = portfolioData[symbol];
+                const currentPrice = assetData?.price;
                 
                 if (currentPrice) {
-                    const currentPriceInCurrency = displayCurrency === 'USD' ? 
-                        currentPrice : 
-                        currentPrice / usdToEurRate;
+                    // Handle currency conversion for EUR-denominated assets
+                    let currentPriceInCurrency;
+                    if (assetData?.isEurDenominated) {
+                        // For EUR-denominated assets (like IWDE), convert price based on display currency
+                        currentPriceInCurrency = displayCurrency === 'USD' ? 
+                            currentPrice * usdToEurRate : 
+                            currentPrice;
+                    } else {
+                        // For USD-denominated assets, convert as before
+                        currentPriceInCurrency = displayCurrency === 'USD' ? 
+                            currentPrice : 
+                            currentPrice / usdToEurRate;
+                    }
                     
                     const isHigher = currentPriceInCurrency > avgBuyPrice;
                     const priceColorClass = isHigher ? 'positive' : 'negative';
@@ -484,7 +495,27 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             const shares = portfolio[symbol];
             const initialInvestment = initialInvestments[symbol];
             const initialEuroInvestment = initialEuroInvestments[symbol];
-            let url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
+            
+            // Map internal symbols to API symbols
+            let apiSymbol = symbol;
+            let useYahooFinance = false;
+            
+            if (symbol === 'BINANCE:BTCUSDT') {
+                apiSymbol = 'BINANCE:BTCUSDT'; // Keep Bitcoin on Finnhub
+                useYahooFinance = false;
+            } else if (symbol === 'IWDE') {
+                apiSymbol = 'IWDE.L'; // iShares World Developed Markets on London exchange
+                useYahooFinance = true;
+            }
+            
+            let url;
+            if (useYahooFinance) {
+                // Use Yahoo Finance API with CORS proxy
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${apiSymbol}`;
+                url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+            } else {
+                url = `https://finnhub.io/api/v1/quote?symbol=${apiSymbol}&token=${apiKey}`;
+            }
 
             return fetch(url)
                 .then(response => {
@@ -492,16 +523,55 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                     return response.json();
                 })
                 .then(data => {
-                    const price = data.c;
-                    const percentChange = data.dp;
-                    const value = price * shares;
-                    const valueEur = value / usdToEurRate;
-                    const pnl = value - initialInvestment;
-                    const pnlEur = valueEur - initialEuroInvestment;
+                    let price, percentChange;
+                    
+                    if (useYahooFinance) {
+                        // Parse Yahoo Finance API response
+                        const result = data.chart.result[0];
+                        const meta = result.meta;
+                        price = meta.regularMarketPrice;
+                        
+                        // Try different possible fields for percent change
+                        percentChange = 0;
+                        if (meta.regularMarketChangePercent !== null && meta.regularMarketChangePercent !== undefined) {
+                            percentChange = meta.regularMarketChangePercent * 100;
+                        } else if (meta.previousClose && meta.regularMarketPrice) {
+                            // Calculate percent change manually if not provided
+                            percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
+                        } else if (meta.change !== null && meta.change !== undefined) {
+                            // Try the change field
+                            percentChange = meta.change;
+                        }
+                    } else {
+                        // Parse Finnhub API response
+                        price = data.c;
+                        percentChange = data.dp;
+                    }
+                    
+                    // Handle currency conversion for EUR-denominated assets
+                    let value, valueEur, pnl, pnlEur, displayPrice;
+                    
+                    if (symbol === 'IWDE') {
+                        // IWDE is EUR-denominated, so price is in EUR
+                        valueEur = price * shares; // Value in EUR
+                        value = valueEur * usdToEurRate; // Convert to USD
+                        pnlEur = valueEur - initialEuroInvestment;
+                        pnl = value - initialInvestment;
+                        // Store the original EUR price for display
+                        displayPrice = price; // This is in EUR
+                    } else {
+                        // Other assets are USD-denominated
+                        value = price * shares; // Value in USD
+                        valueEur = value / usdToEurRate; // Convert to EUR
+                        pnl = value - initialInvestment;
+                        pnlEur = valueEur - initialEuroInvestment;
+                        displayPrice = price; // This is in USD
+                    }
 
                     portfolioData[symbol] = {
                         shares, price, value, pnl, valueEur, pnlEur,
-                        percentChange, initialInvestment, initialEuroInvestment
+                        percentChange, initialInvestment, initialEuroInvestment,
+                        displayPrice, isEurDenominated: symbol === 'IWDE'
                     };
                 })
                 .catch(error => {
@@ -546,7 +616,17 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         }
 
         const primaryCurrency = displayCurrency;
-        const pricePrimary = primaryCurrency === 'USD' ? data.price : data.price / usdToEurRate;
+        
+        // Handle price display for EUR-denominated assets
+        let pricePrimary;
+        if (data.isEurDenominated) {
+            // For EUR-denominated assets (like IWDE), price is already in EUR
+            pricePrimary = primaryCurrency === 'USD' ? data.price * usdToEurRate : data.price;
+        } else {
+            // For USD-denominated assets, convert as before
+            pricePrimary = primaryCurrency === 'USD' ? data.price : data.price / usdToEurRate;
+        }
+        
         const valuePrimary = primaryCurrency === 'USD' ? data.value : data.valueEur;
         const pnlPrimary = primaryCurrency === 'USD' ? data.pnl : data.pnlEur;
         const initialInvestmentPrimary = primaryCurrency === 'USD' ? data.initialInvestment : data.initialEuroInvestment;
@@ -1793,6 +1873,26 @@ function calculateReturn(startValue, endValue) {
         let startValue = calculateAssetValue(startEntry);
         const endValue = calculateAssetValue(endEntry);
 
+        // Check if asset was owned during the period
+        const assetTransactions = transactionData.transactions.filter(tx => 
+            tx.ticker === assetSymbol && tx.currency === currency
+        );
+        
+        if (assetTransactions.length === 0) {
+            // Asset was never owned, return 0% return
+            return { irr: 0, cashFlows: [] };
+        }
+        
+        // Check if asset was purchased before or during the period
+        const firstPurchase = assetTransactions.find(tx => tx.action === 'increase' || tx.action === 'buy');
+        if (firstPurchase) {
+            const purchaseDate = new Date(firstPurchase.timestamp);
+            if (purchaseDate > endDate) {
+                // Asset was purchased after the end date, return 0% return
+                return { irr: 0, cashFlows: [] };
+            }
+        }
+
         // Check for investments on the start date for this specific asset
         const startDateTransactions = transactionData.transactions.filter(tx => {
             const txDate = new Date(tx.timestamp);
@@ -2173,7 +2273,7 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
             
             let usdResult, eurResult, usdRiskResult, eurRiskResult;
             const assetResults = {};
-            const assets = ['VOO', 'NANC', 'IAU', 'SGOV', 'BINANCE:BTCUSDT'];
+            const assets = ['VOO', 'NANC', 'IAU', 'SGOV', 'BINANCE:BTCUSDT', 'IWDE'];
 
             if (currentReturnType === 'mwr') {
                 // Total portfolio
@@ -2248,8 +2348,8 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
                         <div class="historical-assets-grid">
             `;
             
-            // Use consistent order: BTC, IAU, VOO, NANC, SGOV
-            const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'SGOV'];
+            // Use consistent order: BTC, IAU, VOO, NANC, IWDE, SGOV
+            const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE', 'SGOV'];
 
             orderedAssets.forEach(asset => {
                 const assetResult = assetResults[asset];
@@ -2301,6 +2401,7 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
         { symbol: 'IAU', name: 'iShares Gold Trust' },
         { symbol: 'VOO', name: 'Vanguard S&P 500 ETF' },
         { symbol: 'NANC', name: 'NANC ETF' },
+        { symbol: 'IWDE.L', name: 'iShares World Developed Markets' },
     ];
 
     const PERIOD_DAYS = {
@@ -2632,6 +2733,7 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
     }, 1000);
 
 });
+
 
 
 
