@@ -2672,8 +2672,13 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
 
         const name = document.createElement('span');
         name.className = 'returns-name';
-        // Display "BTC" instead of "BTC-USD"
-        const displayName = asset.symbol === 'BTC-USD' ? 'BTC' : asset.symbol;
+        // Display "BTC" instead of "BTC-USD" and "IWDE" instead of "IWDE.L"
+        let displayName = asset.symbol;
+        if (asset.symbol === 'BTC-USD') {
+            displayName = 'BTC';
+        } else if (asset.symbol === 'IWDE.L') {
+            displayName = 'IWDE';
+        }
         name.textContent = displayName;
 
         assetDiv.appendChild(name);
