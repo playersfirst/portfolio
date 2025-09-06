@@ -118,7 +118,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ytdDate = document.getElementById('ytd-date');
 
         // Calculate average yearly return based on current portfolio state
-        const portfolioStartDate = new Date('2024-08-01');
+        const portfolioStartDate = new Date('2024-10-01');
         const currentDate = new Date();
         const daysSinceStart = (currentDate - portfolioStartDate) / (1000 * 60 * 60 * 24);
         const yearsSinceStart = daysSinceStart / 365.25;
@@ -165,7 +165,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const totalReturnExclSgov = currentPnlPercentageExclSgov / 100;
             
             withSgovValue = ((1 + totalReturnWithSgov) ** (1 / yearsSinceStart) - 1) * 100;
-            exclSgovValue = ((1 + totalReturnExclSgov) ** (1 / yearsSinceStart) - 1) * 100;
+            
+            // Risk assets (excluding SGOV) should use October 1, 2024 as start date
+            const riskAssetsStartDate = new Date('2024-10-01');
+            const daysSinceRiskStart = (currentDate - riskAssetsStartDate) / (1000 * 60 * 60 * 24);
+            const yearsSinceRiskStart = daysSinceRiskStart / 365.25;
+            
+            if (yearsSinceRiskStart > 0) {
+                exclSgovValue = ((1 + totalReturnExclSgov) ** (1 / yearsSinceRiskStart) - 1) * 100;
+            }
         }
 
         // Update With SGOV value
@@ -192,21 +200,31 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateAssetReturns();
     }
 
+    function getAssetStartDate(assetName) {
+        // Return the correct start date for each asset
+        switch (assetName) {
+            case 'BINANCE:BTCUSDT':
+                return new Date('2024-10-01');
+            case 'VOO':
+            case 'NANC':
+            case 'IAU':
+            case 'SGOV':
+                return new Date('2025-03-01');
+            case 'IWDE':
+                return new Date('2025-09-04');
+            default:
+                return new Date('2024-10-01'); // Default fallback
+        }
+    }
+
     function updateAssetReturns() {
         const ytdAssets = document.getElementById('ytd-assets');
         if (!ytdAssets) return;
 
-        // Calculate time period for annualization
-        const portfolioStartDate = new Date('2024-08-01');
-        const currentDate = new Date();
-        const daysSinceStart = (currentDate - portfolioStartDate) / (1000 * 60 * 60 * 24);
-        const yearsSinceStart = daysSinceStart / 365.25;
-
-        if (yearsSinceStart <= 0) return;
-
         // Calculate annualized returns for each asset
         const assetReturns = {};
         const assetNames = Object.keys(portfolioData);
+        const currentDate = new Date();
 
         assetNames.forEach(assetName => {
             const data = portfolioData[assetName];
@@ -215,10 +233,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const initialInvestment = displayCurrency === 'USD' ? data.initialInvestment : data.initialEuroInvestment;
                 
                 if (initialInvestment > 0) {
-                    const currentPnlPercentage = (pnl / initialInvestment) * 100;
-                    const totalReturn = currentPnlPercentage / 100;
-                    const annualizedReturn = ((1 + totalReturn) ** (1 / yearsSinceStart) - 1) * 100;
-                    assetReturns[assetName] = annualizedReturn;
+                    // Calculate time period for this specific asset
+                    const assetStartDate = getAssetStartDate(assetName);
+                    const daysSinceStart = (currentDate - assetStartDate) / (1000 * 60 * 60 * 24);
+                    const yearsSinceStart = daysSinceStart / 365.25;
+                    
+                    if (yearsSinceStart > 0) {
+                        const currentPnlPercentage = (pnl / initialInvestment) * 100;
+                        const totalReturn = currentPnlPercentage / 100;
+                        const annualizedReturn = ((1 + totalReturn) ** (1 / yearsSinceStart) - 1) * 100;
+                        assetReturns[assetName] = annualizedReturn;
+                    }
                 }
             }
         });
@@ -1906,13 +1931,39 @@ function calculateReturn(startValue, endValue) {
         const cashFlows = [];
         const totalDays = (endDate - startDate) / (1000 * 60 * 60 * 24);
 
-        cashFlows.push({ time: 0, amount: -startValue });
+        // If asset wasn't held at start date, find the first transaction to determine the actual start
+        let actualStartDate = startDate;
+        let actualStartValue = startValue;
+        
+        if (startValue === 0 && relevantTransactions.length > 0) {
+            // Find the first transaction for this asset during the period
+            const firstTx = relevantTransactions
+                .filter(tx => tx.ticker === assetSymbol)
+                .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))[0];
+            
+            if (firstTx) {
+                actualStartDate = new Date(firstTx.timestamp);
+                actualStartValue = firstTx.action === 'increase' ? firstTx.amount : 0;
+            }
+        }
+
+        // Recalculate time ratios based on actual start date
+        const actualTotalDays = (endDate - actualStartDate) / (1000 * 60 * 60 * 24);
+        
+        // Only add start value if it's not zero
+        if (actualStartValue !== 0) {
+            cashFlows.push({ time: 0, amount: -actualStartValue });
+        }
 
         relevantTransactions.forEach(tx => {
             if (tx.ticker === assetSymbol) {
                 const txDate = new Date(tx.timestamp);
-                const daysFromStart = (txDate - startDate) / (1000 * 60 * 60 * 24);
-                const timeRatio = daysFromStart / totalDays;
+                // Skip the first transaction if it's the same as the actual start transaction
+                if (actualStartDate.getTime() === txDate.getTime() && actualStartValue === tx.amount) {
+                    return; // Skip this transaction as it's already included as the start value
+                }
+                const daysFromActualStart = (txDate - actualStartDate) / (1000 * 60 * 60 * 24);
+                const timeRatio = daysFromActualStart / actualTotalDays;
                 const cashFlowAmount = tx.action === 'increase' ? -tx.amount : tx.amount;
                 cashFlows.push({ time: timeRatio, amount: cashFlowAmount });
             }
@@ -1924,7 +1975,13 @@ function calculateReturn(startValue, endValue) {
             return { irr: 0, cashFlows };
         }
 
-        return { irr: solveIRR(cashFlows), cashFlows };
+        try {
+            const irr = solveIRR(cashFlows);
+            return { irr, cashFlows };
+        } catch (error) {
+            console.error(`IRR calculation failed for ${assetSymbol}:`, error, 'Cash flows:', cashFlows);
+            return { irr: 0, cashFlows };
+        }
     }
 // Fixed TWR calculation for total portfolio
 function calculateTWRForCurrency(historyData, transactionData, startDate, endDate, currency) {
