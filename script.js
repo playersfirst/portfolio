@@ -68,9 +68,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const existing = document.querySelector('.ytd-card');
         if (existing) existing.remove();
 
-        // Find the history-section to insert after it
-        const historySection = document.querySelector('#history-section');
-        if (!historySection) return;
+        // Find the historical-pnl-card (Historical Returns) to insert after it
+        const historicalReturnsSection = document.querySelector('.historical-pnl-card');
+        if (!historicalReturnsSection) return;
 
         const currentYear = new Date().getFullYear();
         const ytdCard = document.createElement('div');
@@ -97,17 +97,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="ytd-assets" id="ytd-assets"></div>
         `;
 
-        // Insert after the cbbi-card (at the very bottom)
-        const cbbiCard = document.querySelector('.cbbi-card');
-        if (cbbiCard) {
-            cbbiCard.parentNode.insertBefore(ytdCard, cbbiCard.nextSibling);
-        } else {
-            // Fallback: insert at the end of the container
-            const container = document.querySelector('.container');
-            if (container) {
-                container.appendChild(ytdCard);
-            }
-        }
+        // Insert after the Historical Returns section
+        historicalReturnsSection.parentNode.insertBefore(ytdCard, historicalReturnsSection.nextSibling);
 
         updateYtdDisplay();
     }
@@ -283,9 +274,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         const existing = document.querySelector('.avg-buy-price-card');
         if (existing) existing.remove();
 
-        // Find the history-section to insert after it
-        const historySection = document.querySelector('#history-section');
-        if (!historySection) return;
+        // Find the asset-returns-card (Price Action) to insert after it
+        const priceActionSection = document.querySelector('.asset-returns-card');
+        if (!priceActionSection) return;
 
         const avgBuyPriceCard = document.createElement('div');
         avgBuyPriceCard.className = 'avg-buy-price-card';
@@ -299,8 +290,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             </div>
         `;
 
-        // Insert after the history-section
-        historySection.parentNode.insertBefore(avgBuyPriceCard, historySection.nextSibling);
+        // Insert after the Price Action section
+        priceActionSection.parentNode.insertBefore(avgBuyPriceCard, priceActionSection.nextSibling);
         
         updateAverageBuyPriceDisplay();
     }
