@@ -560,11 +560,11 @@ body {
   .chart-container {
     padding: 1.25rem;
     margin-bottom: 1.5rem;
-    border-radius: var(--border-radius);
+    border-radius: var(--border-radius-lg);
   }
   
   .card {
-    border-radius: var(--border-radius);
+    border-radius: var(--border-radius-lg);
   }
   
   .card-header,
@@ -661,7 +661,7 @@ body {
   }
   
   .chart-container, .card {
-    border-radius: var(--border-radius-sm);
+    border-radius: var(--border-radius-lg);
   }
   
   #chart-legend {
@@ -1402,25 +1402,30 @@ label[for="timeframe-select"] {
   }
 }
 
-/* 1 item per row - mobile */
+/* 2 items per row - mobile */
 @media (max-width: 480px) {
   .avg-buy-price-grid {
-    max-width: 300px;
-    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    max-width: 100%;
+    justify-content: center;
+    align-items: center;
   }
   
   .avg-buy-price-item {
-    width: 100%;
-    padding: 1rem;
+    padding: 0.75rem;
+    width: calc(50% - 0.375rem);
+    flex-shrink: 0;
   }
   
   .avg-buy-price-name {
-    font-size: 1rem;
+    font-size: 0.875rem;
   }
   
   .avg-buy-price-label,
   .avg-buy-price-value {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
   }
 }
 
