@@ -192,10 +192,10 @@
       "ticker": "NANC",
       "type": "initial_euro_investment",
       "action": "increase",
-      "amount": 991,
+      "amount": 989,
       "oldAmount": 2376,
-      "newAmount": 3367,
-      "difference": 991,
+      "newAmount": 3365,
+      "difference": 989,
       "currency": "EUR"
     },
     {
@@ -203,10 +203,10 @@
       "ticker": "IAU",
       "type": "initial_euro_investment",
       "action": "increase",
-      "amount": 302,
+      "amount": 301,
       "oldAmount": 3535,
-      "newAmount": 3837,
-      "difference": 302,
+      "newAmount": 3836,
+      "difference": 301,
       "currency": "EUR"
     },
     {
@@ -214,10 +214,10 @@
       "ticker": "SGOV",
       "type": "initial_euro_investment",
       "action": "increase",
-      "amount": 707,
+      "amount": 705,
       "oldAmount": 18438,
-      "newAmount": 19145,
-      "difference": 707,
+      "newAmount": 19143,
+      "difference": 705,
       "currency": "EUR"
     },
     {
