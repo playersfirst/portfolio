@@ -439,6 +439,182 @@
       "newAmount": 35399,
       "difference": 200,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 1101,
+      "oldAmount": 2273,
+      "newAmount": 3374,
+      "difference": 1101,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "NANC",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 1251,
+      "oldAmount": 3859,
+      "newAmount": 5110,
+      "difference": 1251,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 851,
+      "oldAmount": 4322,
+      "newAmount": 5173,
+      "difference": 851,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "SGOV",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 5,
+      "oldAmount": 21557,
+      "newAmount": 21562,
+      "difference": 5,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "IWDE",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 2046,
+      "oldAmount": 1165,
+      "newAmount": 3211,
+      "difference": 2046,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 941,
+      "oldAmount": 2046,
+      "newAmount": 2987,
+      "difference": 941,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "NANC",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 1072,
+      "oldAmount": 3365,
+      "newAmount": 4437,
+      "difference": 1072,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 730,
+      "oldAmount": 3836,
+      "newAmount": 4566,
+      "difference": 730,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "SGOV",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 5,
+      "oldAmount": 19143,
+      "newAmount": 19148,
+      "difference": 5,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "IWDE",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 1752,
+      "oldAmount": 1000,
+      "newAmount": 2752,
+      "difference": 1752,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 1.8131000000000004,
+      "oldAmount": 4.414,
+      "newAmount": 6.2271,
+      "difference": 1.8131000000000004,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "NANC",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 28.26780000000001,
+      "oldAmount": 94.6031,
+      "newAmount": 122.8709,
+      "difference": 28.26780000000001,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 12.079099999999997,
+      "oldAmount": 72.6957,
+      "newAmount": 84.7748,
+      "difference": 12.079099999999997,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.04959999999999809,
+      "oldAmount": 216.7119,
+      "newAmount": 216.7615,
+      "difference": 0.04959999999999809,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "IWDE",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 16.977600000000002,
+      "oldAmount": 9.8617,
+      "newAmount": 26.8393,
+      "difference": 16.977600000000002,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-09-25T14:47:10.555Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 4500,
+      "oldAmount": 35399,
+      "newAmount": 39899,
+      "difference": 4500,
+      "currency": "EUR"
     }
   ]
 }
