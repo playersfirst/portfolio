@@ -4951,6 +4951,35 @@
           "value_eur": 2782.7
         }
       }
+    },
+    {
+      "date": "2025-10-13",
+      "assets": {
+        "SGOV": {
+          "value_usd": 21839.33,
+          "value_eur": 18807.82
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 11995.97,
+          "value_eur": 10330.82
+        },
+        "IAU": {
+          "value_usd": 6407.28,
+          "value_eur": 5517.89
+        },
+        "NANC": {
+          "value_usd": 5417.38,
+          "value_eur": 4665.4
+        },
+        "VOO": {
+          "value_usd": 3739.44,
+          "value_eur": 3220.37
+        },
+        "IWDE": {
+          "value_usd": 3231.22,
+          "value_eur": 2782.7
+        }
+      }
     }
   ]
 }
