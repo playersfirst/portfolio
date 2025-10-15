@@ -769,6 +769,17 @@
       "newAmount": 41099,
       "difference": 200,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-10-15T20:43:07.087Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 232,
+      "oldAmount": 6565,
+      "newAmount": 6797,
+      "difference": 232,
+      "currency": "USD"
     }
   ]
 }
