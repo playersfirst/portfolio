@@ -780,6 +780,83 @@
       "newAmount": 6797,
       "difference": 232,
       "currency": "USD"
+    },
+    {
+      "timestamp": "2025-10-15T23:52:49.687Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 59,
+      "oldAmount": 3800,
+      "newAmount": 3859,
+      "difference": 59,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-10-15T23:52:49.687Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 873,
+      "oldAmount": 5173,
+      "newAmount": 6046,
+      "difference": 873,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-10-15T23:52:49.687Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 51,
+      "oldAmount": 3355,
+      "newAmount": 3406,
+      "difference": 51,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-10-15T23:52:49.687Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 749,
+      "oldAmount": 4566,
+      "newAmount": 5315,
+      "difference": 749,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-10-15T23:52:49.687Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.09140000000000015,
+      "oldAmount": 6.9394,
+      "newAmount": 7.0308,
+      "difference": 0.09140000000000015,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-10-15T23:52:49.687Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 11,
+      "oldAmount": 84.7748,
+      "newAmount": 95.7748,
+      "difference": 11,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-10-15T23:52:49.687Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 800,
+      "oldAmount": 41099,
+      "newAmount": 41899,
+      "difference": 800,
+      "currency": "EUR"
     }
   ]
 }
