@@ -742,10 +742,10 @@
       "ticker": "BINANCE:BTCUSDT",
       "type": "initial_euro_investment",
       "action": "increase",
-      "amount": 432,
+      "amount": 200,
       "oldAmount": 6009,
-      "newAmount": 6441,
-      "difference": 432,
+      "newAmount": 6209,
+      "difference": 200,
       "currency": "EUR"
     },
     {
