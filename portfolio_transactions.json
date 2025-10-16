@@ -830,10 +830,10 @@
       "ticker": "VOO",
       "type": "portfolio_holding",
       "action": "buy",
-      "amount": 0.09140000000000015,
+      "amount": 0.0913,
       "oldAmount": 6.9394,
-      "newAmount": 7.0308,
-      "difference": 0.09140000000000015,
+      "newAmount": 7.0307,
+      "difference": 0.0913,
       "currency": "units"
     },
     {
