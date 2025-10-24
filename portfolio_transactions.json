@@ -857,6 +857,50 @@
       "newAmount": 41899,
       "difference": 800,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-10-24T14:06:04.977Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 930,
+      "oldAmount": 6046,
+      "newAmount": 6976,
+      "difference": 930,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-10-24T14:06:04.977Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 800,
+      "oldAmount": 5315,
+      "newAmount": 6115,
+      "difference": 800,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-10-24T14:06:04.977Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 11.972999999999999,
+      "oldAmount": 95.7748,
+      "newAmount": 107.7478,
+      "difference": 11.972999999999999,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-10-24T14:06:04.977Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 800,
+      "oldAmount": 41899,
+      "newAmount": 42699,
+      "difference": 800,
+      "currency": "EUR"
     }
   ]
 }
