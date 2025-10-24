@@ -1,9 +1,9 @@
 {
-  "originalEuroInvestment": 41899,
+  "originalEuroInvestment": 42699,
   "initialInvestments": {
     "VOO": 3859,
     "NANC": 5602,
-    "IAU": 6046,
+    "IAU": 6976,
     "SGOV": 21562,
     "BINANCE:BTCUSDT": 6797,
     "IWDE": 3450
@@ -11,7 +11,7 @@
   "initialEuroInvestments": {
     "VOO": 3406,
     "NANC": 4862,
-    "IAU": 5315,
+    "IAU": 6115,
     "SGOV": 19148,
     "BINANCE:BTCUSDT": 6209,
     "IWDE": 2959
@@ -19,7 +19,7 @@
   "currentPortfolio": {
     "VOO": 7.0307,
     "NANC": 133.8709,
-    "IAU": 95.7748,
+    "IAU": 107.7478,
     "SGOV": 217.2851,
     "BINANCE:BTCUSDT": 0.10608573,
     "IWDE": 28.8135
