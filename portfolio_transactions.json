@@ -901,6 +901,83 @@
       "newAmount": 42699,
       "difference": 800,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-10-31T14:16:09.631Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 105,
+      "oldAmount": 3859,
+      "newAmount": 3964,
+      "difference": 105,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-10-31T14:16:09.631Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 470,
+      "oldAmount": 6976,
+      "newAmount": 7446,
+      "difference": 470,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-10-31T14:16:09.631Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 94,
+      "oldAmount": 3406,
+      "newAmount": 3500,
+      "difference": 94,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-10-31T14:16:09.631Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 406,
+      "oldAmount": 6115,
+      "newAmount": 6521,
+      "difference": 406,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-10-31T14:16:09.631Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.16719999999999935,
+      "oldAmount": 7.0307,
+      "newAmount": 7.1979,
+      "difference": 0.16719999999999935,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-10-31T14:16:09.631Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 6.201700000000002,
+      "oldAmount": 107.7478,
+      "newAmount": 113.9495,
+      "difference": 6.201700000000002,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-10-31T14:16:09.631Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 500,
+      "oldAmount": 42699,
+      "newAmount": 43199,
+      "difference": 500,
+      "currency": "EUR"
     }
   ]
 }
