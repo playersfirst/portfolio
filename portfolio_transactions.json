@@ -978,6 +978,116 @@
       "newAmount": 43199,
       "difference": 500,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 380,
+      "oldAmount": 3964,
+      "newAmount": 4344,
+      "difference": 380,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 1001,
+      "oldAmount": 7446,
+      "newAmount": 8447,
+      "difference": 1001,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "IWDE",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 576,
+      "oldAmount": 3450,
+      "newAmount": 4026,
+      "difference": 576,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 330,
+      "oldAmount": 3500,
+      "newAmount": 3830,
+      "difference": 330,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 870,
+      "oldAmount": 6521,
+      "newAmount": 7391,
+      "difference": 870,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "IWDE",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 500,
+      "oldAmount": 2959,
+      "newAmount": 3459,
+      "difference": 500,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.6028000000000002,
+      "oldAmount": 7.1979,
+      "newAmount": 7.8007,
+      "difference": 0.6028000000000002,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 13.272199999999998,
+      "oldAmount": 113.9495,
+      "newAmount": 127.2217,
+      "difference": 13.272199999999998,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "IWDE",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 4.6523,
+      "oldAmount": 28.8135,
+      "newAmount": 33.4658,
+      "difference": 4.6523,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-11-03T19:10:50.785Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 1700,
+      "oldAmount": 43199,
+      "newAmount": 44899,
+      "difference": 1700,
+      "currency": "EUR"
     }
   ]
 }
