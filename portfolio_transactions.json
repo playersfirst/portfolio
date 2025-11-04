@@ -1072,10 +1072,10 @@
       "ticker": "IWDE",
       "type": "portfolio_holding",
       "action": "buy",
-      "amount": 4.6523,
+      "amount": 4.656,
       "oldAmount": 28.8135,
       "newAmount": 33.4658,
-      "difference": 4.6523,
+      "difference": 4.656,
       "currency": "units"
     },
     {
