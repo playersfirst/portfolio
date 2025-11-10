@@ -6,154 +6,331 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 import pytz
-import os
 from pathlib import Path
-# import requests # Removed
 
 class PortfolioUpdater:
     def __init__(self):
         self.setup_driver()
         self.json_file = Path(__file__).parent / 'portfolio_history.json'
         self.portfolio_url = "https://playersfirst.github.io/portfolio"
+        self.max_retries = 3
+        self.retry_delay = 10
 
     def setup_driver(self):
         chrome_options = Options()
-        chrome_options.add_argument("--headless") # Optional: Run headless
+        chrome_options.add_argument("--headless")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.page_load_strategy = 'normal'
         
         self.driver = webdriver.Chrome(options=chrome_options)
+        self.driver.set_page_load_timeout(60)
 
-
-
-    def get_asset_values(self):
-        """Scrapes the current USD and EUR values for each asset from the portfolio page by clicking the currency switch."""
-        asset_values_usd = {}
-        asset_values_eur = {}
+    def check_for_errors(self):
+        """Check if 'Error loading data' appears anywhere on the page."""
         try:
-            print(f"Navigating to {self.portfolio_url}")
-            self.driver.get(self.portfolio_url)
-            # Wait for the table body to be populated (USD view)
-            print("Waiting for table to load (USD view)...")
+            error_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), 'Error loading data')]")
+            if error_elements:
+                print("  ✗ Found 'Error loading data' on page")
+                return True
+            
+            # Also check for common error indicators
+            page_text = self.driver.find_element(By.TAG_NAME, "body").text.lower()
+            error_keywords = ['error loading', 'failed to load', 'connection error', 'network error']
+            for keyword in error_keywords:
+                if keyword in page_text:
+                    print(f"  ✗ Found error indicator: '{keyword}'")
+                    return True
+            
+            return False
+        except Exception as e:
+            print(f"  ⚠ Error checking for error messages: {e}")
+            return False
+
+    def wait_for_all_assets_loaded(self, expected_min_assets=2, timeout=60):
+        """
+        Wait until all assets have valid, non-zero values loaded.
+        Returns True if successful, False if timeout or errors detected.
+        """
+        print(f"Waiting up to {timeout}s for all assets to load (min {expected_min_assets} assets)...")
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            try:
+                # Check for error messages first
+                if self.check_for_errors():
+                    return False
+                
+                rows = self.driver.find_elements(By.CSS_SELECTOR, "#portfolio-data tr")
+                
+                if not rows:
+                    print(f"  ⏳ No rows yet... ({int(time.time() - start_time)}s elapsed)")
+                    time.sleep(2)
+                    continue
+                
+                if len(rows) < expected_min_assets:
+                    print(f"  ⏳ Only {len(rows)} rows, expecting at least {expected_min_assets}... ({int(time.time() - start_time)}s elapsed)")
+                    time.sleep(2)
+                    continue
+                
+                all_loaded = True
+                loaded_count = 0
+                
+                for idx, row in enumerate(rows):
+                    try:
+                        cells = row.find_elements(By.TAG_NAME, "td")
+                        if len(cells) >= 4:
+                            value_text = cells[3].text.strip()
+                            
+                            # Check if value is missing or invalid
+                            if not value_text:
+                                all_loaded = False
+                                break
+                            
+                            # Check for placeholder/loading indicators
+                            if value_text in ['$0', '€0', '$0.00', '€0.00', '-', '...', 'Loading...', '--']:
+                                all_loaded = False
+                                break
+                            
+                            # Try to extract numeric value to ensure it's valid
+                            cleaned = value_text.replace('$', '').replace('€', '').replace(',', '').replace('.', '', value_text.count('.') - 1)
+                            try:
+                                numeric_val = float(cleaned.replace(',', '.') if ',' in cleaned else cleaned)
+                                if numeric_val == 0:
+                                    all_loaded = False
+                                    break
+                                loaded_count += 1
+                            except ValueError:
+                                all_loaded = False
+                                break
+                    except StaleElementReferenceException:
+                        all_loaded = False
+                        break
+                    except Exception as e:
+                        print(f"  ⚠ Error checking row {idx}: {e}")
+                        all_loaded = False
+                        break
+                
+                if all_loaded and loaded_count >= expected_min_assets:
+                    print(f"  ✓ All {loaded_count} assets loaded successfully ({int(time.time() - start_time)}s)")
+                    return True
+                
+                # Status update every 10 seconds
+                elapsed = int(time.time() - start_time)
+                if elapsed % 10 == 0 and elapsed > 0:
+                    print(f"  ⏳ Still waiting... {loaded_count}/{len(rows)} assets loaded ({elapsed}s elapsed)")
+                
+                time.sleep(2)
+                
+            except StaleElementReferenceException:
+                time.sleep(2)
+                continue
+            except Exception as e:
+                print(f"  ⚠ Error in wait loop: {e}")
+                time.sleep(2)
+                continue
+        
+        print(f"  ✗ Timeout: Not all assets loaded within {timeout}s")
+        return False
+
+    def load_page_with_retry(self, currency='USD', retry_count=0):
+        """
+        Load the page and wait for all assets. Retry if errors detected.
+        Returns True if successful, False if all retries exhausted.
+        """
+        if retry_count >= self.max_retries:
+            print(f"✗ Failed after {self.max_retries} attempts")
+            return False
+        
+        attempt_num = retry_count + 1
+        print(f"\n{'='*60}")
+        print(f"Attempt {attempt_num}/{self.max_retries} - Loading {currency} view")
+        print(f"{'='*60}")
+        
+        try:
+            if retry_count == 0:
+                # First load
+                print(f"Navigating to {self.portfolio_url}")
+                self.driver.get(self.portfolio_url)
+            else:
+                # Retry - reload the page
+                print(f"Reloading page (attempt {attempt_num})...")
+                self.driver.refresh()
+            
+            # Wait for table structure
+            print("Waiting for table structure...")
             WebDriverWait(self.driver, 30).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, "#portfolio-data tr"))
             )
-            # Give JS a bit more time to potentially update values after initial load
-            print("Initial load complete, waiting 5s...")
-            time.sleep(5)
+            
+            # Check for errors immediately
+            if self.check_for_errors():
+                print(f"Errors detected on page load, retrying in {self.retry_delay}s...")
+                time.sleep(self.retry_delay)
+                return self.load_page_with_retry(currency, retry_count + 1)
+            
+            # Wait for all assets to load
+            if not self.wait_for_all_assets_loaded(expected_min_assets=2, timeout=60):
+                print(f"Assets failed to load, retrying in {self.retry_delay}s...")
+                time.sleep(self.retry_delay)
+                return self.load_page_with_retry(currency, retry_count + 1)
+            
+            print(f"✓ {currency} view loaded successfully")
+            return True
+            
+        except TimeoutException:
+            print(f"✗ Timeout waiting for page elements, retrying in {self.retry_delay}s...")
+            time.sleep(self.retry_delay)
+            return self.load_page_with_retry(currency, retry_count + 1)
+        except Exception as e:
+            print(f"✗ Error loading page: {e}, retrying in {self.retry_delay}s...")
+            time.sleep(self.retry_delay)
+            return self.load_page_with_retry(currency, retry_count + 1)
 
-            print("Scraping USD values...")
-            table_body = self.driver.find_element(By.ID, "portfolio-data")
-            rows = table_body.find_elements(By.TAG_NAME, "tr")
-
-            if not rows:
-                print("Warning: No rows found in the portfolio table (USD view).")
-                # Decide how to handle this - maybe return empty dicts or raise error
-                return {}, {}
-
-            for row in rows:
-                try:
-                    cells = row.find_elements(By.TAG_NAME, "td")
-                    if len(cells) >= 4: # Need symbol, shares, price, value
-                        symbol_container = cells[0].find_element(By.CLASS_NAME, "symbol-container")
-                        raw_symbol_text = symbol_container.text
-                        symbol = raw_symbol_text.replace('⊕', '').replace('⊖', '').strip()
-                        internal_symbol = 'BINANCE:BTCUSDT' if symbol == 'BTC' else ('IWDE' if symbol == 'IWDE.L' else symbol)
-
-                        value_text_usd = cells[3].text # Value is in the 4th column (index 3)
-                        value_usd = float(value_text_usd.replace('$', '').replace(',', ''))
-                        asset_values_usd[internal_symbol] = value_usd
-                        print(f"  Found USD Value: {internal_symbol} = {value_usd}")
-                    else:
-                         print(f"  Warning: Row found with insufficient cells (USD view): {row.text}")
-                except Exception as row_e:
-                    print(f"  Error processing row (USD view) {row.text}: {row_e}")
-
-            # --- Switch to EUR --- #
-            print("Finding and clicking currency switch button...")
+    def switch_currency_with_retry(self, retry_count=0):
+        """
+        Switch currency and wait for all assets to reload. Retry if errors detected.
+        Returns True if successful, False if all retries exhausted.
+        """
+        if retry_count >= self.max_retries:
+            print(f"✗ Failed to switch currency after {self.max_retries} attempts")
+            return False
+        
+        attempt_num = retry_count + 1
+        print(f"\n{'='*60}")
+        print(f"Attempt {attempt_num}/{self.max_retries} - Switching to EUR")
+        print(f"{'='*60}")
+        
+        try:
+            # Get sample value before switch
+            rows = self.driver.find_elements(By.CSS_SELECTOR, "#portfolio-data tr")
+            sample_value_before = None
+            if rows:
+                cells = rows[0].find_elements(By.TAG_NAME, "td")
+                if len(cells) >= 4:
+                    sample_value_before = cells[3].text
+            
+            # Click currency button
+            print("Clicking currency switch button...")
             currency_button = WebDriverWait(self.driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "floating-currency-switch-btn"))
             )
             currency_button.click()
-            print("Clicked. Waiting for page to update to EUR view...")
-
-            # Wait for the page to update - give it time to switch
+            print("Button clicked, waiting for currency change...")
+            
+            # Wait for currency to change
             time.sleep(3)
-            print("Page updated to EUR view. Waiting 3s for stability...")
-            time.sleep(3) # Short extra pause just in case rendering lags
+            
+            # Verify currency changed
+            if sample_value_before:
+                rows_after = self.driver.find_elements(By.CSS_SELECTOR, "#portfolio-data tr")
+                if rows_after:
+                    cells_after = rows_after[0].find_elements(By.TAG_NAME, "td")
+                    if len(cells_after) >= 4:
+                        sample_value_after = cells_after[3].text
+                        if sample_value_before == sample_value_after:
+                            print("✗ Currency didn't change, retrying...")
+                            time.sleep(self.retry_delay)
+                            return self.switch_currency_with_retry(retry_count + 1)
+                        print(f"✓ Currency changed: {sample_value_before} → {sample_value_after}")
+            
+            # Check for errors after switch
+            if self.check_for_errors():
+                print(f"Errors detected after currency switch, retrying...")
+                time.sleep(self.retry_delay)
+                return self.switch_currency_with_retry(retry_count + 1)
+            
+            # Wait for all assets to reload with new currency
+            if not self.wait_for_all_assets_loaded(expected_min_assets=2, timeout=60):
+                print(f"Assets failed to load after currency switch, retrying...")
+                time.sleep(self.retry_delay)
+                return self.switch_currency_with_retry(retry_count + 1)
+            
+            print("✓ EUR view loaded successfully")
+            return True
+            
+        except Exception as e:
+            print(f"✗ Error switching currency: {e}")
+            time.sleep(self.retry_delay)
+            return self.switch_currency_with_retry(retry_count + 1)
 
-            # --- Scrape EUR values --- #
-            print("Scraping EUR values...")
-            # Re-find table elements as the DOM might have changed
-            table_body_eur = self.driver.find_element(By.ID, "portfolio-data")
-            rows_eur = table_body_eur.find_elements(By.TAG_NAME, "tr")
-
-            if not rows_eur:
-                print("Warning: No rows found in the portfolio table (EUR view).")
-                # Return what we have for USD, but EUR will be empty
-                return asset_values_usd, {}
-
-            for row in rows_eur:
-                 try:
+    def extract_values(self, currency='USD'):
+        """Extract asset values from the currently loaded page."""
+        print(f"\nExtracting {currency} values...")
+        asset_values = {}
+        
+        try:
+            table_body = self.driver.find_element(By.ID, "portfolio-data")
+            rows = table_body.find_elements(By.TAG_NAME, "tr")
+            
+            for row in rows:
+                try:
                     cells = row.find_elements(By.TAG_NAME, "td")
-                    if len(cells) >= 4: # Need symbol, shares, price, value
+                    if len(cells) >= 4:
                         symbol_container = cells[0].find_element(By.CLASS_NAME, "symbol-container")
                         raw_symbol_text = symbol_container.text
                         symbol = raw_symbol_text.replace('⊕', '').replace('⊖', '').strip()
                         internal_symbol = 'BINANCE:BTCUSDT' if symbol == 'BTC' else ('IWDE' if symbol == 'IWDE.L' else symbol)
-
-                        value_text_eur_raw = cells[3].text # Value is still in the 4th column
-                        print(f"  Raw EUR Text for {internal_symbol}: '{value_text_eur_raw}'") # DEBUG PRINT
-
-                        # Improved Parsing:
-                        # 1. Remove currency symbol and leading/trailing whitespace
-                        cleaned_text = value_text_eur_raw.replace('€', '').strip()
-
-                        # 2. Check for comma as decimal separator (common in Europe)
-                        #    If comma exists and is preceded by digits and potentially thousand separators (.),
-                        #    assume it's the decimal separator.
-                        last_comma = cleaned_text.rfind(',')
-                        last_dot = cleaned_text.rfind('.')
-
-                        if last_comma > last_dot: # Handles cases like 1.234,56 or 1234,56
-                            # Remove thousand separators (.) and replace decimal comma (,) with dot (.)
-                            cleaned_value_text = cleaned_text.replace('.', '').replace(',', '.')
-                        else: # Handles cases like 1,234.56 (less common for EUR display usually) or 1234.56
-                            # Remove thousand separators (,)
-                            cleaned_value_text = cleaned_text.replace(',', '')
                         
-                        # 3. Remove any remaining non-numeric characters except the decimal point and potential minus sign
-                        # This is a bit aggressive, might be better to rely on float conversion error handling
-                        # cleaned_value_text = re.sub(r"[^0-9.-]", "", cleaned_value_text) 
-
-                        try:
-                            value_eur = float(cleaned_value_text)
-                            asset_values_eur[internal_symbol] = value_eur
-                            print(f"  Parsed EUR Value: {internal_symbol} = {value_eur}")
-                        except ValueError:
-                            print(f"  Warning: Could not parse EUR value for {internal_symbol} from cleaned text '{cleaned_value_text}'")
-                            # Optionally set a default value like 0 or skip this asset
-                            asset_values_eur[internal_symbol] = 0 # Set to 0 on parse failure
-
-                    else:
-                        print(f"  Warning: Row found with insufficient cells (EUR view): {row.text}")
-                 except Exception as row_e:
-                    print(f"  Error processing row (EUR view) {row.text}: {row_e}")
-
-            return asset_values_usd, asset_values_eur
-
+                        value_text = cells[3].text.strip()
+                        
+                        # Parse based on currency
+                        if currency == 'USD':
+                            cleaned = value_text.replace('$', '').replace(',', '')
+                            value = float(cleaned)
+                        else:  # EUR
+                            cleaned_text = value_text.replace('€', '').strip()
+                            last_comma = cleaned_text.rfind(',')
+                            last_dot = cleaned_text.rfind('.')
+                            
+                            if last_comma > last_dot:
+                                cleaned_value_text = cleaned_text.replace('.', '').replace(',', '.')
+                            else:
+                                cleaned_value_text = cleaned_text.replace(',', '')
+                            
+                            value = float(cleaned_value_text)
+                        
+                        asset_values[internal_symbol] = value
+                        print(f"  ✓ {internal_symbol}: {value_text} = {value}")
+                        
+                except Exception as row_e:
+                    print(f"  ⚠ Error processing row: {row_e}")
+            
+            return asset_values
+            
         except Exception as e:
-            print(f"Error scraping asset values: {e}")
-            raise # Re-raise the exception to be caught in run()
+            print(f"✗ Error extracting {currency} values: {e}")
+            return {}
+
+    def get_asset_values(self):
+        """Main method to scrape USD and EUR values with retry logic."""
+        # Load page and get USD values
+        if not self.load_page_with_retry(currency='USD'):
+            raise ValueError("Failed to load USD view after all retries")
+        
+        asset_values_usd = self.extract_values(currency='USD')
+        if not asset_values_usd:
+            raise ValueError("Failed to extract USD values")
+        
+        # Switch to EUR and get EUR values
+        if not self.switch_currency_with_retry():
+            raise ValueError("Failed to switch to EUR view after all retries")
+        
+        asset_values_eur = self.extract_values(currency='EUR')
+        if not asset_values_eur:
+            raise ValueError("Failed to extract EUR values")
+        
+        return asset_values_usd, asset_values_eur
 
     def update_history(self, asset_values_usd, asset_values_eur):
-        """Updates portfolio_history.json with detailed asset values in USD and EUR, provided directly."""
+        """Updates portfolio_history.json with detailed asset values in USD and EUR."""
         today = datetime.now(pytz.timezone('Europe/Paris')).strftime('%Y-%m-%d')
         history_data = {"history": []}
 
-        # Read existing history
         if self.json_file.exists():
             try:
                 with open(self.json_file, 'r') as f:
@@ -163,17 +340,12 @@ class PortfolioUpdater:
                     if "history" not in history_data:
                         history_data["history"] = []
             except json.JSONDecodeError:
-                 print(f"Warning: {self.json_file} contains invalid JSON. Starting fresh history.")
+                print(f"Warning: Invalid JSON in {self.json_file}. Starting fresh.")
             except Exception as e:
-                print(f"Error reading {self.json_file}: {e}. Starting fresh history.")
-        else:
-             print(f"Warning: {self.json_file} not found. Creating new history file.")
+                print(f"Error reading {self.json_file}: {e}")
 
-        # Construct today's entry using provided values
         today_assets = {}
-        # Ensure we iterate over the symbols found in the USD values as primary
         for symbol, value_usd in asset_values_usd.items():
-            # Get corresponding EUR value, defaulting to 0 if not found (shouldn't happen ideally)
             value_eur = asset_values_eur.get(symbol, 0)
             today_assets[symbol] = {
                 "value_usd": round(value_usd, 2),
@@ -185,61 +357,59 @@ class PortfolioUpdater:
             "assets": today_assets
         }
 
-        # Check if today's entry already exists and update it, otherwise append
+        # Update or append today's entry
         entry_updated = False
         for i, entry in enumerate(history_data["history"]):
             if entry.get("date") == today:
                 history_data["history"][i] = new_entry
                 entry_updated = True
-                print(f"Updating entry for today: {today}")
+                print(f"\n✓ Updated entry for {today}")
                 break
 
         if not entry_updated:
-             history_data["history"].append(new_entry)
-             print(f"Adding new entry for today: {today}")
+            history_data["history"].append(new_entry)
+            print(f"\n✓ Added new entry for {today}")
 
-        # Write updated history back to file
         try:
             with open(self.json_file, 'w') as f:
                 json.dump(history_data, f, indent=2)
             return history_data
         except Exception as e:
-             print(f"Error writing updated history to {self.json_file}: {e}")
-             return None # Indicate failure
+            print(f"ERROR writing to {self.json_file}: {e}")
+            return None
 
     def run(self):
         """Main execution flow."""
         try:
-            print("Fetching current asset values (USD and EUR)...")
+            print("="*60)
+            print("PORTFOLIO UPDATER STARTING")
+            print("="*60)
+            
             asset_values_usd, asset_values_eur = self.get_asset_values()
 
-            # Validate results
-            if not asset_values_usd:
-                 raise ValueError("Failed to retrieve USD asset values.")
-            if not asset_values_eur:
-                 raise ValueError("Failed to retrieve EUR asset values after switching currency.")
+            print(f"\n{'='*60}")
+            print(f"✓ Successfully extracted all values")
+            print(f"  USD: {len(asset_values_usd)} assets")
+            print(f"  EUR: {len(asset_values_eur)} assets")
+            print(f"{'='*60}")
 
-            print(f"Retrieved USD Values: {asset_values_usd}")
-            print(f"Retrieved EUR Values: {asset_values_eur}")
-
-            print("Updating history file...")
             updated_data = self.update_history(asset_values_usd, asset_values_eur)
 
             if updated_data:
-                 print("Successfully updated portfolio history:")
-                 print(f"History file '{self.json_file}' updated.")
-                 return True
+                print(f"\n✓ Successfully updated {self.json_file}")
+                print("="*60)
+                return True
             else:
-                 print("Failed to update history file.")
-                 return False
+                print("\n✗ Failed to update history file")
+                return False
 
         except Exception as e:
-            print(f"Error in portfolio update run: {e}")
+            print(f"\n✗ FATAL ERROR: {e}")
             return False
         finally:
             if hasattr(self, 'driver'):
                 self.driver.quit()
-            print("Driver quit.")
+                print("Driver closed")
 
 if __name__ == "__main__":
     updater = PortfolioUpdater()
