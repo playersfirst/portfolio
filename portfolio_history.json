@@ -5700,7 +5700,7 @@
           "value_usd": 4807.1,
           "value_eur": 4165.79
         },
-          "IWDE": {
+        "IWDE": {
           "value_usd": 4030.99,
           "value_eur": 3480.64
         }
@@ -5758,7 +5758,7 @@
           "value_usd": 4812.17,
           "value_eur": 4159.43
         },
-          "IWDE": {
+        "IWDE": {
           "value_usd": 4034.99,
           "value_eur": 3487.64
         }
@@ -5790,6 +5790,35 @@
         "IWDE": {
           "value_usd": 4113.99,
           "value_eur": 3556.64
+        }
+      }
+    },
+    {
+      "date": "2025-11-11",
+      "assets": {
+        "SGOV": {
+          "value_usd": 21883.5,
+          "value_eur": 18940.52
+        },
+        "BINANCE:BTCUSDT": {
+          "value_usd": 10872.69,
+          "value_eur": 9410.49
+        },
+        "IAU": {
+          "value_usd": 9855.87,
+          "value_eur": 8530.41
+        },
+        "NANC": {
+          "value_usd": 6188.85,
+          "value_eur": 5356.55
+        },
+        "VOO": {
+          "value_usd": 4886.9,
+          "value_eur": 4229.69
+        },
+        "IWDE": {
+          "value_usd": 4100.77,
+          "value_eur": 3549.29
         }
       }
     }
