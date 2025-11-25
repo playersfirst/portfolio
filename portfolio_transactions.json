@@ -1187,6 +1187,149 @@
       "newAmount": 44600,
       "difference": 4899,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 306,
+      "oldAmount": 4344,
+      "newAmount": 4650,
+      "difference": 306,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "NANC",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 270,
+      "oldAmount": 5602,
+      "newAmount": 5872,
+      "difference": 270,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 290,
+      "oldAmount": 8447,
+      "newAmount": 8737,
+      "difference": 290,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 403,
+      "oldAmount": 6448,
+      "newAmount": 6851,
+      "difference": 403,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 265,
+      "oldAmount": 3830,
+      "newAmount": 4095,
+      "difference": 265,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "NANC",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 234,
+      "oldAmount": 4862,
+      "newAmount": 5096,
+      "difference": 234,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 251,
+      "oldAmount": 7391,
+      "newAmount": 7642,
+      "difference": 251,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 350,
+      "oldAmount": 5910,
+      "newAmount": 6260,
+      "difference": 350,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.4970000000000008,
+      "oldAmount": 7.8007,
+      "newAmount": 8.2977,
+      "difference": 0.4970000000000008,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "NANC",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 6.00139999999999,
+      "oldAmount": 133.8709,
+      "newAmount": 139.8723,
+      "difference": 6.00139999999999,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 3.7253000000000043,
+      "oldAmount": 127.2217,
+      "newAmount": 130.947,
+      "difference": 3.7253000000000043,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.004609909999999995,
+      "oldAmount": 0.10236243,
+      "newAmount": 0.10697234,
+      "difference": 0.004609909999999995,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-11-25T15:54:51.834Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 1100,
+      "oldAmount": 44600,
+      "newAmount": 45700,
+      "difference": 1100,
+      "currency": "EUR"
     }
   ]
 }
