@@ -1429,6 +1429,116 @@
       "newAmount": 46200,
       "difference": 159,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 451,
+      "oldAmount": 4650,
+      "newAmount": 5101,
+      "difference": 451,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "NANC",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 501,
+      "oldAmount": 5872,
+      "newAmount": 6373,
+      "difference": 501,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 121,
+      "oldAmount": 9137,
+      "newAmount": 9258,
+      "difference": 121,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 384,
+      "oldAmount": 4095,
+      "newAmount": 4479,
+      "difference": 384,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "NANC",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 426,
+      "oldAmount": 5096,
+      "newAmount": 5522,
+      "difference": 426,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 103,
+      "oldAmount": 7983,
+      "newAmount": 8086,
+      "difference": 103,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.7146999999999988,
+      "oldAmount": 8.2977,
+      "newAmount": 9.0124,
+      "difference": 0.7146999999999988,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "NANC",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 10.888300000000015,
+      "oldAmount": 139.8723,
+      "newAmount": 150.7606,
+      "difference": 10.888300000000015,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 1.4359000000000037,
+      "oldAmount": 135.8393,
+      "newAmount": 137.2752,
+      "difference": 1.4359000000000037,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-22T16:59:09.897Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 913,
+      "oldAmount": 46200,
+      "newAmount": 47113,
+      "difference": 913,
+      "currency": "EUR"
     }
   ]
 }
