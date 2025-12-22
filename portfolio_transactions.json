@@ -1583,6 +1583,116 @@
       "newAmount": 47250,
       "difference": 137,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 140,
+      "oldAmount": 9258,
+      "newAmount": 9398,
+      "difference": 140,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "SGOV",
+      "type": "initial_investment",
+      "action": "decrease",
+      "amount": 2205,
+      "oldAmount": 21562,
+      "newAmount": 19357,
+      "difference": -2205,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 165,
+      "oldAmount": 7198,
+      "newAmount": 7363,
+      "difference": 165,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 119,
+      "oldAmount": 8086,
+      "newAmount": 8205,
+      "difference": 119,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "SGOV",
+      "type": "initial_euro_investment",
+      "action": "decrease",
+      "amount": 1876,
+      "oldAmount": 19148,
+      "newAmount": 17272,
+      "difference": -1876,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 140,
+      "oldAmount": 6556,
+      "newAmount": 6696,
+      "difference": 140,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 1.6774999999999807,
+      "oldAmount": 137.2752,
+      "newAmount": 138.9527,
+      "difference": 1.6774999999999807,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "sell",
+      "amount": 22,
+      "oldAmount": 218.2861,
+      "newAmount": 196.2861,
+      "difference": -22,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.0018535900000000022,
+      "oldAmount": 0.11088006,
+      "newAmount": 0.11273365,
+      "difference": 0.0018535900000000022,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-22T19:26:40.456Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "decrease",
+      "amount": 1617,
+      "oldAmount": 47250,
+      "newAmount": 45633,
+      "difference": -1617,
+      "currency": "EUR"
     }
   ]
 }
