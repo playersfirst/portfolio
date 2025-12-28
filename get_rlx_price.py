@@ -79,12 +79,11 @@ else:
     except:
         scraper = cloudscraper.create_scraper(delay=10)
 
-# Make initial request using the best available method
+# Use Playwright to get cookies (bypasses Cloudflare), then use those cookies with cloudscraper/curl_cffi
+playwright_cookies = None
 if USE_PLAYWRIGHT:
-    # Use Playwright with real browser - best for bypassing Cloudflare
-    print("DEBUG: Using Playwright to load page...", file=sys.stderr)
+    print("DEBUG: Using Playwright to get cookies (bypass Cloudflare)...", file=sys.stderr)
     with sync_playwright() as p:
-        # Launch browser with stealth settings
         browser = p.chromium.launch(
             headless=True,
             args=[
@@ -94,96 +93,72 @@ if USE_PLAYWRIGHT:
                 '--disable-setuid-sandbox',
             ]
         )
-        
-        # Create context with realistic settings
         context = browser.new_context(
             viewport={'width': 1920, 'height': 1080},
             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             locale='en-US',
             timezone_id='America/New_York',
         )
-        
         page = context.new_page()
         
-        # Navigate to page and wait for it to load
-        # Use "load" instead of "networkidle" - more reliable, waits for page to load
-        print("DEBUG: Navigating to page...", file=sys.stderr)
+        print("DEBUG: Navigating to page with Playwright...", file=sys.stderr)
         try:
             page.goto("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", wait_until="load", timeout=30000)
         except Exception as e:
-            print(f"DEBUG: Page load timeout, trying with domcontentloaded...", file=sys.stderr)
-            # Fallback to domcontentloaded if load times out
+            print(f"DEBUG: Page load timeout, trying domcontentloaded...", file=sys.stderr)
             try:
                 page.goto("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", wait_until="domcontentloaded", timeout=30000)
-            except Exception as e2:
-                print(f"DEBUG: Both load strategies failed: {e2}", file=sys.stderr)
-                # Last resort - just navigate without waiting
+            except:
                 page.goto("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", timeout=30000)
         
-        # Wait a bit for any JavaScript to execute and Cloudflare challenge to complete
-        print("DEBUG: Waiting for page to stabilize...", file=sys.stderr)
-        time.sleep(5)
+        time.sleep(5)  # Wait for Cloudflare challenge to complete
         
-        # Get cookies from browser
+        # Get cookies from Playwright
         cookies = context.cookies()
-        cookies_dict = {cookie['name']: cookie['value'] for cookie in cookies}
-        print(f"DEBUG: Playwright cookies: {list(cookies_dict.keys())}", file=sys.stderr)
-        
-        # Check if page loaded successfully
-        page_url = page.url
-        print(f"DEBUG: Page loaded, URL: {page_url}", file=sys.stderr)
-        
-        # Get page content
-        html_content = page.content()
-        print(f"DEBUG: Page content length: {len(html_content)}", file=sys.stderr)
-        
-        # Check if we got blocked by Cloudflare
-        if 'challenge' in html_content.lower() or 'just a moment' in html_content.lower() or len(html_content) < 1000:
-            print("DEBUG: Possible Cloudflare challenge, waiting longer...", file=sys.stderr)
-            time.sleep(10)
-            html_content = page.content()
-            cookies = context.cookies()
-            cookies_dict = {cookie['name']: cookie['value'] for cookie in cookies}
-            print(f"DEBUG: After wait - Content length: {len(html_content)}, Cookies: {list(cookies_dict.keys())}", file=sys.stderr)
-        
-        # Create a mock response object for compatibility
-        class MockResponse:
-            def __init__(self, status_code, text, headers, cookies_dict):
-                self.status_code = status_code
-                self.text = text
-                self.headers = headers
-                self.cookies_dict = cookies_dict
-        
-        r = MockResponse(200, html_content, {}, cookies_dict)
+        playwright_cookies = {cookie['name']: cookie['value'] for cookie in cookies}
+        print(f"DEBUG: Got {len(playwright_cookies)} cookies from Playwright: {list(playwright_cookies.keys())[:10]}...", file=sys.stderr)
         
         browser.close()
-        
-elif USE_CURL_CFFI:
-    # Try with chrome120 first (most recent and best support)
+
+# Now use the cookies with cloudscraper or curl_cffi for the actual requests
+if USE_CURL_CFFI:
+    # Use curl_cffi with Playwright cookies if available
     import random
     time.sleep(random.uniform(1, 3))
     
     try:
-        print(f"DEBUG: Making initial request with chrome120...", file=sys.stderr)
+        print(f"DEBUG: Making request with curl_cffi...", file=sys.stderr)
         r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
                        impersonate="chrome120", timeout=60)
-        cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
-        print(f"DEBUG: Initial request - Status: {r.status_code}, Cookies: {list(cookies_dict.keys())}", file=sys.stderr)
         
-        if r.status_code == 403:
-            print(f"DEBUG: Got 403, waiting 15 seconds for challenge to complete...", file=sys.stderr)
-            time.sleep(15)
+        # Add Playwright cookies to session if we have them
+        if playwright_cookies:
+            for name, value in playwright_cookies.items():
+                session.cookies.set(name, value, domain='.watchcharts.com', path='/')
+            print("DEBUG: Added Playwright cookies to curl_cffi session", file=sys.stderr)
+            # Retry with cookies
             r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
                            impersonate="chrome120", timeout=60)
-            cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
-            print(f"DEBUG: Retry after wait - Status: {r.status_code}, Cookies: {list(cookies_dict.keys())}", file=sys.stderr)
+        
+        cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
+        print(f"DEBUG: curl_cffi request - Status: {r.status_code}, Cookies: {list(cookies_dict.keys())}", file=sys.stderr)
     except Exception as e:
         print(f"DEBUG: Request failed: {e}", file=sys.stderr)
         r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
                       impersonate="chrome120", timeout=60)
         cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
 else:
+    # Use cloudscraper with Playwright cookies if available
     r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+    
+    # Add Playwright cookies to scraper if we have them
+    if playwright_cookies:
+        for name, value in playwright_cookies.items():
+            scraper.cookies.set(name, value, domain='.watchcharts.com', path='/')
+        print("DEBUG: Added Playwright cookies to cloudscraper", file=sys.stderr)
+        # Retry with cookies
+        r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+    
     cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
 
 # Debug: Check what we actually got back
@@ -205,7 +180,7 @@ if not USE_PLAYWRIGHT and ('cloudflare' in r.text.lower() or 'challenge' in r.te
         except Exception as e:
             print(f"DEBUG: Retry failed: {e}", file=sys.stderr)
     else:
-        r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
         cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
     print(f"DEBUG: Retry request status: {r.status_code}", file=sys.stderr)
 
@@ -238,7 +213,7 @@ if USE_PLAYWRIGHT or USE_CURL_CFFI:
     if csrf:
         print(f"DEBUG: Found CSRF in cookies (csrfToken)", file=sys.stderr)
 else:
-    csrf = scraper.cookies.get('csrfToken')
+csrf = scraper.cookies.get('csrfToken')
     if csrf:
         print(f"DEBUG: Found CSRF in cookies (csrfToken)", file=sys.stderr)
 
@@ -418,46 +393,10 @@ if csrf:
 timestamp = int(time.time() * 1000)
 url = f"https://watchcharts.com/charts/watch/862.json?type=trend&key=0150&variation_id=0&mobile=0&_={timestamp}"
 
-if USE_PLAYWRIGHT:
-    # Use Playwright to make the API request with cookies
-    print("DEBUG: Making API request with Playwright...", file=sys.stderr)
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=['--disable-blink-features=AutomationControlled', '--disable-dev-shm-usage', '--no-sandbox']
-        )
-        context = browser.new_context(
-            viewport={'width': 1920, 'height': 1080},
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        )
-        
-        # Set cookies from previous request
-        if cookies_dict:
-            context.add_cookies([{'name': k, 'value': v, 'domain': '.watchcharts.com', 'path': '/'} for k, v in cookies_dict.items()])
-        
-        # Use request context to make API call
-        api_response = context.request.get(url, headers=headers)
-        
-        status = api_response.status
-        content = api_response.text()
-        
-        browser.close()
-        
-        # Create mock response
-        class MockResponse:
-            def __init__(self, status_code, text):
-                self.status_code = status_code
-                self.text = text
-            def json(self):
-                import json
-                return json.loads(self.text)
-        
-        r2 = MockResponse(status, content)
-        
-elif USE_CURL_CFFI:
+if USE_CURL_CFFI:
     r2 = session.get(url, headers=headers, impersonate="chrome120", timeout=60)
 else:
-        r2 = scraper.get(url, headers=headers)
+    r2 = scraper.get(url, headers=headers)
 
 if r2.status_code == 200:
     data = r2.json()
