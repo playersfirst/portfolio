@@ -46,20 +46,14 @@ def get_cookies_dict(session_or_scraper, use_curl_cffi):
 
 if USE_CURL_CFFI:
     # Use curl_cffi which is better at bypassing Cloudflare
-    session = requests.Session()
-    # Impersonate Chrome browser
-    session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Cache-Control': 'max-age=0',
-    })
+    # Try with a more recent Chrome version and better impersonation
+    try:
+        # Try chrome120 first (most recent)
+        session = requests.Session()
+    except:
+        session = requests.Session()
+    
+    # Don't manually set headers - let curl_cffi handle it with impersonate parameter
 else:
     # Create scraper with browser-like settings
     # Try different browser configurations that might work better in CI
@@ -78,9 +72,32 @@ else:
 
 # Make initial request
 if USE_CURL_CFFI:
-    r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
-    cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
-    print(f"DEBUG: curl_cffi cookies: {list(cookies_dict.keys())}", file=sys.stderr)
+    # Try with chrome120 first (most recent and best support)
+    # Add random delay to appear more human-like
+    import random
+    time.sleep(random.uniform(1, 3))
+    
+    try:
+        print(f"DEBUG: Making initial request with chrome120...", file=sys.stderr)
+        r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
+                       impersonate="chrome120", timeout=60)
+        cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
+        print(f"DEBUG: Initial request - Status: {r.status_code}, Cookies: {list(cookies_dict.keys())}", file=sys.stderr)
+        
+        # If we got 403, try waiting longer and retrying (Cloudflare challenge might need time)
+        if r.status_code == 403:
+            print(f"DEBUG: Got 403, waiting 15 seconds for challenge to complete...", file=sys.stderr)
+            time.sleep(15)
+            r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
+                           impersonate="chrome120", timeout=60)
+            cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
+            print(f"DEBUG: Retry after wait - Status: {r.status_code}, Cookies: {list(cookies_dict.keys())}", file=sys.stderr)
+    except Exception as e:
+        print(f"DEBUG: Request failed: {e}", file=sys.stderr)
+        # Fallback
+        r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
+                      impersonate="chrome120", timeout=60)
+        cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
 else:
     r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
     cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
@@ -93,11 +110,16 @@ print(f"DEBUG: Response headers: {dict(r.headers)}", file=sys.stderr)
 # Check if we got a Cloudflare challenge page
 if 'cloudflare' in r.text.lower() or 'challenge' in r.text.lower() or r.status_code == 403:
     print("DEBUG: Possible Cloudflare challenge detected", file=sys.stderr)
-    # Try with a delay and different approach
-    time.sleep(5)
+    # Try with a longer delay and different Chrome version
+    time.sleep(10)  # Longer delay for challenge to complete
     if USE_CURL_CFFI:
-        r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
-        cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
+        # Try with chrome120 and longer timeout
+        try:
+            r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
+                          impersonate="chrome120", timeout=60)
+            cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
+        except Exception as e:
+            print(f"DEBUG: Retry failed: {e}", file=sys.stderr)
     else:
         r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
         cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
@@ -233,7 +255,9 @@ if csrf is None:
     print("DEBUG: CSRF not found on first request, trying second request...", file=sys.stderr)
     time.sleep(2)  # Longer delay to allow Cloudflare challenge to complete
     if USE_CURL_CFFI:
-        r2_check = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
+        # Try with chrome120 and longer timeout
+        r2_check = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
+                              impersonate="chrome120", timeout=60)
         cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
     else:
         r2_check = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
@@ -306,7 +330,7 @@ timestamp = int(time.time() * 1000)
 url = f"https://watchcharts.com/charts/watch/862.json?type=trend&key=0150&variation_id=0&mobile=0&_={timestamp}"
 
 if USE_CURL_CFFI:
-    r2 = session.get(url, headers=headers, impersonate="chrome110")
+    r2 = session.get(url, headers=headers, impersonate="chrome120", timeout=60)
 else:
     r2 = scraper.get(url, headers=headers)
 
@@ -333,7 +357,8 @@ else:
             print("Retrying with fresh request to get CSRF token...", file=sys.stderr)
             time.sleep(3)  # Longer delay
             if USE_CURL_CFFI:
-                r_retry = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
+                r_retry = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
+                                      impersonate="chrome120", timeout=60)
                 cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
             else:
                 r_retry = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
@@ -369,7 +394,7 @@ else:
                 print(f"DEBUG: Found CSRF on retry: {csrf_retry[:20]}...", file=sys.stderr)
                 headers['X-CSRF-Token'] = urllib.parse.unquote(csrf_retry) if csrf_retry else ""
                 if USE_CURL_CFFI:
-                    r2 = session.get(url, headers=headers, impersonate="chrome110")
+                    r2 = session.get(url, headers=headers, impersonate="chrome120", timeout=60)
                 else:
                     r2 = scraper.get(url, headers=headers)
                 if r2.status_code == 200:
