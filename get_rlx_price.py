@@ -128,11 +128,18 @@ if USE_CURL_CFFI:
         r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
                        impersonate="chrome120", timeout=60)
         
-        # Add Playwright cookies to session if we have them
+        # Add only essential Playwright cookies to avoid header size limit
         if playwright_cookies:
-            for name, value in playwright_cookies.items():
-                session.cookies.set(name, value, domain='.watchcharts.com', path='/')
-            print("DEBUG: Added Playwright cookies to curl_cffi session", file=sys.stderr)
+            essential_cookies = ['csrfToken', 'cf_clearance']
+            added_count = 0
+            for name in essential_cookies:
+                if name in playwright_cookies:
+                    try:
+                        session.cookies.set(name, playwright_cookies[name], domain='.watchcharts.com', path='/')
+                        added_count += 1
+                    except:
+                        pass
+            print(f"DEBUG: Added {added_count} essential cookies to curl_cffi session", file=sys.stderr)
             # Retry with cookies
             r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
                            impersonate="chrome120", timeout=60)
@@ -146,16 +153,18 @@ if USE_CURL_CFFI:
         cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
 else:
     # Use cloudscraper with Playwright cookies if available
-    r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
-    
-    # Add Playwright cookies to scraper if we have them
+    # Only add essential cookies to avoid header size limit (too many cookies = 400 error)
     if playwright_cookies:
-        for name, value in playwright_cookies.items():
-            scraper.cookies.set(name, value, domain='.watchcharts.com', path='/')
-        print("DEBUG: Added Playwright cookies to cloudscraper", file=sys.stderr)
-        # Retry with cookies
-        r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+        # Only use essential cookies needed for authentication: csrfToken and cf_clearance
+        essential_cookies = ['csrfToken', 'cf_clearance']
+        added_count = 0
+        for name in essential_cookies:
+            if name in playwright_cookies:
+                scraper.cookies.set(name, playwright_cookies[name], domain='.watchcharts.com', path='/')
+                added_count += 1
+        print(f"DEBUG: Added {added_count} essential cookies to cloudscraper (csrfToken, cf_clearance)", file=sys.stderr)
     
+    r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
     cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
 
 # Debug: Check what we actually got back
