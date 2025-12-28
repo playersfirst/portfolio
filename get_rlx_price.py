@@ -15,15 +15,34 @@ except ImportError:
     HAS_BS4 = False
 
 # Create scraper with browser-like settings
-scraper = cloudscraper.create_scraper(
-    browser={
-        'browser': 'chrome',
-        'platform': 'windows',
-        'desktop': True
-    }
-)
+# Try different browser configurations that might work better in CI
+try:
+    scraper = cloudscraper.create_scraper(
+        browser={
+            'browser': 'chrome',
+            'platform': 'windows',
+            'desktop': True
+        },
+        delay=10  # Add delay for Cloudflare challenge
+    )
+except:
+    # Fallback to default if browser config fails
+    scraper = cloudscraper.create_scraper(delay=10)
 
 r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+
+# Debug: Check what we actually got back
+print(f"DEBUG: First request status: {r.status_code}", file=sys.stderr)
+print(f"DEBUG: Response length: {len(r.text)}", file=sys.stderr)
+print(f"DEBUG: Response headers: {dict(r.headers)}", file=sys.stderr)
+
+# Check if we got a Cloudflare challenge page
+if 'cloudflare' in r.text.lower() or 'challenge' in r.text.lower() or r.status_code == 403:
+    print("DEBUG: Possible Cloudflare challenge detected", file=sys.stderr)
+    # Try with a delay and different approach
+    time.sleep(5)
+    r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+    print(f"DEBUG: Retry request status: {r.status_code}", file=sys.stderr)
 
 # Debug: Print all available cookies (to stderr so it doesn't interfere)
 if len(scraper.cookies) > 0:
@@ -32,6 +51,9 @@ if len(scraper.cookies) > 0:
         print(f"  - {cookie.name}: {cookie.value[:50]}...", file=sys.stderr)
 else:
     print("DEBUG: No cookies found", file=sys.stderr)
+    # If no cookies, check if we got HTML content
+    if r.text and len(r.text) > 100:
+        print(f"DEBUG: Got HTML response (first 200 chars): {r.text[:200]}", file=sys.stderr)
 
 # First, try to extract CSRF token from Set-Cookie response headers
 csrf = None
@@ -72,8 +94,26 @@ if csrf is None:
     if csrf is None:
         html_content = r.text
         
+        # More aggressive regex patterns to find CSRF token
+        # Try various patterns that might match CSRF tokens in HTML/JS
+        patterns = [
+            r'csrf[_-]?token["\']?\s*[:=]\s*["\']([^"\']+)["\']',  # Standard pattern
+            r'["\']csrf[_-]?token["\']\s*:\s*["\']([^"\']+)["\']',  # JSON-like
+            r'csrf[_-]?token["\']?\s*=\s*["\']([^"\']+)["\']',  # Assignment
+            r'X-CSRF-Token["\']?\s*[:=]\s*["\']([^"\']+)["\']',  # Header format
+            r'<input[^>]*name=["\']_token["\'][^>]*value=["\']([^"\']+)["\']',  # Form input
+            r'<input[^>]*name=["\']csrf_token["\'][^>]*value=["\']([^"\']+)["\']',  # Form input variant
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, html_content, re.IGNORECASE)
+            if matches:
+                csrf = matches[0]
+                print(f"DEBUG: Found CSRF using pattern: {pattern[:30]}...", file=sys.stderr)
+                break
+        
         # Use BeautifulSoup if available for better parsing
-        if HAS_BS4:
+        if csrf is None and HAS_BS4:
             try:
                 soup = BeautifulSoup(html_content, 'html.parser')
                 # Try meta tag
@@ -87,39 +127,24 @@ if csrf is None:
                     for script in soup.find_all('script'):
                         if script.string:
                             # Look for CSRF token in script content
-                            script_match = re.search(r'csrf[_-]?token["\']?\s*[:=]\s*["\']([^"\']+)["\']', script.string, re.IGNORECASE)
-                            if script_match:
-                                csrf = script_match.group(1)
-                                print(f"DEBUG: Found CSRF in script tag", file=sys.stderr)
+                            for pattern in patterns:
+                                script_match = re.search(pattern, script.string, re.IGNORECASE)
+                                if script_match:
+                                    csrf = script_match.group(1)
+                                    print(f"DEBUG: Found CSRF in script tag", file=sys.stderr)
+                                    break
+                            if csrf:
                                 break
+                
+                # Try input fields
+                if csrf is None:
+                    for inp in soup.find_all('input', attrs={'name': re.compile(r'csrf|token', re.I)}):
+                        if inp.get('value'):
+                            csrf = inp.get('value')
+                            print(f"DEBUG: Found CSRF in input field", file=sys.stderr)
+                            break
             except Exception as e:
                 print(f"DEBUG: BeautifulSoup parsing failed: {e}", file=sys.stderr)
-        
-        # Fallback to regex if BeautifulSoup not available or didn't find it
-        if csrf is None:
-            # Try to find CSRF token in meta tag
-            meta_match = re.search(r'<meta\s+name=["\']csrf-token["\']\s+content=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
-            if meta_match:
-                csrf = meta_match.group(1)
-                print(f"DEBUG: Found CSRF in meta tag (regex)", file=sys.stderr)
-            else:
-                # Try to find in script tags or data attributes
-                script_match = re.search(r'csrf[_-]?token["\']?\s*[:=]\s*["\']([^"\']+)["\']', html_content, re.IGNORECASE)
-                if script_match:
-                    csrf = script_match.group(1)
-                    print(f"DEBUG: Found CSRF in script (regex)", file=sys.stderr)
-                else:
-                    # Try to find in window/global variables
-                    window_match = re.search(r'window\.(?:csrf|CSRF)[_-]?token\s*=\s*["\']([^"\']+)["\']', html_content, re.IGNORECASE)
-                    if window_match:
-                        csrf = window_match.group(1)
-                        print(f"DEBUG: Found CSRF in window variable", file=sys.stderr)
-                    else:
-                        # Try to find in data attributes
-                        data_match = re.search(r'data-csrf[_-]?token=["\']([^"\']+)["\']', html_content, re.IGNORECASE)
-                        if data_match:
-                            csrf = data_match.group(1)
-                            print(f"DEBUG: Found CSRF in data attribute", file=sys.stderr)
 
 # If still not found, try making a second request (sometimes cookies are set after first request)
 if csrf is None:
