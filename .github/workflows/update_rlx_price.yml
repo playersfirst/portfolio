@@ -21,7 +21,7 @@ jobs:
           
       - name: Install dependencies
         run: |
-          pip install cloudscraper beautifulsoup4
+          pip install cloudscraper beautifulsoup4 curl-cffi
           
       - name: Run get_rlx_price.py and save to JSON
         run: |
