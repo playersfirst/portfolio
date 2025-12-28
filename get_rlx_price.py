@@ -101,14 +101,26 @@ r2 = scraper.get(url, headers=headers)
 print(f"DEBUG: API request status: {r2.status_code}", file=sys.stderr)
 
 if r2.status_code == 200:
-    data = r2.json()
-    prices = data['data']['all']
-    latest_ts = max(prices.keys())
-    latest_price = prices[latest_ts]
-    
-    final_price = latest_price * 1.05
-    
-    print(f"${final_price:,.0f}")
+    try:
+        data = r2.json()
+        print(f"DEBUG: Got JSON data, keys: {list(data.keys())}", file=sys.stderr)
+        prices = data['data']['all']
+        print(f"DEBUG: Found {len(prices)} price points", file=sys.stderr)
+        latest_ts = max(prices.keys())
+        latest_price = prices[latest_ts]
+        
+        final_price = latest_price * 1.05
+        
+        # Print to stdout (not stderr) so it can be captured by grep
+        print(f"${final_price:,.0f}")
+        sys.stdout.flush()  # Ensure output is flushed
+    except Exception as e:
+        print(f"Error parsing response: {e}", file=sys.stderr)
+        print(f"Response text (first 500 chars): {r2.text[:500]}", file=sys.stderr)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        exit(1)
 else:
-    print(f"Error: {r2.status_code}")
+    print(f"Error: {r2.status_code}", file=sys.stderr)
+    print(f"Response: {r2.text[:500]}", file=sys.stderr)
     exit(1)
