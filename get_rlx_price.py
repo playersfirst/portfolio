@@ -14,22 +14,55 @@ try:
 except ImportError:
     HAS_BS4 = False
 
-# Create scraper with browser-like settings
-# Try different browser configurations that might work better in CI
+# Try to use curl_cffi if available (better at bypassing Cloudflare)
 try:
-    scraper = cloudscraper.create_scraper(
-        browser={
-            'browser': 'chrome',
-            'platform': 'windows',
-            'desktop': True
-        },
-        delay=10  # Add delay for Cloudflare challenge
-    )
-except:
-    # Fallback to default if browser config fails
-    scraper = cloudscraper.create_scraper(delay=10)
+    from curl_cffi import requests
+    USE_CURL_CFFI = True
+    print("DEBUG: Using curl_cffi for better Cloudflare bypass", file=sys.stderr)
+except ImportError:
+    USE_CURL_CFFI = False
+    print("DEBUG: curl_cffi not available, using cloudscraper", file=sys.stderr)
 
-r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+if USE_CURL_CFFI:
+    # Use curl_cffi which is better at bypassing Cloudflare
+    session = requests.Session()
+    # Impersonate Chrome browser
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Cache-Control': 'max-age=0',
+    })
+else:
+    # Create scraper with browser-like settings
+    # Try different browser configurations that might work better in CI
+    try:
+        scraper = cloudscraper.create_scraper(
+            browser={
+                'browser': 'chrome',
+                'platform': 'windows',
+                'desktop': True
+            },
+            delay=10  # Add delay for Cloudflare challenge
+        )
+    except:
+        # Fallback to default if browser config fails
+        scraper = cloudscraper.create_scraper(delay=10)
+
+# Make initial request
+if USE_CURL_CFFI:
+    r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
+    # Get cookies from session
+    cookies_dict = {cookie.name: cookie.value for cookie in session.cookies}
+    print(f"DEBUG: curl_cffi cookies: {list(cookies_dict.keys())}", file=sys.stderr)
+else:
+    r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
 
 # Debug: Check what we actually got back
 print(f"DEBUG: First request status: {r.status_code}", file=sys.stderr)
@@ -45,15 +78,23 @@ if 'cloudflare' in r.text.lower() or 'challenge' in r.text.lower() or r.status_c
     print(f"DEBUG: Retry request status: {r.status_code}", file=sys.stderr)
 
 # Debug: Print all available cookies (to stderr so it doesn't interfere)
-if len(scraper.cookies) > 0:
-    print(f"DEBUG: Found {len(scraper.cookies)} cookies:", file=sys.stderr)
-    for cookie in scraper.cookies:
-        print(f"  - {cookie.name}: {cookie.value[:50]}...", file=sys.stderr)
+if USE_CURL_CFFI:
+    if len(cookies_dict) > 0:
+        print(f"DEBUG: Found {len(cookies_dict)} cookies:", file=sys.stderr)
+        for name, value in cookies_dict.items():
+            print(f"  - {name}: {value[:50]}...", file=sys.stderr)
+    else:
+        print("DEBUG: No cookies found (curl_cffi)", file=sys.stderr)
 else:
-    print("DEBUG: No cookies found", file=sys.stderr)
-    # If no cookies, check if we got HTML content
-    if r.text and len(r.text) > 100:
-        print(f"DEBUG: Got HTML response (first 200 chars): {r.text[:200]}", file=sys.stderr)
+    if len(scraper.cookies) > 0:
+        print(f"DEBUG: Found {len(scraper.cookies)} cookies:", file=sys.stderr)
+        for cookie in scraper.cookies:
+            print(f"  - {cookie.name}: {cookie.value[:50]}...", file=sys.stderr)
+    else:
+        print("DEBUG: No cookies found", file=sys.stderr)
+        # If no cookies, check if we got HTML content
+        if r.text and len(r.text) > 100:
+            print(f"DEBUG: Got HTML response (first 200 chars): {r.text[:200]}", file=sys.stderr)
 
 # First, try to extract CSRF token from Set-Cookie response headers
 csrf = None
@@ -69,23 +110,38 @@ for set_cookie in set_cookie_headers:
 
 # If not in headers, try cookies
 if csrf is None:
-    csrf = scraper.cookies.get('csrfToken')
+    if USE_CURL_CFFI:
+        csrf = cookies_dict.get('csrfToken') or cookies_dict.get('csrf_token')
+    else:
+        csrf = scraper.cookies.get('csrfToken')
     if csrf:
         print(f"DEBUG: Found CSRF in cookies (csrfToken)", file=sys.stderr)
 
 # If CSRF token not in cookies, try alternative cookie names (case-insensitive search)
 if csrf is None:
-    for cookie in scraper.cookies:
-        cookie_name_lower = cookie.name.lower()
-        if 'csrf' in cookie_name_lower or cookie_name_lower in ['_token', 'token']:
-            csrf = cookie.value
-            print(f"DEBUG: Found CSRF in cookies ({cookie.name})", file=sys.stderr)
-            break
+    cookies_to_check = cookies_dict if USE_CURL_CFFI else scraper.cookies
+    if USE_CURL_CFFI:
+        for cookie_name, cookie_value in cookies_to_check.items():
+            cookie_name_lower = cookie_name.lower()
+            if 'csrf' in cookie_name_lower or cookie_name_lower in ['_token', 'token']:
+                csrf = cookie_value
+                print(f"DEBUG: Found CSRF in cookies ({cookie_name})", file=sys.stderr)
+                break
+    else:
+        for cookie in cookies_to_check:
+            cookie_name_lower = cookie.name.lower()
+            if 'csrf' in cookie_name_lower or cookie_name_lower in ['_token', 'token']:
+                csrf = cookie.value
+                print(f"DEBUG: Found CSRF in cookies ({cookie.name})", file=sys.stderr)
+                break
     
     # If still not found, try specific cookie names
     if csrf is None:
         for cookie_name in ['csrfToken', 'csrf_token', 'XSRF-TOKEN', '_token', 'csrf-token', 'X-CSRF-TOKEN']:
-            csrf = scraper.cookies.get(cookie_name)
+            if USE_CURL_CFFI:
+                csrf = cookies_dict.get(cookie_name)
+            else:
+                csrf = scraper.cookies.get(cookie_name)
             if csrf is not None:
                 print(f"DEBUG: Found CSRF in cookies ({cookie_name})", file=sys.stderr)
                 break
@@ -150,7 +206,11 @@ if csrf is None:
 if csrf is None:
     print("DEBUG: CSRF not found on first request, trying second request...", file=sys.stderr)
     time.sleep(2)  # Longer delay to allow Cloudflare challenge to complete
-    r2_check = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+    if USE_CURL_CFFI:
+        r2_check = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
+        cookies_dict = {cookie.name: cookie.value for cookie in session.cookies}
+    else:
+        r2_check = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
     
     # Check Set-Cookie headers again
     set_cookie_headers = r2_check.headers.get_list('Set-Cookie') if hasattr(r2_check.headers, 'get_list') else [r2_check.headers.get('Set-Cookie', '')]
@@ -163,17 +223,28 @@ if csrf is None:
                 break
     
     if csrf is None:
-        csrf = scraper.cookies.get('csrfToken')
+        if USE_CURL_CFFI:
+            csrf = cookies_dict.get('csrfToken')
+        else:
+            csrf = scraper.cookies.get('csrfToken')
         if csrf:
             print(f"DEBUG: Found CSRF in cookies on second request", file=sys.stderr)
     
     if csrf is None:
-        for cookie in scraper.cookies:
-            cookie_name_lower = cookie.name.lower()
-            if 'csrf' in cookie_name_lower:
-                csrf = cookie.value
-                print(f"DEBUG: Found CSRF in cookies ({cookie.name}) on second request", file=sys.stderr)
-                break
+        cookies_to_check = cookies_dict if USE_CURL_CFFI else scraper.cookies
+        if USE_CURL_CFFI:
+            for cookie_name, cookie_value in cookies_to_check.items():
+                if 'csrf' in cookie_name.lower():
+                    csrf = cookie_value
+                    print(f"DEBUG: Found CSRF in cookies ({cookie_name}) on second request", file=sys.stderr)
+                    break
+        else:
+            for cookie in cookies_to_check:
+                cookie_name_lower = cookie.name.lower()
+                if 'csrf' in cookie_name_lower:
+                    csrf = cookie.value
+                    print(f"DEBUG: Found CSRF in cookies ({cookie.name}) on second request", file=sys.stderr)
+                    break
     
     # Also try parsing HTML from second request
     if csrf is None and HAS_BS4:
@@ -207,7 +278,10 @@ if csrf:
 timestamp = int(time.time() * 1000)
 url = f"https://watchcharts.com/charts/watch/862.json?type=trend&key=0150&variation_id=0&mobile=0&_={timestamp}"
 
-r2 = scraper.get(url, headers=headers)
+if USE_CURL_CFFI:
+    r2 = session.get(url, headers=headers, impersonate="chrome110")
+else:
+    r2 = scraper.get(url, headers=headers)
 
 if r2.status_code == 200:
     data = r2.json()
@@ -231,15 +305,27 @@ else:
             # Check if we can get CSRF from the error response or retry with fresh request
             print("Retrying with fresh request to get CSRF token...", file=sys.stderr)
             time.sleep(3)  # Longer delay
-            r_retry = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+            if USE_CURL_CFFI:
+                r_retry = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
+                cookies_dict = {cookie.name: cookie.value for cookie in session.cookies}
+            else:
+                r_retry = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
             
             # Try all methods again on retry
-            csrf_retry = scraper.cookies.get('csrfToken')
-            if not csrf_retry:
-                for cookie in scraper.cookies:
-                    if 'csrf' in cookie.name.lower():
-                        csrf_retry = cookie.value
-                        break
+            if USE_CURL_CFFI:
+                csrf_retry = cookies_dict.get('csrfToken') or cookies_dict.get('csrf_token')
+                if not csrf_retry:
+                    for cookie_name, cookie_value in cookies_dict.items():
+                        if 'csrf' in cookie_name.lower():
+                            csrf_retry = cookie_value
+                            break
+            else:
+                csrf_retry = scraper.cookies.get('csrfToken')
+                if not csrf_retry:
+                    for cookie in scraper.cookies:
+                        if 'csrf' in cookie.name.lower():
+                            csrf_retry = cookie.value
+                            break
             
             # Try HTML parsing on retry
             if not csrf_retry and HAS_BS4:
@@ -254,7 +340,10 @@ else:
             if csrf_retry:
                 print(f"DEBUG: Found CSRF on retry: {csrf_retry[:20]}...", file=sys.stderr)
                 headers['X-CSRF-Token'] = urllib.parse.unquote(csrf_retry) if csrf_retry else ""
-                r2 = scraper.get(url, headers=headers)
+                if USE_CURL_CFFI:
+                    r2 = session.get(url, headers=headers, impersonate="chrome110")
+                else:
+                    r2 = scraper.get(url, headers=headers)
                 if r2.status_code == 200:
                     data = r2.json()
                     prices = data['data']['all']
