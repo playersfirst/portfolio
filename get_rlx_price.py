@@ -52,8 +52,11 @@ if playwright_cookies:
             scraper.cookies.set(name, playwright_cookies[name], domain='.watchcharts.com', path='/')
     print("DEBUG: Added Playwright cookies to cloudscraper", file=sys.stderr)
 
+print("DEBUG: Making request with cloudscraper...", file=sys.stderr)
 r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+print(f"DEBUG: cloudscraper request status: {r.status_code}", file=sys.stderr)
 csrf = scraper.cookies.get('csrfToken')
+print(f"DEBUG: CSRF token from cookies: {'Found' if csrf else 'Not found'}", file=sys.stderr)
 
 # If CSRF token not in cookies, try to extract from HTML response
 if csrf is None:
@@ -93,7 +96,9 @@ if csrf:
 timestamp = int(time.time() * 1000)
 url = f"https://watchcharts.com/charts/watch/862.json?type=trend&key=0150&variation_id=0&mobile=0&_={timestamp}"
 
+print("DEBUG: Making API request...", file=sys.stderr)
 r2 = scraper.get(url, headers=headers)
+print(f"DEBUG: API request status: {r2.status_code}", file=sys.stderr)
 
 if r2.status_code == 200:
     data = r2.json()
