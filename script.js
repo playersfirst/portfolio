@@ -12,7 +12,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         'NANC': '#36A2EB',
         'IAU': '#FFCE56',
         'SGOV': '#4BC0C0',
-        'IWDE': '#36A2EB'
+        'IWDE': '#36A2EB',
+        'RLX': '#9966FF'
     };
 
     const assetClassLabels = {
@@ -21,7 +22,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         'NANC': 'Equities',
         'IAU': 'Commodities',
         'SGOV': 'Savings',
-        'IWDE': 'Equities'
+        'IWDE': 'Equities',
+        'RLX': 'Collectibles'
     };
 
     let displayCurrency = 'USD';
@@ -133,8 +135,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 totalPnlPrimary += pnl;
                 totalInitialInvestmentPrimary += initialInvestment;
                 
-                // Exclude SGOV for the second calculation
-                if (symbol !== 'SGOV') {
+                // Exclude SGOV and RLX for the second calculation (risk assets)
+                if (symbol !== 'SGOV' && symbol !== 'RLX') {
                     totalValueExclSgov += value;
                     totalPnlExclSgov += pnl;
                     totalInitialInvestmentExclSgov += initialInvestment;
@@ -203,6 +205,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return new Date('2025-03-01');
             case 'IWDE':
                 return new Date('2025-09-04');
+            case 'RLX':
+                return new Date('2025-12-24');
             default:
                 return new Date('2024-10-01'); // Default fallback
         }
@@ -229,24 +233,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const daysSinceStart = (currentDate - assetStartDate) / (1000 * 60 * 60 * 24);
                     const yearsSinceStart = daysSinceStart / 365.25;
                     
-                    if (yearsSinceStart > 0) {
+                    // Only annualize if at least 1 month (30 days) has passed
+                    if (daysSinceStart >= 30) {
                         const currentPnlPercentage = (pnl / initialInvestment) * 100;
                         const totalReturn = currentPnlPercentage / 100;
                         const annualizedReturn = ((1 + totalReturn) ** (1 / yearsSinceStart) - 1) * 100;
                         assetReturns[assetName] = annualizedReturn;
+                    } else {
+                        // For assets with less than 1 month, show simple return (not annualized)
+                        const currentPnlPercentage = (pnl / initialInvestment) * 100;
+                        assetReturns[assetName] = currentPnlPercentage;
                     }
                 }
             }
         });
 
-        // Use consistent order: BTC, IAU, VOO, NANC, IWDE, SGOV
-        const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE', 'SGOV'];
+        // Use consistent order: BTC, IAU, VOO, NANC, IWDE, SGOV, RLX
+        const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE', 'SGOV', 'RLX'];
         
         let html = '';
         html += '<div class="ytd-assets-grid">';
         
         orderedAssets.forEach(assetName => {
-            if (!assetReturns[assetName]) return; // Skip if no data for this asset
+            if (assetReturns[assetName] === undefined || assetReturns[assetName] === null) return; // Skip if no data for this asset
             const returnValue = assetReturns[assetName];
             
             if (returnValue !== null && returnValue !== undefined) {
@@ -511,6 +520,48 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             const shares = portfolio[symbol];
             const initialInvestment = initialInvestments[symbol];
             const initialEuroInvestment = initialEuroInvestments[symbol];
+            
+            // Special handling for RLX - fetch from JSON file
+            if (symbol === 'RLX') {
+                return fetch('rlx_price.json')
+                    .then(response => {
+                        if (!response.ok) { throw new Error(`HTTP error! Status: ${response.status}`); }
+                        return response.json();
+                    })
+                    .then(data => {
+                        const price = data.price_usd;
+                        const percentChange = 0; // No 24h change for RLX
+                        
+                        // RLX is USD-denominated
+                        const value = price * shares;
+                        const valueEur = value / usdToEurRate;
+                        const pnl = value - initialInvestment;
+                        const pnlEur = valueEur - initialEuroInvestment;
+                        const displayPrice = price;
+                        
+                        portfolioData[symbol] = {
+                            shares, price, value, pnl, valueEur, pnlEur,
+                            percentChange, initialInvestment, initialEuroInvestment,
+                            displayPrice, isEurDenominated: false
+                        };
+                    })
+                    .catch(error => {
+                        portfolioData[symbol] = { error: true };
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="symbol">RLX</td>
+                            <td>${shares?.toFixed(4) || 'N/A'}</td>
+                            <td colspan="5">Error loading data</td>
+                        `;
+                        portfolioDataEl.appendChild(row);
+                    })
+                    .finally(() => {
+                        completedRequests++;
+                        if (completedRequests === totalRequests) {
+                            finishLoading();
+                        }
+                    });
+            }
             
             // Map internal symbols to API symbols
             let apiSymbol = symbol;
@@ -863,7 +914,8 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         const assetTooltips = {};
         let totalValue = 0;
 
-        // Calculate total value in the current display currency and view mode
+        // First, collect all assets with their data
+        const assetsArray = [];
         Object.keys(portfolio).forEach(symbol => {
             const assetData = portfolioData[symbol];
             if (!excludedAssets.has(symbol) && assetData && !assetData.error) {
@@ -874,30 +926,40 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                     value = displayCurrency === 'USD' ? (assetData.initialInvestment || 0) : (assetData.initialEuroInvestment || 0);
                 }
                 totalValue += value;
+                
+                assetsArray.push({
+                    symbol: symbol,
+                    displaySymbol: symbol.includes('BINANCE:') ? 'BTC' : symbol,
+                    value: value,
+                    assetClass: assetClassLabels[symbol] || 'Other',
+                    color: assetColors[symbol]
+                });
             }
         });
 
-        Object.keys(portfolio).forEach(symbol => {
-             const assetData = portfolioData[symbol];
-            if (!excludedAssets.has(symbol) && assetData && !assetData.error) {
-                const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
-                let value;
-                if (pieChartViewMode === 'market') {
-                    value = displayCurrency === 'USD' ? (assetData.value || 0) : (assetData.valueEur || 0);
-                } else {
-                    value = displayCurrency === 'USD' ? (assetData.initialInvestment || 0) : (assetData.initialEuroInvestment || 0);
-                }
-                const percentage = totalValue > 0 ? (value / totalValue * 100) : 0;
-
-                labels.push(displaySymbol);
-                data.push(value);
-                backgroundColors.push(assetColors[symbol]);
-                assetTooltips[displaySymbol] = {
-                    value: value,
-                    percentage: percentage,
-                    class: assetClassLabels[symbol]
-                };
+        // Sort assets by class first, then by value (descending) within each class
+        // This groups similar colored assets together
+        assetsArray.sort((a, b) => {
+            // First sort by asset class
+            if (a.assetClass !== b.assetClass) {
+                return a.assetClass.localeCompare(b.assetClass);
             }
+            // Within same class, sort by value (descending)
+            return b.value - a.value;
+        });
+
+        // Build chart data in sorted order
+        assetsArray.forEach(asset => {
+            const percentage = totalValue > 0 ? (asset.value / totalValue * 100) : 0;
+            
+            labels.push(asset.displaySymbol);
+            data.push(asset.value);
+            backgroundColors.push(asset.color);
+            assetTooltips[asset.displaySymbol] = {
+                value: asset.value,
+                percentage: percentage,
+                class: asset.assetClass
+            };
         });
 
         const currentCtx = currentPieChartEl.getContext('2d');
@@ -906,14 +968,15 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             currentPieChart.data.datasets[0].data = data;
             currentPieChart.data.datasets[0].backgroundColor = backgroundColors;
             // Update the tooltip callback to reflect the current view mode
+            currentPieChart.options.plugins.tooltip.displayColors = false;
+            currentPieChart.options.plugins.tooltip.callbacks.title = function(context) {
+                return context[0].label;
+            };
             currentPieChart.options.plugins.tooltip.callbacks.label = function(context) {
-                const label = context.label;
                 const value = context.raw;
-                const percentage = assetTooltips[label].percentage;
-                const assetClass = assetTooltips[label].class;
+                const percentage = assetTooltips[context.label].percentage;
                 const currencySymbol = displayCurrency === 'USD' ? '$' : '€';
-                const valueLabel = pieChartViewMode === 'market' ? 'Value' : 'Invested';
-                return [ `${label} (${assetClass})`, `${valueLabel}: ${currencySymbol}${value.toFixed(2)}`, `Percentage: ${percentage.toFixed(2)}%` ];
+                return [ `${currencySymbol}${value.toFixed(2)}`, `${percentage.toFixed(2)}%` ];
             };
             currentPieChart.update();
         } else {
@@ -924,15 +987,16 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                     responsive: true,
                     plugins: {
                         tooltip: {
+                            displayColors: false,
                             callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
                                 label: function(context) {
-                                    const label = context.label;
                                     const value = context.raw;
-                                    const percentage = assetTooltips[label].percentage;
-                                    const assetClass = assetTooltips[label].class;
+                                    const percentage = assetTooltips[context.label].percentage;
                                     const currencySymbol = displayCurrency === 'USD' ? '$' : '€';
-                                    const valueLabel = pieChartViewMode === 'market' ? 'Value' : 'Invested';
-                                    return [ `${label} (${assetClass})`, `${valueLabel}: ${currencySymbol}${value.toFixed(2)}`, `Percentage: ${percentage.toFixed(2)}%` ];
+                                    return [ `${currencySymbol}${value.toFixed(2)}`, `${percentage.toFixed(2)}%` ];
                                 }
                             }
                         },
@@ -949,10 +1013,12 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             if (!excludedAssets.has(symbol) && assetData && !assetData.error) {
                 const className = assetClassLabels[symbol];
                 if (!classGroups[className]) {
-                    classGroups[className] = { color: assetColors[symbol], assets: [] };
+                    classGroups[className] = { color: assetColors[symbol], assets: [], totalPercentage: 0 };
                 }
                 const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
+                const assetPercentage = assetTooltips[displaySymbol]?.percentage || 0;
                 classGroups[className].assets.push(displaySymbol);
+                classGroups[className].totalPercentage += assetPercentage;
             }
         });
 
@@ -965,6 +1031,43 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                 return `${asset} (${percentage}%)`;
             }).join(', ');
             legendItem.innerHTML = `<div class="legend-color" style="background-color: ${group.color};"></div><span>${className}</span>`;
+            
+            // Add hover tooltip for total percentage
+            const tooltipText = `${group.totalPercentage.toFixed(2)}%`;
+            legendItem.addEventListener('mouseenter', function(e) {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'legend-tooltip';
+                tooltip.textContent = tooltipText;
+                tooltip.style.position = 'fixed';
+                tooltip.style.background = 'rgba(0, 0, 0, 0.8)';
+                tooltip.style.color = 'white';
+                tooltip.style.padding = '4px 8px';
+                tooltip.style.borderRadius = '4px';
+                tooltip.style.fontSize = '12px';
+                tooltip.style.pointerEvents = 'none';
+                tooltip.style.zIndex = '1000';
+                tooltip.style.whiteSpace = 'nowrap';
+                tooltip.style.opacity = '0';
+                document.body.appendChild(tooltip);
+                
+                // Calculate position after element is in DOM
+                const rect = legendItem.getBoundingClientRect();
+                const tooltipWidth = tooltip.offsetWidth;
+                const tooltipHeight = tooltip.offsetHeight;
+                tooltip.style.left = (rect.left + rect.width / 2 - tooltipWidth / 2) + 'px';
+                tooltip.style.top = (rect.top - tooltipHeight - 8) + 'px';
+                tooltip.style.opacity = '1';
+                
+                legendItem._tooltip = tooltip;
+            });
+            
+            legendItem.addEventListener('mouseleave', function(e) {
+                if (legendItem._tooltip) {
+                    document.body.removeChild(legendItem._tooltip);
+                    legendItem._tooltip = null;
+                }
+            });
+            
             chartLegendEl.appendChild(legendItem);
         });
     }
@@ -1774,7 +1877,7 @@ function calculateReturn(startValue, endValue) {
         const calculateRiskAssetsValue = (entry) => {
             let total = 0;
             for (const asset in entry.assets) {
-                if (asset !== 'SGOV' && entry.assets[asset] && entry.assets[asset][valueKey]) {
+                if (asset !== 'SGOV' && asset !== 'RLX' && entry.assets[asset] && entry.assets[asset][valueKey]) {
                     total += entry.assets[asset][valueKey];
                 }
             }
@@ -1784,10 +1887,10 @@ function calculateReturn(startValue, endValue) {
         let startValue = calculateRiskAssetsValue(startEntry);
         const endValue = calculateRiskAssetsValue(endEntry);
 
-        // Check for investments on the start date and include them in the starting value (excluding SGOV)
+        // Check for investments on the start date and include them in the starting value (excluding SGOV and RLX)
         const startDateTransactions = transactionData.transactions.filter(tx => {
             const txDate = new Date(tx.timestamp);
-            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'EURO_INVESTMENT';
+            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'RLX' && tx.ticker !== 'EURO_INVESTMENT';
         });
     
 
@@ -1799,7 +1902,7 @@ function calculateReturn(startValue, endValue) {
 
         const relevantTransactions = transactionData.transactions.filter(tx => {
             const txDate = new Date(tx.timestamp);
-            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'EURO_INVESTMENT';
+            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker !== 'SGOV' && tx.ticker !== 'RLX' && tx.ticker !== 'EURO_INVESTMENT';
         });
 
         const cashFlows = [];
@@ -1811,7 +1914,7 @@ function calculateReturn(startValue, endValue) {
             const aggregatedTransactions = new Map();
             
             relevantTransactions.forEach(tx => {
-                if (tx.ticker !== 'SGOV') {
+                if (tx.ticker !== 'SGOV' && tx.ticker !== 'RLX') {
                     const txDate = new Date(tx.timestamp);
                     const dateKey = txDate.toISOString().split('T')[0];
                     
@@ -2104,12 +2207,13 @@ function calculateTWRForRiskAssets(historyData, transactionData, startDate, endD
         return total;
     };
 
-    // Get relevant transactions (excluding SGOV and EURO_INVESTMENT)
+    // Get relevant transactions (excluding SGOV, RLX, and EURO_INVESTMENT)
     const relevantTransactions = transactionData.transactions.filter(tx => {
         const txDate = new Date(tx.timestamp);
         return txDate > startDate && txDate < endDate && 
                tx.currency === currency && 
                tx.ticker !== 'SGOV' && 
+               tx.ticker !== 'RLX' && 
                tx.ticker !== 'EURO_INVESTMENT';
     });
 
@@ -2126,12 +2230,13 @@ function calculateTWRForRiskAssets(historyData, transactionData, startDate, endD
     let startValue = calculateRiskAssetsValue(startEntry);
     const endValue = calculateRiskAssetsValue(endEntry);
 
-    // Include start date risk asset investments
+    // Include start date risk asset investments (excluding SGOV and RLX)
     const startDateTransactions = transactionData.transactions.filter(tx => {
         const txDate = new Date(tx.timestamp);
         return txDate.getTime() === startDate.getTime() && 
                tx.currency === currency && 
                tx.ticker !== 'SGOV' && 
+               tx.ticker !== 'RLX' && 
                tx.ticker !== 'EURO_INVESTMENT';
     });
 
@@ -2311,7 +2416,7 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
             
             let usdResult, eurResult, usdRiskResult, eurRiskResult;
             const assetResults = {};
-            const assets = ['VOO', 'NANC', 'IAU', 'SGOV', 'BINANCE:BTCUSDT', 'IWDE'];
+            const assets = ['VOO', 'NANC', 'IAU', 'SGOV', 'BINANCE:BTCUSDT', 'IWDE', 'RLX'];
 
             if (currentReturnType === 'mwr') {
                 // Total portfolio
@@ -2386,8 +2491,8 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
                         <div class="historical-assets-grid">
             `;
             
-            // Use consistent order: BTC, IAU, VOO, NANC, IWDE, SGOV
-            const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE', 'SGOV'];
+            // Use consistent order: BTC, IAU, VOO, NANC, IWDE, SGOV, RLX
+            const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE', 'SGOV', 'RLX'];
 
             orderedAssets.forEach(asset => {
                 const assetResult = assetResults[asset];
