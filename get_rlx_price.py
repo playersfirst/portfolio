@@ -55,18 +55,15 @@ def get_cookies_dict(session_or_scraper, use_curl_cffi):
         # cloudscraper uses requests-style cookies
         return {cookie.name: cookie.value for cookie in session_or_scraper.cookies}
 
-# Initialize based on available libraries
-if USE_PLAYWRIGHT:
-    # Playwright will be initialized when needed
-    pass
-elif USE_CURL_CFFI:
+# Initialize cloudscraper/curl_cffi - we'll use these with Playwright cookies
+if USE_CURL_CFFI:
     # Use curl_cffi which is better at bypassing Cloudflare
     try:
         session = requests.Session()
     except:
         session = requests.Session()
 else:
-    # Create scraper with browser-like settings
+    # Create scraper with browser-like settings (always initialize, even if using Playwright)
     try:
         scraper = cloudscraper.create_scraper(
             browser={
