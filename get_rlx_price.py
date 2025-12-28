@@ -106,19 +106,45 @@ if USE_PLAYWRIGHT:
         page = context.new_page()
         
         # Navigate to page and wait for it to load
+        # Use "load" instead of "networkidle" - more reliable, waits for page to load
         print("DEBUG: Navigating to page...", file=sys.stderr)
-        page.goto("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", wait_until="networkidle", timeout=60000)
+        try:
+            page.goto("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", wait_until="load", timeout=30000)
+        except Exception as e:
+            print(f"DEBUG: Page load timeout, trying with domcontentloaded...", file=sys.stderr)
+            # Fallback to domcontentloaded if load times out
+            try:
+                page.goto("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", wait_until="domcontentloaded", timeout=30000)
+            except Exception as e2:
+                print(f"DEBUG: Both load strategies failed: {e2}", file=sys.stderr)
+                # Last resort - just navigate without waiting
+                page.goto("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", timeout=30000)
         
-        # Wait a bit for any JavaScript to execute
-        time.sleep(3)
+        # Wait a bit for any JavaScript to execute and Cloudflare challenge to complete
+        print("DEBUG: Waiting for page to stabilize...", file=sys.stderr)
+        time.sleep(5)
         
         # Get cookies from browser
         cookies = context.cookies()
         cookies_dict = {cookie['name']: cookie['value'] for cookie in cookies}
         print(f"DEBUG: Playwright cookies: {list(cookies_dict.keys())}", file=sys.stderr)
         
+        # Check if page loaded successfully
+        page_url = page.url
+        print(f"DEBUG: Page loaded, URL: {page_url}", file=sys.stderr)
+        
         # Get page content
         html_content = page.content()
+        print(f"DEBUG: Page content length: {len(html_content)}", file=sys.stderr)
+        
+        # Check if we got blocked by Cloudflare
+        if 'challenge' in html_content.lower() or 'just a moment' in html_content.lower() or len(html_content) < 1000:
+            print("DEBUG: Possible Cloudflare challenge, waiting longer...", file=sys.stderr)
+            time.sleep(10)
+            html_content = page.content()
+            cookies = context.cookies()
+            cookies_dict = {cookie['name']: cookie['value'] for cookie in cookies}
+            print(f"DEBUG: After wait - Content length: {len(html_content)}, Cookies: {list(cookies_dict.keys())}", file=sys.stderr)
         
         # Create a mock response object for compatibility
         class MockResponse:
@@ -179,7 +205,7 @@ if 'cloudflare' in r.text.lower() or 'challenge' in r.text.lower() or r.status_c
         except Exception as e:
             print(f"DEBUG: Retry failed: {e}", file=sys.stderr)
     else:
-        r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
         cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
     print(f"DEBUG: Retry request status: {r.status_code}", file=sys.stderr)
 
@@ -338,7 +364,7 @@ if csrf is None:
         if USE_CURL_CFFI:
             csrf = cookies_dict.get('csrfToken')
         else:
-            csrf = scraper.cookies.get('csrfToken')
+csrf = scraper.cookies.get('csrfToken')
         if csrf:
             print(f"DEBUG: Found CSRF in cookies on second request", file=sys.stderr)
     
@@ -429,7 +455,7 @@ if USE_PLAYWRIGHT:
 elif USE_CURL_CFFI:
     r2 = session.get(url, headers=headers, impersonate="chrome120", timeout=60)
 else:
-    r2 = scraper.get(url, headers=headers)
+r2 = scraper.get(url, headers=headers)
 
 if r2.status_code == 200:
     data = r2.json()
