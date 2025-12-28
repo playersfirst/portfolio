@@ -180,7 +180,7 @@ if not USE_PLAYWRIGHT and ('cloudflare' in r.text.lower() or 'challenge' in r.te
         except Exception as e:
             print(f"DEBUG: Retry failed: {e}", file=sys.stderr)
     else:
-r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+        r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
         cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
     print(f"DEBUG: Retry request status: {r.status_code}", file=sys.stderr)
 
@@ -212,8 +212,8 @@ if USE_PLAYWRIGHT or USE_CURL_CFFI:
     csrf = cookies_dict.get('csrfToken') or cookies_dict.get('csrf_token')
     if csrf:
         print(f"DEBUG: Found CSRF in cookies (csrfToken)", file=sys.stderr)
-else:
-csrf = scraper.cookies.get('csrfToken')
+elif not USE_PLAYWRIGHT:
+    csrf = scraper.cookies.get('csrfToken')
     if csrf:
         print(f"DEBUG: Found CSRF in cookies (csrfToken)", file=sys.stderr)
 
