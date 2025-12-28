@@ -210,13 +210,14 @@ if not USE_PLAYWRIGHT and ('cloudflare' in r.text.lower() or 'challenge' in r.te
     print(f"DEBUG: Retry request status: {r.status_code}", file=sys.stderr)
 
 # Debug: Print all available cookies (to stderr so it doesn't interfere)
-if USE_CURL_CFFI:
+if USE_PLAYWRIGHT or USE_CURL_CFFI:
     if len(cookies_dict) > 0:
         print(f"DEBUG: Found {len(cookies_dict)} cookies:", file=sys.stderr)
         for name, value in cookies_dict.items():
             print(f"  - {name}: {value[:50]}...", file=sys.stderr)
     else:
-        print("DEBUG: No cookies found (curl_cffi)", file=sys.stderr)
+        method = "Playwright" if USE_PLAYWRIGHT else "curl_cffi"
+        print(f"DEBUG: No cookies found ({method})", file=sys.stderr)
 else:
     if len(scraper.cookies) > 0:
         print(f"DEBUG: Found {len(scraper.cookies)} cookies:", file=sys.stderr)
@@ -254,8 +255,8 @@ if csrf is None and not USE_PLAYWRIGHT:
 
 # If CSRF token not in cookies, try alternative cookie names (case-insensitive search)
 if csrf is None:
-    cookies_to_check = cookies_dict if USE_CURL_CFFI else scraper.cookies
-    if USE_CURL_CFFI:
+    cookies_to_check = cookies_dict if (USE_PLAYWRIGHT or USE_CURL_CFFI) else scraper.cookies
+    if USE_PLAYWRIGHT or USE_CURL_CFFI:
         for cookie_name, cookie_value in cookies_to_check.items():
             cookie_name_lower = cookie_name.lower()
             if 'csrf' in cookie_name_lower or cookie_name_lower in ['_token', 'token']:
@@ -273,7 +274,7 @@ if csrf is None:
     # If still not found, try specific cookie names
     if csrf is None:
         for cookie_name in ['csrfToken', 'csrf_token', 'XSRF-TOKEN', '_token', 'csrf-token', 'X-CSRF-TOKEN']:
-            if USE_CURL_CFFI:
+            if USE_PLAYWRIGHT or USE_CURL_CFFI:
                 csrf = cookies_dict.get(cookie_name)
             else:
                 csrf = scraper.cookies.get(cookie_name)
@@ -338,7 +339,8 @@ if csrf is None:
                 print(f"DEBUG: BeautifulSoup parsing failed: {e}", file=sys.stderr)
 
 # If still not found, try making a second request (sometimes cookies are set after first request)
-if csrf is None:
+# Skip for Playwright as it already got cookies
+if csrf is None and not USE_PLAYWRIGHT:
     print("DEBUG: CSRF not found on first request, trying second request...", file=sys.stderr)
     time.sleep(2)  # Longer delay to allow Cloudflare challenge to complete
     if USE_CURL_CFFI:
@@ -363,14 +365,14 @@ if csrf is None:
     if csrf is None:
         if USE_CURL_CFFI:
             csrf = cookies_dict.get('csrfToken')
-        else:
+        elif not USE_PLAYWRIGHT:
             csrf = scraper.cookies.get("csrfToken")
         if csrf:
             print(f"DEBUG: Found CSRF in cookies on second request", file=sys.stderr)
     
     if csrf is None:
-        cookies_to_check = cookies_dict if USE_CURL_CFFI else scraper.cookies
-        if USE_CURL_CFFI:
+        cookies_to_check = cookies_dict if (USE_PLAYWRIGHT or USE_CURL_CFFI) else scraper.cookies
+        if USE_PLAYWRIGHT or USE_CURL_CFFI:
             for cookie_name, cookie_value in cookies_to_check.items():
                 if 'csrf' in cookie_name.lower():
                     csrf = cookie_value
@@ -477,31 +479,35 @@ else:
         # Try to extract it and retry
         if csrf is None or csrf == "":
             # Check if we can get CSRF from the error response or retry with fresh request
-            print("Retrying with fresh request to get CSRF token...", file=sys.stderr)
-            time.sleep(3)  # Longer delay
-            if USE_CURL_CFFI:
-                r_retry = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
-                                      impersonate="chrome120", timeout=60)
-                cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
+            # Skip retry for Playwright as it already got cookies
+            if not USE_PLAYWRIGHT:
+                print("Retrying with fresh request to get CSRF token...", file=sys.stderr)
+                time.sleep(3)  # Longer delay
+                if USE_CURL_CFFI:
+                    r_retry = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", 
+                                          impersonate="chrome120", timeout=60)
+                    cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
+                else:
+                    r_retry = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+                    cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
+                
+                # Try all methods again on retry
+                if USE_CURL_CFFI:
+                    csrf_retry = cookies_dict.get('csrfToken') or cookies_dict.get('csrf_token')
+                    if not csrf_retry:
+                        for cookie_name, cookie_value in cookies_dict.items():
+                            if 'csrf' in cookie_name.lower():
+                                csrf_retry = cookie_value
+                                break
+                else:
+                    csrf_retry = scraper.cookies.get('csrfToken')
+                    if not csrf_retry:
+                        for cookie in scraper.cookies:
+                            if 'csrf' in cookie.name.lower():
+                                csrf_retry = cookie.value
+                                break
             else:
-                r_retry = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
-                cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
-            
-            # Try all methods again on retry
-            if USE_CURL_CFFI:
-                csrf_retry = cookies_dict.get('csrfToken') or cookies_dict.get('csrf_token')
-                if not csrf_retry:
-                    for cookie_name, cookie_value in cookies_dict.items():
-                        if 'csrf' in cookie_name.lower():
-                            csrf_retry = cookie_value
-                            break
-            else:
-                csrf_retry = scraper.cookies.get('csrfToken')
-                if not csrf_retry:
-                    for cookie in scraper.cookies:
-                        if 'csrf' in cookie.name.lower():
-                            csrf_retry = cookie.value
-                            break
+                csrf_retry = None
             
             # Try HTML parsing on retry
             if not csrf_retry and HAS_BS4:
@@ -516,7 +522,26 @@ else:
             if csrf_retry:
                 print(f"DEBUG: Found CSRF on retry: {csrf_retry[:20]}...", file=sys.stderr)
                 headers['X-CSRF-Token'] = urllib.parse.unquote(csrf_retry) if csrf_retry else ""
-                if USE_CURL_CFFI:
+                if USE_PLAYWRIGHT:
+                    # Use Playwright request context
+                    with sync_playwright() as p:
+                        browser = p.chromium.launch(headless=True, args=['--disable-blink-features=AutomationControlled', '--disable-dev-shm-usage', '--no-sandbox'])
+                        context = browser.new_context()
+                        if cookies_dict:
+                            context.add_cookies([{'name': k, 'value': v, 'domain': '.watchcharts.com', 'path': '/'} for k, v in cookies_dict.items()])
+                        api_response = context.request.get(url, headers=headers)
+                        status = api_response.status
+                        content = api_response.text()
+                        browser.close()
+                        class MockResponse:
+                            def __init__(self, status_code, text):
+                                self.status_code = status_code
+                                self.text = text
+                            def json(self):
+                                import json
+                                return json.loads(self.text)
+                        r2 = MockResponse(status, content)
+                elif USE_CURL_CFFI:
                     r2 = session.get(url, headers=headers, impersonate="chrome120", timeout=60)
                 else:
                     r2 = scraper.get(url, headers=headers)
