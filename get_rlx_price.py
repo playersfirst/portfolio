@@ -23,6 +23,27 @@ except ImportError:
     USE_CURL_CFFI = False
     print("DEBUG: curl_cffi not available, using cloudscraper", file=sys.stderr)
 
+def get_cookies_dict(session_or_scraper, use_curl_cffi):
+    """Helper function to get cookies as a dict from either curl_cffi or cloudscraper"""
+    if use_curl_cffi:
+        # curl_cffi cookies are accessed differently
+        try:
+            # Try dict conversion first
+            if isinstance(session_or_scraper.cookies, dict):
+                return session_or_scraper.cookies
+            # Try accessing as items
+            return dict(session_or_scraper.cookies)
+        except:
+            # Fallback: try to iterate if it's a cookie jar
+            try:
+                return {name: cookie.value for name, cookie in session_or_scraper.cookies.items()}
+            except:
+                # Last resort: empty dict
+                return {}
+    else:
+        # cloudscraper uses requests-style cookies
+        return {cookie.name: cookie.value for cookie in session_or_scraper.cookies}
+
 if USE_CURL_CFFI:
     # Use curl_cffi which is better at bypassing Cloudflare
     session = requests.Session()
@@ -58,11 +79,11 @@ else:
 # Make initial request
 if USE_CURL_CFFI:
     r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
-    # Get cookies from session
-    cookies_dict = {cookie.name: cookie.value for cookie in session.cookies}
+    cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
     print(f"DEBUG: curl_cffi cookies: {list(cookies_dict.keys())}", file=sys.stderr)
 else:
     r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+    cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
 
 # Debug: Check what we actually got back
 print(f"DEBUG: First request status: {r.status_code}", file=sys.stderr)
@@ -74,7 +95,12 @@ if 'cloudflare' in r.text.lower() or 'challenge' in r.text.lower() or r.status_c
     print("DEBUG: Possible Cloudflare challenge detected", file=sys.stderr)
     # Try with a delay and different approach
     time.sleep(5)
-    r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+    if USE_CURL_CFFI:
+        r = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
+        cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
+    else:
+        r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+        cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
     print(f"DEBUG: Retry request status: {r.status_code}", file=sys.stderr)
 
 # Debug: Print all available cookies (to stderr so it doesn't interfere)
@@ -208,9 +234,10 @@ if csrf is None:
     time.sleep(2)  # Longer delay to allow Cloudflare challenge to complete
     if USE_CURL_CFFI:
         r2_check = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
-        cookies_dict = {cookie.name: cookie.value for cookie in session.cookies}
+        cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
     else:
         r2_check = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+        cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
     
     # Check Set-Cookie headers again
     set_cookie_headers = r2_check.headers.get_list('Set-Cookie') if hasattr(r2_check.headers, 'get_list') else [r2_check.headers.get('Set-Cookie', '')]
@@ -307,9 +334,10 @@ else:
             time.sleep(3)  # Longer delay
             if USE_CURL_CFFI:
                 r_retry = session.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview", impersonate="chrome110")
-                cookies_dict = {cookie.name: cookie.value for cookie in session.cookies}
+                cookies_dict = get_cookies_dict(session, USE_CURL_CFFI)
             else:
                 r_retry = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+                cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
             
             # Try all methods again on retry
             if USE_CURL_CFFI:
