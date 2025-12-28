@@ -191,8 +191,8 @@ print(f"DEBUG: First request status: {r.status_code}", file=sys.stderr)
 print(f"DEBUG: Response length: {len(r.text)}", file=sys.stderr)
 print(f"DEBUG: Response headers: {dict(r.headers)}", file=sys.stderr)
 
-# Check if we got a Cloudflare challenge page
-if 'cloudflare' in r.text.lower() or 'challenge' in r.text.lower() or r.status_code == 403:
+# Check if we got a Cloudflare challenge page (skip for Playwright as it already handled it)
+if not USE_PLAYWRIGHT and ('cloudflare' in r.text.lower() or 'challenge' in r.text.lower() or r.status_code == 403):
     print("DEBUG: Possible Cloudflare challenge detected", file=sys.stderr)
     # Try with a longer delay and different Chrome version
     time.sleep(10)  # Longer delay for challenge to complete
