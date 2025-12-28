@@ -205,7 +205,7 @@ if 'cloudflare' in r.text.lower() or 'challenge' in r.text.lower() or r.status_c
         except Exception as e:
             print(f"DEBUG: Retry failed: {e}", file=sys.stderr)
     else:
-r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
+        r = scraper.get("https://watchcharts.com/watch_model/862-rolex-datejust-16200/overview")
         cookies_dict = get_cookies_dict(scraper, USE_CURL_CFFI)
     print(f"DEBUG: Retry request status: {r.status_code}", file=sys.stderr)
 
@@ -364,7 +364,7 @@ if csrf is None:
         if USE_CURL_CFFI:
             csrf = cookies_dict.get('csrfToken')
         else:
-csrf = scraper.cookies.get('csrfToken')
+            csrf = scraper.cookies.get("csrfToken")
         if csrf:
             print(f"DEBUG: Found CSRF in cookies on second request", file=sys.stderr)
     
@@ -455,7 +455,7 @@ if USE_PLAYWRIGHT:
 elif USE_CURL_CFFI:
     r2 = session.get(url, headers=headers, impersonate="chrome120", timeout=60)
 else:
-r2 = scraper.get(url, headers=headers)
+        r2 = scraper.get(url, headers=headers)
 
 if r2.status_code == 200:
     data = r2.json()
@@ -534,4 +534,3 @@ else:
         print(f"{error_msg}\nException: {e}", file=sys.stderr)
     
     exit(1)
-
