@@ -1,0 +1,49 @@
+name: Update RLX Price
+on:
+  schedule:
+    - cron: '0 12 * * *'  # Run daily at 12pm UTC
+  workflow_dispatch:
+
+jobs:
+  update-rlx:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          
+      - name: Install dependencies
+        run: |
+          pip install cloudscraper
+          
+      - name: Run get_rlx_price.py and save to JSON
+        run: |
+          PRICE=$(python get_rlx_price.py | grep -oP '\$\K[\d,]+' | tr -d ',')
+          echo "{\"price_usd\": $PRICE, \"last_updated\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > rlx_price.json
+          
+      - name: Checkout main repository
+        uses: actions/checkout@v4
+        with:
+          repository: playersfirst/playersfirst.github.io
+          path: main-repo
+          token: ${{ secrets.GH_TOKEN }}
+          
+      - name: Copy and commit to main repository
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          cp rlx_price.json main-repo/
+          cd main-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add rlx_price.json
+          git commit -m "Update RLX price" || exit 0
+          git push origin HEAD:main
+
