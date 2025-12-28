@@ -529,7 +529,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                         return response.json();
                     })
                     .then(data => {
-                        const price = data.price_usd;
+                        const price = data.price;
                         const percentChange = 0; // No 24h change for RLX
                         
                         // RLX is USD-denominated
