@@ -25,7 +25,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install selenium
     
     - name: Install Chrome, ChromeDriver and Virtual Display
       run: |
@@ -72,22 +72,10 @@ jobs:
         
         # Read current price from JSON for 24h change calculation and calculate change
         if [ -f "rlx_price.json" ]; then
-          CHANGE=$(python3 -c "
-import json
-try:
-    with open('rlx_price.json', 'r') as f:
-        data = json.load(f)
-    current_price = int(data.get('price', 0))
-    new_price = int('$NUMERIC_PRICE')
-    change = new_price - current_price
-    print(f'Previous price: {current_price}')
-    print(f'24h change: {change}')
-    print(change)
-except:
-    print('Previous price: 0')
-    print('24h change: 0') 
-    print(0)
-" | tail -1)
+          CURRENT_PRICE=$(python3 -c "import json; data=json.load(open('rlx_price.json')); print(int(data.get('price', 0)))" 2>/dev/null || echo "0")
+          CHANGE=$((NUMERIC_PRICE - CURRENT_PRICE))
+          echo "Previous price: $CURRENT_PRICE"
+          echo "24h change: $CHANGE"
         else
           echo "Previous price: 0"
           echo "24h change: 0"
