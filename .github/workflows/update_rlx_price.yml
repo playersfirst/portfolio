@@ -14,7 +14,8 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.GH_TOKEN }}
+        persist-credentials: true
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -69,16 +70,29 @@ jobs:
         TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.%6NZ")
         echo "Timestamp: $TIMESTAMP"
         
-        # Read current price from JSON for 24h change calculation
-        CURRENT_PRICE=0
+        # Read current price from JSON for 24h change calculation and calculate change
         if [ -f "rlx_price.json" ]; then
-          CURRENT_PRICE=$(python3 -c "import json; data=json.load(open('rlx_price.json')); print(data.get('price', 0))")
+          CHANGE=$(python3 -c "
+import json
+try:
+    with open('rlx_price.json', 'r') as f:
+        data = json.load(f)
+    current_price = int(data.get('price', 0))
+    new_price = int('$NUMERIC_PRICE')
+    change = new_price - current_price
+    print(f'Previous price: {current_price}')
+    print(f'24h change: {change}')
+    print(change)
+except:
+    print('Previous price: 0')
+    print('24h change: 0') 
+    print(0)
+" | tail -1)
+        else
+          echo "Previous price: 0"
+          echo "24h change: 0"
+          CHANGE=0
         fi
-        echo "Previous price: $CURRENT_PRICE"
-        
-        # Calculate 24h change
-        CHANGE=$((NUMERIC_PRICE - CURRENT_PRICE))
-        echo "24h change: $CHANGE"
         
         # Update JSON file
         cat > rlx_price.json << EOF
@@ -99,7 +113,9 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add rlx_price.json
-        git diff --staged --quiet || git commit -m "Update RLX price - $(date '+%Y-%m-%d %H:%M:%S UTC')"
-        git push
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        if ! git diff --staged --quiet; then
+          git commit -m "Update RLX price - $(date '+%Y-%m-%d %H:%M:%S UTC')"
+          git push
+        else
+          echo "No changes to commit"
+        fi
