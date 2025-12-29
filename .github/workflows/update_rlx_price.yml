@@ -70,15 +70,20 @@ jobs:
         TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.%6NZ")
         echo "Timestamp: $TIMESTAMP"
         
-        # Read current price from JSON for 24h change calculation and calculate change
+        # Read current price from JSON for 24h change calculation and calculate percentage change
         if [ -f "rlx_price.json" ]; then
           CURRENT_PRICE=$(python3 -c "import json; data=json.load(open('rlx_price.json')); print(int(data.get('price', 0)))" 2>/dev/null || echo "0")
-          CHANGE=$((NUMERIC_PRICE - CURRENT_PRICE))
+          if [ "$CURRENT_PRICE" -gt 0 ]; then
+            # Calculate percentage change: (new_price / old_price) - 1
+            CHANGE=$(python3 -c "print(round((($NUMERIC_PRICE / $CURRENT_PRICE) - 1) * 100, 2))")
+          else
+            CHANGE=0
+          fi
           echo "Previous price: $CURRENT_PRICE"
-          echo "24h change: $CHANGE"
+          echo "24h change: $CHANGE%"
         else
           echo "Previous price: 0"
-          echo "24h change: 0"
+          echo "24h change: 0%"
           CHANGE=0
         fi
         
