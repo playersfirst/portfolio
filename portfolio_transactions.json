@@ -1759,6 +1759,39 @@
       "newAmount": 45790,
       "difference": -14,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-29T20:33:10.850Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.014700000000001268,
+      "oldAmount": 9.0124,
+      "newAmount": 9.0271,
+      "difference": 0.014700000000001268,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-29T20:33:10.850Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.13269999999999982,
+      "oldAmount": 141.3482,
+      "newAmount": 141.4809,
+      "difference": 0.13269999999999982,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-29T20:33:10.850Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.4918999999999869,
+      "oldAmount": 196.2861,
+      "newAmount": 196.778,
+      "difference": 0.4918999999999869,
+      "currency": "units"
     }
   ]
 }
