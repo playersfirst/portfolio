@@ -530,19 +530,19 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                     })
                     .then(data => {
                         const price = data.price;
-                        const percentChange = 0; // No 24h change for RLX
+                        const percentChange = data['24h_change'] || 0; // Use 24h change from JSON
                         
-                        // RLX is USD-denominated
-                        const value = price * shares;
-                        const valueEur = value / usdToEurRate;
-                        const pnl = value - initialInvestment;
+                        // RLX is now EUR-denominated
+                        const valueEur = price * shares;
+                        const value = valueEur * usdToEurRate; // Convert to USD for consistency
                         const pnlEur = valueEur - initialEuroInvestment;
+                        const pnl = value - initialInvestment;
                         const displayPrice = price;
                         
                         portfolioData[symbol] = {
                             shares, price, value, pnl, valueEur, pnlEur,
                             percentChange, initialInvestment, initialEuroInvestment,
-                            displayPrice, isEurDenominated: false
+                            displayPrice, isEurDenominated: true
                         };
                     })
                     .catch(error => {
