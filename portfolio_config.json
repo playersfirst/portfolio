@@ -2,8 +2,8 @@
   "originalEuroInvestment": 51211,
   "initialInvestments": {
     "VOO": 5101,
-    "NANC": 6373,
-    "IAU": 9599,
+    "NANC": 6363,
+    "IAU": 9609,
     "SGOV": 19357,
     "BINANCE:BTCUSDT": 7363,
     "IWDE": 4026,
@@ -11,8 +11,8 @@
   },
   "initialEuroInvestments": {
     "VOO": 4479,
-    "NANC": 5522,
-    "IAU": 8376,
+    "NANC": 5513,
+    "IAU": 8385,
     "SGOV": 17258,
     "BINANCE:BTCUSDT": 6696,
     "IWDE": 3459,
