@@ -1792,6 +1792,50 @@
       "newAmount": 196.778,
       "difference": 0.4918999999999869,
       "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-29T20:38:26.916Z",
+      "ticker": "NANC",
+      "type": "initial_investment",
+      "action": "decrease",
+      "amount": 10,
+      "oldAmount": 6373,
+      "newAmount": 6363,
+      "difference": -10,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-12-29T20:38:26.916Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 10,
+      "oldAmount": 9599,
+      "newAmount": 9609,
+      "difference": 10,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-12-29T20:38:26.916Z",
+      "ticker": "NANC",
+      "type": "initial_euro_investment",
+      "action": "decrease",
+      "amount": 9,
+      "oldAmount": 5522,
+      "newAmount": 5513,
+      "difference": -9,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-29T20:38:26.916Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 9,
+      "oldAmount": 8376,
+      "newAmount": 8385,
+      "difference": 9,
+      "currency": "EUR"
     }
   ]
 }
