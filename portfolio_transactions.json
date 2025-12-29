@@ -1836,6 +1836,50 @@
       "newAmount": 8385,
       "difference": 9,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-29T21:00:00.000Z",
+      "ticker": "RLX",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 6370,
+      "oldAmount": 0,
+      "newAmount": 6370,
+      "difference": 6370,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2025-12-29T21:00:00.000Z",
+      "ticker": "RLX",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 5421,
+      "oldAmount": 0,
+      "newAmount": 5421,
+      "difference": 5421,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2025-12-29T21:00:00.000Z",
+      "ticker": "RLX",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 1,
+      "oldAmount": 0,
+      "newAmount": 1,
+      "difference": 1,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2025-12-29T21:00:00.000Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 5421,
+      "oldAmount": 45790,
+      "newAmount": 51211,
+      "difference": 5421,
+      "currency": "EUR"
     }
   ]
 }
