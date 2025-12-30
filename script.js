@@ -1366,7 +1366,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
              currentSortHeader.classList.remove(sortClass);
              sortTable(currentSortColumn);
          } else {
-            sortTable(3); // Default sort by value if no sort was active
+            sortTable(6); // Default sort by 24hr change if no sort was active
          }
     }
 
