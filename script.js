@@ -1565,16 +1565,7 @@ function calculateReturn(startValue, endValue) {
         
         if (startDateInput && endDateInput) {
             // Set default date range
-            const currentYear = new Date().getFullYear();
-            let startDate;
-            
-            if (currentYear === 2025) {
-                // For 2025, start from August 1st
-                startDate = '2025-08-01';
-            } else {
-                // For other years, start from January 1st
-                startDate = `${currentYear}-01-01`;
-            }
+            const startDate = '2026-01-01';
             
             startDateInput.value = startDate;
             endDateInput.value = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -2200,7 +2191,7 @@ function calculateTWRForRiskAssets(historyData, transactionData, startDate, endD
     const calculateRiskAssetsValue = (entry) => {
         let total = 0;
         for (const asset in entry.assets) {
-            if (asset !== 'SGOV' && entry.assets[asset] && entry.assets[asset][valueKey]) {
+            if (asset !== 'SGOV' && asset !== 'RLX' && entry.assets[asset] && entry.assets[asset][valueKey]) {
                 total += entry.assets[asset][valueKey];
             }
         }
@@ -2423,7 +2414,7 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
                 usdResult = calculateIRRForCurrency(historyData, transactionData, startDate, endDate, 'USD');
                 eurResult = calculateIRRForCurrency(historyData, transactionData, startDate, endDate, 'EUR');
                 
-                // Risk Assets (excluding SGOV)
+                // Risk Assets 
                 usdRiskResult = calculateIRRForRiskAssets(historyData, transactionData, startDate, endDate, 'USD');
                 eurRiskResult = calculateIRRForRiskAssets(historyData, transactionData, startDate, endDate, 'EUR');
                 
