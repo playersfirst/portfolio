@@ -1946,6 +1946,138 @@
       "newAmount": 190.778,
       "difference": -6,
       "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 350,
+      "oldAmount": 5101,
+      "newAmount": 5451,
+      "difference": 350,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "NANC",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 250,
+      "oldAmount": 6363,
+      "newAmount": 6613,
+      "difference": 250,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 300,
+      "oldAmount": 10209,
+      "newAmount": 10509,
+      "difference": 300,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "SGOV",
+      "type": "initial_investment",
+      "action": "decrease",
+      "amount": 900,
+      "oldAmount": 18757,
+      "newAmount": 17857,
+      "difference": -900,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 300,
+      "oldAmount": 4479,
+      "newAmount": 4779,
+      "difference": 300,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "NANC",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 215,
+      "oldAmount": 5513,
+      "newAmount": 5728,
+      "difference": 215,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 258,
+      "oldAmount": 8895,
+      "newAmount": 9153,
+      "difference": 258,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "SGOV",
+      "type": "initial_euro_investment",
+      "action": "decrease",
+      "amount": 773,
+      "oldAmount": 16748,
+      "newAmount": 15975,
+      "difference": -773,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.5494999999999983,
+      "oldAmount": 9.0271,
+      "newAmount": 9.5766,
+      "difference": 0.5494999999999983,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "NANC",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 5.400999999999982,
+      "oldAmount": 150.7606,
+      "newAmount": 156.1616,
+      "difference": 5.400999999999982,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 3.467899999999986,
+      "oldAmount": 148.7775,
+      "newAmount": 152.2454,
+      "difference": 3.467899999999986,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-13T19:19:16.261Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "sell",
+      "amount": 9,
+      "oldAmount": 190.778,
+      "newAmount": 181.778,
+      "difference": -9,
+      "currency": "units"
     }
   ]
 }
