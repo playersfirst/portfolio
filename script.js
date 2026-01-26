@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Current price data (fresh on each fetch, never cached)
     let currentPrices = null;
+    let currentPriceTimestamp = null;
     
     // Track failed assets and their warning status
     const failedAssets = new Map(); // Map<assetName, {failureStartTime, warningShown}>
@@ -688,8 +689,13 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     function finishLoading() {
         loadingEl.style.display = 'none';
         portfolioTable.style.display = 'table';
-        // Always use current time (no caching)
-        lastUpdatedEl.textContent = new Date().toLocaleString();
+        // Use timestamp from price data if available, otherwise use current time
+        if (currentPriceTimestamp) {
+            const timestampDate = new Date(currentPriceTimestamp);
+            lastUpdatedEl.textContent = timestampDate.toLocaleString();
+        } else {
+            lastUpdatedEl.textContent = new Date().toLocaleString();
+        }
         recalculateTotals();
         createPieChart();
         updateAverageBuyPriceDisplay();
@@ -729,6 +735,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         
         // Store fresh data (not cached, just for current fetch cycle)
         currentPrices = data.assets;
+        currentPriceTimestamp = data.timestamp;
         
         return data;
     }
@@ -775,6 +782,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
 
         // Clear any old data before fetching fresh
         currentPrices = null;
+        currentPriceTimestamp = null;
         
         // Fetch exchange rate and prices in parallel for faster loading
         // NO CACHING - always fetches fresh data
