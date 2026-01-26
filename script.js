@@ -709,21 +709,17 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     }
     
     // Fetch all prices from price-updater.onrender.com (single call)
-    // Uses multiple fallback methods for reliability
+    // Parallel proxy fetch - returns immediately when first proxy succeeds
     async function fetchAllPrices() {
         const url = 'https://price-updater.onrender.com/';
-        const maxRetries = 3;
-        const retryDelay = 1000; // 1 second
         
-        // List of CORS proxy methods to try
-        const fetchMethods = [
-            // Method 1: api.allorigins.win proxy
-            async () => {
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-                const response = await fetch(proxyUrl, { 
-                    signal: AbortSignal.timeout(15000) 
-                });
-                if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+        // All proxies run in parallel - first success wins, no delays
+        const proxyFetches = [
+            // Proxy 1: api.allorigins.win
+            fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, {
+                cache: 'no-store'
+            }).then(async response => {
+                if (!response.ok) throw new Error(`AllOrigins HTTP ${response.status}`);
                 const text = await response.text();
                 try {
                     return JSON.parse(text);
@@ -731,75 +727,38 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                     const wrapped = JSON.parse(text);
                     return typeof wrapped.contents === 'string' ? JSON.parse(wrapped.contents) : wrapped;
                 }
-            },
-            // Method 2: corsproxy.io proxy
-            async () => {
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-                const response = await fetch(proxyUrl, { 
-                    signal: AbortSignal.timeout(15000) 
-                });
-                if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+            }),
+            
+            // Proxy 2: corsproxy.io
+            fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
+                cache: 'no-store'
+            }).then(async response => {
+                if (!response.ok) throw new Error(`CorsProxy HTTP ${response.status}`);
                 return await response.json();
-            },
-            // Method 3: thingproxy.freeboard.io proxy
-            async () => {
-                const proxyUrl = `https://thingproxy.freeboard.io/fetch/${url}`;
-                const response = await fetch(proxyUrl, { 
-                    signal: AbortSignal.timeout(15000) 
-                });
-                if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+            }),
+            
+            // Proxy 3: thingproxy.freeboard.io
+            fetch(`https://thingproxy.freeboard.io/fetch/${url}`, {
+                cache: 'no-store'
+            }).then(async response => {
+                if (!response.ok) throw new Error(`ThingProxy HTTP ${response.status}`);
                 return await response.json();
-            }
+            })
         ];
         
-        // Try each method with retries
-        for (let methodIndex = 0; methodIndex < fetchMethods.length; methodIndex++) {
-            const fetchMethod = fetchMethods[methodIndex];
-            
-            for (let attempt = 0; attempt < maxRetries; attempt++) {
-                try {
-                    const data = await fetchMethod();
-                    
-                    // Validate response
-                    if (!data || !data.assets || !data.timestamp) {
-                        throw new Error('Invalid response format from price-updater');
-                    }
-                    
-                    // Success! Cache and return
-                    priceDataCache = data.assets;
-                    priceDataTimestamp = data.timestamp;
-                    return data;
-                    
-                } catch (error) {
-                    const isLastAttempt = attempt === maxRetries - 1;
-                    const isLastMethod = methodIndex === fetchMethods.length - 1;
-                    
-                    if (isLastAttempt && isLastMethod) {
-                        // All methods and retries exhausted
-                        console.error('All fetch methods failed for price-updater:', error);
-                        
-                        // If we have cached data, use it instead of throwing
-                        if (priceDataCache && priceDataTimestamp) {
-                            console.warn('Using cached price data due to fetch failure');
-                            return {
-                                assets: priceDataCache,
-                                timestamp: priceDataTimestamp
-                            };
-                        }
-                        
-                        throw error;
-                    }
-                    
-                    // Wait before retrying (exponential backoff)
-                    if (!isLastAttempt) {
-                        await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
-                    }
-                }
-            }
+        // Race all proxies - return immediately when first succeeds
+        const data = await Promise.race(proxyFetches);
+        
+        // Validate response
+        if (!data || !data.assets || !data.timestamp) {
+            throw new Error('Invalid response format from price-updater');
         }
         
-        // Should never reach here, but just in case
-        throw new Error('All fetch methods exhausted');
+        // Cache the data immediately
+        priceDataCache = data.assets;
+        priceDataTimestamp = data.timestamp;
+        
+        return data;
     }
     
     // Get price from cache (with symbol mapping)
@@ -841,10 +800,23 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         portfolioTable.style.display = 'none';
         portfolioDataEl.innerHTML = '';
 
-        await fetchExchangeRate();
-        
-        // Fetch all prices from price-updater.onrender.com (single call)
-        await fetchWithInfiniteRetry(fetchAllPrices, 'price-updater');
+        // Fetch exchange rate and prices in parallel for faster loading
+        // Direct fetch - no retries, immediate response
+        await Promise.all([
+            fetchExchangeRate(),
+            fetchAllPrices().catch(error => {
+                // If fetch fails, use cached data if available
+                if (priceDataCache && priceDataTimestamp) {
+                    console.warn('Using cached price data:', error.message);
+                    return {
+                        assets: priceDataCache,
+                        timestamp: priceDataTimestamp
+                    };
+                }
+                // Re-throw if no cache available
+                throw error;
+            })
+        ]);
 
         let completedRequests = 0;
         const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
