@@ -1,7 +1,11 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const apiKey = 'cvneau1r01qq3c7eq690cvneau1r01qq3c7eq69g';
-    const REFRESH_INTERVAL = 60 * 1000; // 1 minute
+    const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
     const WARNING_TIMEOUT = 60 * 1000; // 1 minute before showing warning
+    
+    // Cache for price data from price-updater.onrender.com
+    let priceDataCache = null;
+    let priceDataTimestamp = null;
     
     // Track failed assets and their warning status
     const failedAssets = new Map(); // Map<assetName, {failureStartTime, warningShown}>
@@ -685,7 +689,13 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     function finishLoading() {
         loadingEl.style.display = 'none';
         portfolioTable.style.display = 'table';
-        lastUpdatedEl.textContent = new Date().toLocaleString();
+        // Use timestamp from price data if available, otherwise use current time
+        if (priceDataTimestamp) {
+            const timestampDate = new Date(priceDataTimestamp);
+            lastUpdatedEl.textContent = timestampDate.toLocaleString();
+        } else {
+            lastUpdatedEl.textContent = new Date().toLocaleString();
+        }
         recalculateTotals();
         createPieChart();
         updateAverageBuyPriceDisplay();
@@ -697,6 +707,60 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             loadAssetReturns();
         }
     }
+    
+    // Fetch all prices from price-updater.onrender.com (single call)
+    async function fetchAllPrices() {
+        try {
+            // Use CORS proxy to avoid CORS issues
+            const url = 'https://price-updater.onrender.com/';
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+            const response = await fetch(proxyUrl);
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            const data = await response.json();
+            priceDataCache = data.assets;
+            priceDataTimestamp = data.timestamp;
+            return data;
+        } catch (error) {
+            console.error('Error fetching prices from price-updater:', error);
+            throw error;
+        }
+    }
+    
+    // Get price from cache (with symbol mapping)
+    function getPriceFromCache(symbol) {
+        if (!priceDataCache) {
+            return null;
+        }
+        
+        // Map internal symbols to cache keys
+        let cacheKey = symbol;
+        
+        // Handle special symbol mappings
+        if (symbol === 'BINANCE:BTCUSDT') {
+            cacheKey = 'BINANCE:BTCUSDT';
+        } else if (symbol === 'IWDE' || symbol === 'IWDE.L') {
+            cacheKey = 'IWDE';
+        } else if (symbol === 'XUSE' || symbol === 'XUSE.AS') {
+            cacheKey = 'XUSE';
+        } else if (symbol === 'URNU' || symbol === 'URNU.L') {
+            cacheKey = 'URNU';
+        } else if (symbol === 'COPX' || symbol === 'COPX.L') {
+            cacheKey = 'COPX';
+        }
+        // VOO, NANC, PALL, SIVR, IAU, SGOV should match directly
+        
+        const assetData = priceDataCache[cacheKey];
+        if (assetData) {
+            return {
+                price: assetData.price,
+                percentChange: assetData.percentChange
+            };
+        }
+        
+        return null;
+    }
 
     async function fetchStockData() {
         loadingEl.style.display = 'flex';
@@ -704,6 +768,9 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         portfolioDataEl.innerHTML = '';
 
         await fetchExchangeRate();
+        
+        // Fetch all prices from price-updater.onrender.com (single call)
+        await fetchWithInfiniteRetry(fetchAllPrices, 'price-updater');
 
         let completedRequests = 0;
         const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
@@ -750,24 +817,14 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                     { symbol: 'SIVR', name: 'SIVR', shares: otrShares.SIVR }
                 ];
                 
-                // Fetch all 4 component prices with infinite retry
+                // Get prices from cache (no API calls needed)
                 const componentPromises = otrComponents.map(comp => {
                     const fetchFn = async () => {
-                        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${comp.symbol}`;
-                        const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
-                        const response = await fetch(url);
-                        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                        const data = await response.json();
-                        const result = data.chart.result[0];
-                        const meta = result.meta;
-                        const price = meta.regularMarketPrice;
-                        let percentChange = 0;
-                        if (meta.regularMarketChangePercent !== null && meta.regularMarketChangePercent !== undefined) {
-                            percentChange = meta.regularMarketChangePercent * 100;
-                        } else if (meta.previousClose && meta.regularMarketPrice) {
-                            percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
+                        const priceData = getPriceFromCache(comp.name);
+                        if (!priceData) {
+                            throw new Error(`Price data not found for ${comp.name}`);
                         }
-                        return { name: comp.name, price, percentChange, shares: comp.shares };
+                        return { name: comp.name, price: priceData.price, percentChange: priceData.percentChange, shares: comp.shares };
                     };
                     return fetchWithInfiniteRetry(fetchFn, comp.name);
                 });
@@ -900,39 +957,16 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                     { symbol: 'XUSE.AS', name: 'XUSE', shares: eqyShares.XUSE, useYahooFinance: true }
                 ];
                 
-                // Fetch all 4 component prices with infinite retry
+                // Get prices from cache (no API calls needed)
                 const componentPromises = eqyComponents.map(comp => {
                     const fetchFn = async () => {
-                        let url;
-                        if (comp.useYahooFinance) {
-                            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${comp.symbol}`;
-                            url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
-                        } else {
-                            url = `https://finnhub.io/api/v1/quote?symbol=${comp.symbol}&token=${apiKey}`;
+                        const priceData = getPriceFromCache(comp.name);
+                        if (!priceData) {
+                            throw new Error(`Price data not found for ${comp.name}`);
                         }
-                        
-                        const response = await fetch(url);
-                        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                        const data = await response.json();
-                        let price, percentChange;
-                        
-                        if (comp.useYahooFinance) {
-                            const result = data.chart.result[0];
-                            const meta = result.meta;
-                            price = meta.regularMarketPrice;
-                            if (meta.regularMarketChangePercent !== null && meta.regularMarketChangePercent !== undefined) {
-                                percentChange = meta.regularMarketChangePercent * 100;
-                            } else if (meta.previousClose && meta.regularMarketPrice) {
-                                percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
-                            } else {
-                                percentChange = 0;
-                            }
-                        } else {
-                            price = data.c;
-                            percentChange = data.dp;
-                        }
-                        
-                        return { name: comp.name, price, percentChange, shares: comp.shares, isEurDenominated: comp.symbol === 'IWDE.L' };
+                        // IWDE is EUR-denominated, others are USD
+                        const isEurDenominated = comp.symbol === 'IWDE.L';
+                        return { name: comp.name, price: priceData.price, percentChange: priceData.percentChange, shares: comp.shares, isEurDenominated };
                     };
                     return fetchWithInfiniteRetry(fetchFn, comp.name);
                 });
@@ -1122,43 +1156,14 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             }
             
             const fetchFn = async () => {
-                let url;
-                if (useYahooFinance) {
-                    // Use Yahoo Finance API with CORS proxy
-                    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${apiSymbol}`;
-                    url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
-                } else {
-                    url = `https://finnhub.io/api/v1/quote?symbol=${apiSymbol}&token=${apiKey}`;
+                // Get price from cache instead of API calls
+                const priceData = getPriceFromCache(symbol);
+                if (!priceData) {
+                    throw new Error(`Price data not found for ${symbol}`);
                 }
-
-                const response = await fetch(url);
-                if (!response.ok) { throw new Error(`HTTP error! Status: ${response.status}`); }
-                const data = await response.json();
                 
-                let price, percentChange;
-                
-                if (useYahooFinance) {
-                    // Parse Yahoo Finance API response
-                    const result = data.chart.result[0];
-                    const meta = result.meta;
-                    price = meta.regularMarketPrice;
-                    
-                    // Try different possible fields for percent change
-                    percentChange = 0;
-                    if (meta.regularMarketChangePercent !== null && meta.regularMarketChangePercent !== undefined) {
-                        percentChange = meta.regularMarketChangePercent * 100;
-                    } else if (meta.previousClose && meta.regularMarketPrice) {
-                        // Calculate percent change manually if not provided
-                        percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
-                    } else if (meta.change !== null && meta.change !== undefined) {
-                        // Try the change field
-                        percentChange = meta.change;
-                    }
-                } else {
-                    // Parse Finnhub API response
-                    price = data.c;
-                    percentChange = data.dp;
-                }
+                const price = priceData.price;
+                const percentChange = priceData.percentChange;
                 
                 // Handle currency conversion for EUR-denominated assets
                 let value, valueEur, pnl, pnlEur, displayPrice;
