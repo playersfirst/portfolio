@@ -1,6 +1,111 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const apiKey = 'cvneau1r01qq3c7eq690cvneau1r01qq3c7eq69g';
-    const REFRESH_INTERVAL = 30 * 1000;
+    const REFRESH_INTERVAL = 60 * 1000; // 1 minute
+    const WARNING_TIMEOUT = 60 * 1000; // 1 minute before showing warning
+    
+    // Track failed assets and their warning status
+    const failedAssets = new Map(); // Map<assetName, {failureStartTime, warningShown}>
+    const warningModals = new Map(); // Map<assetName, modalElement>
+    
+    // Create modal for warnings
+    function createWarningModal(assetName) {
+        let modal = warningModals.get(assetName);
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'asset-warning-modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: white;
+                padding: 20px;
+                border-radius: 10px;
+                max-width: 350px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                z-index: 10000;
+                border-left: 4px solid #ef4444;
+            `;
+            document.body.appendChild(modal);
+            warningModals.set(assetName, modal);
+        }
+        return modal;
+    }
+    
+    function showWarningModal(assetName) {
+        const modal = createWarningModal(assetName);
+        modal.innerHTML = `
+            <div style="display: flex; align-items: start; gap: 10px;">
+                <div style="font-size: 24px;">⚠️</div>
+                <div style="flex: 1;">
+                    <h3 style="margin: 0 0 8px 0; color: #ef4444; font-size: 16px;">Asset Loading Warning</h3>
+                    <p style="margin: 0 0 8px 0; font-size: 14px; color: #333;">
+                        <strong>${assetName}</strong> did not load after 1 minute.
+                    </p>
+                    <p style="margin: 0; font-size: 12px; color: #666;">
+                        Still retrying in the background...
+                    </p>
+                </div>
+                <button onclick="this.closest('.asset-warning-modal').style.display='none'" style="
+                    background: transparent;
+                    border: none;
+                    font-size: 20px;
+                    cursor: pointer;
+                    color: #999;
+                    padding: 0;
+                    width: 24px;
+                    height: 24px;
+                    line-height: 1;
+                ">×</button>
+            </div>
+        `;
+        modal.style.display = 'block';
+    }
+    
+    function hideWarningModal(assetName) {
+        const modal = warningModals.get(assetName);
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+    
+    // Retry function that keeps trying indefinitely - NEVER FAILS, NEVER THROWS
+    async function fetchWithInfiniteRetry(fetchFn, assetName, retryDelay = 2000) {
+        const startTime = Date.now();
+        let attempt = 0;
+        let warningShown = false;
+        
+        while (true) {
+            try {
+                const result = await fetchFn();
+                // Success - clear failure tracking and hide warning
+                failedAssets.delete(assetName);
+                hideWarningModal(assetName);
+                return result;
+            } catch (error) {
+                // SILENTLY catch all errors - never log, never throw, just retry
+                attempt++;
+                const elapsed = Date.now() - startTime;
+                
+                // Track failure start time
+                if (!failedAssets.has(assetName)) {
+                    failedAssets.set(assetName, { failureStartTime: Date.now(), warningShown: false });
+                }
+                
+                const failureInfo = failedAssets.get(assetName);
+                
+                // Show warning after 1 minute (only once per asset)
+                if (elapsed >= WARNING_TIMEOUT && !failureInfo.warningShown) {
+                    showWarningModal(assetName);
+                    failureInfo.warningShown = true;
+                }
+                
+                // Wait before retrying (exponential backoff, max 10 seconds)
+                const delay = Math.min(retryDelay * Math.pow(1.5, Math.min(attempt, 5)), 10000);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                // Continue loop - NEVER throw, NEVER give up
+            }
+        }
+    }
     
     // Portfolio configuration - will be loaded from JSON
     let originalEuroInvestment;
@@ -13,7 +118,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         'IAU': '#FFCE56',
         'SGOV': '#4BC0C0',
         'IWDE': '#36A2EB',
-        'RLX': '#9966FF'
+        'RLX': '#9966FF',
+        'XUSE': '#36A2EB',
+        'OTR': '#FFCE56',
+        'EQY': '#36A2EB'
     };
 
     const assetClassLabels = {
@@ -23,7 +131,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         'IAU': 'Commodities',
         'SGOV': 'Savings',
         'IWDE': 'Equities',
-        'RLX': 'Collectibles'
+        'RLX': 'Collectibles',
+        'XUSE': 'Equities',
+        'OTR': 'Commodities',
+        'EQY': 'Equities'
     };
 
     let displayCurrency = 'USD';
@@ -36,6 +147,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let portfolio = {};
     let cbbiData = null;
     let pieChartViewMode = 'market'; // 'market' or 'invested'
+    let otrCombinedMode = true; // true = OTR combined, false = individual URNU/COPX/PALL/SIVR
+    let eqyCombinedMode = true; // true = EQY combined, false = individual VOO/NANC/IWDE/XUSE
+    let isLoadingHistoryChart = false; // Prevent concurrent calls
 
     const currentPieChartEl = document.getElementById('current-pie-chart');
     const chartLegendEl = document.getElementById('chart-legend');
@@ -207,6 +321,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return new Date('2025-09-04');
             case 'RLX':
                 return new Date('2025-12-24');
+            case 'XUSE':
+            case 'OTR':
+            case 'EQY':
+            case 'URNU':
+            case 'COPX':
+            case 'PALL':
+            case 'SIVR':
+            case 'VOO':
+            case 'NANC':
+            case 'IWDE':
+                return new Date('2026-01-26'); // Today's date as start date for new assets
             default:
                 return new Date('2024-10-01'); // Default fallback
         }
@@ -218,10 +343,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Calculate annualized returns for each asset
         const assetReturns = {};
-        const assetNames = Object.keys(portfolioData);
+        // Use ordered assets list to ensure correct order and filtering
+        let assetNames = ['BINANCE:BTCUSDT', 'IAU'];
+        if (eqyCombinedMode) {
+            assetNames.push('EQY');
+        } else {
+            assetNames.push('VOO', 'NANC', 'IWDE', 'XUSE');
+        }
+        assetNames.push('SGOV', 'RLX');
+        if (otrCombinedMode) {
+            assetNames.push('OTR');
+        } else {
+            assetNames.push('URNU', 'COPX', 'PALL', 'SIVR');
+        }
+        
         const currentDate = new Date();
 
         assetNames.forEach(assetName => {
+            // Only process if asset exists in portfolioData
+            if (!portfolioData[assetName]) return;
             const data = portfolioData[assetName];
             if (data && !data.error && !excludedAssets.has(assetName)) {
                 const pnl = displayCurrency === 'USD' ? data.pnl : data.pnlEur;
@@ -248,8 +388,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
 
-        // Use consistent order: BTC, IAU, VOO, NANC, IWDE, SGOV, RLX
-        const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE', 'SGOV', 'RLX'];
+        // Use consistent order: BTC, IAU, then EQY/equities, SGOV, RLX, then OTR/metals
+        let orderedAssets = ['BINANCE:BTCUSDT', 'IAU'];
+        if (eqyCombinedMode) {
+            orderedAssets.push('EQY');
+        } else {
+            orderedAssets.push('VOO', 'NANC', 'IWDE', 'XUSE');
+        }
+        orderedAssets.push('SGOV', 'RLX');
+        if (otrCombinedMode) {
+            orderedAssets.push('OTR');
+        } else {
+            orderedAssets.push('URNU', 'COPX', 'PALL', 'SIVR');
+        }
         
         let html = '';
         html += '<div class="ytd-assets-grid">';
@@ -309,14 +460,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         const contentEl = document.getElementById('avg-buy-price-content');
         if (!contentEl) return;
 
-        const assets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE'];
+        let assets = ['BINANCE:BTCUSDT', 'IAU'];
+        if (eqyCombinedMode) {
+            assets.push('EQY');
+        } else {
+            assets.push('VOO', 'NANC', 'IWDE', 'XUSE');
+        }
+        if (otrCombinedMode) {
+            assets.push('OTR');
+        } else {
+            assets.push('URNU', 'COPX', 'PALL', 'SIVR');
+        }
         let html = '<div class="avg-buy-price-grid">';
         
         assets.forEach(symbol => {
-            const shares = portfolio[symbol];
-            const initialInvestment = displayCurrency === 'USD' ? 
-                initialInvestments[symbol] : 
-                initialEuroInvestments[symbol];
+            // Get shares and initial investment - handle combined assets
+            let shares = 0;
+            let initialInvestment = 0;
+            
+            if (otrCombinedMode && symbol === 'OTR') {
+                shares = (portfolio['URNU'] || 0) + (portfolio['COPX'] || 0) + (portfolio['PALL'] || 0) + (portfolio['SIVR'] || 0);
+                if (displayCurrency === 'USD') {
+                    initialInvestment = (initialInvestments['URNU'] || 0) + (initialInvestments['COPX'] || 0) + 
+                                      (initialInvestments['PALL'] || 0) + (initialInvestments['SIVR'] || 0);
+                } else {
+                    initialInvestment = (initialEuroInvestments['URNU'] || 0) + (initialEuroInvestments['COPX'] || 0) + 
+                                      (initialEuroInvestments['PALL'] || 0) + (initialEuroInvestments['SIVR'] || 0);
+                }
+            } else if (eqyCombinedMode && symbol === 'EQY') {
+                shares = (portfolio['VOO'] || 0) + (portfolio['NANC'] || 0) + (portfolio['IWDE'] || 0) + (portfolio['XUSE'] || 0);
+                if (displayCurrency === 'USD') {
+                    initialInvestment = (initialInvestments['VOO'] || 0) + (initialInvestments['NANC'] || 0) + 
+                                      (initialInvestments['IWDE'] || 0) + (initialInvestments['XUSE'] || 0);
+                } else {
+                    initialInvestment = (initialEuroInvestments['VOO'] || 0) + (initialEuroInvestments['NANC'] || 0) + 
+                                      (initialEuroInvestments['IWDE'] || 0) + (initialEuroInvestments['XUSE'] || 0);
+                }
+            } else {
+                shares = portfolio[symbol] || 0;
+                initialInvestment = displayCurrency === 'USD' ? 
+                    (initialInvestments[symbol] || 0) : 
+                    (initialEuroInvestments[symbol] || 0);
+            }
             
             if (shares && initialInvestment) {
                 const avgBuyPrice = initialInvestment / shares;
@@ -502,7 +687,15 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         portfolioTable.style.display = 'table';
         lastUpdatedEl.textContent = new Date().toLocaleString();
         recalculateTotals();
+        createPieChart();
         updateAverageBuyPriceDisplay();
+        updateYtdDisplay();
+        if (typeof loadHistoryChart === 'function') {
+            loadHistoryChart();
+        }
+        if (typeof loadAssetReturns === 'function') {
+            loadAssetReturns();
+        }
     }
 
     async function fetchStockData() {
@@ -513,48 +706,380 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         await fetchExchangeRate();
 
         let completedRequests = 0;
-        const totalRequests = Object.keys(portfolio).length;
+        const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
+        const eqyComponentSymbols = ['VOO', 'NANC', 'IWDE', 'XUSE'];
+        // Clear portfolioData to ensure we don't use stale data
         portfolioData = {};
 
-        const promises = Object.keys(portfolio).map(symbol => {
+        let portfolioKeys, totalRequests, otrPromise, eqyPromise;
+        
+        // Filter out components based on mode
+        let filteredPortfolio = Object.keys(portfolio);
+        if (otrCombinedMode) {
+            filteredPortfolio = filteredPortfolio.filter(symbol => !otrComponentSymbols.includes(symbol));
+        }
+        if (eqyCombinedMode) {
+            filteredPortfolio = filteredPortfolio.filter(symbol => !eqyComponentSymbols.includes(symbol));
+        }
+        
+        portfolioKeys = filteredPortfolio;
+        totalRequests = portfolioKeys.length;
+        if (otrCombinedMode) totalRequests += 1; // +1 for OTR
+        if (eqyCombinedMode) totalRequests += 1; // +1 for EQY
+        
+        if (otrCombinedMode) {
+
+            // Get OTR component shares and initial investments
+            const otrShares = {
+                'URNU': portfolio['URNU'] || 0,
+                'COPX': portfolio['COPX'] || 0,
+                'PALL': portfolio['PALL'] || 0,
+                'SIVR': portfolio['SIVR'] || 0
+            };
+            const otrInitialInvestment = (initialInvestments['URNU'] || 0) + (initialInvestments['COPX'] || 0) + 
+                                         (initialInvestments['PALL'] || 0) + (initialInvestments['SIVR'] || 0);
+            const otrInitialEuroInvestment = (initialEuroInvestments['URNU'] || 0) + (initialEuroInvestments['COPX'] || 0) + 
+                                             (initialEuroInvestments['PALL'] || 0) + (initialEuroInvestments['SIVR'] || 0);
+
+            // Create OTR promise - combine URNU, COPX, PALL, SIVR
+            otrPromise = (() => {
+                const otrComponents = [
+                    { symbol: 'URNU.L', name: 'URNU', shares: otrShares.URNU },
+                    { symbol: 'COPX.L', name: 'COPX', shares: otrShares.COPX },
+                    { symbol: 'PALL', name: 'PALL', shares: otrShares.PALL },
+                    { symbol: 'SIVR', name: 'SIVR', shares: otrShares.SIVR }
+                ];
+                
+                // Fetch all 4 component prices with infinite retry
+                const componentPromises = otrComponents.map(comp => {
+                    const fetchFn = async () => {
+                        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${comp.symbol}`;
+                        const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                        const data = await response.json();
+                        const result = data.chart.result[0];
+                        const meta = result.meta;
+                        const price = meta.regularMarketPrice;
+                        let percentChange = 0;
+                        if (meta.regularMarketChangePercent !== null && meta.regularMarketChangePercent !== undefined) {
+                            percentChange = meta.regularMarketChangePercent * 100;
+                        } else if (meta.previousClose && meta.regularMarketPrice) {
+                            percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
+                        }
+                        return { name: comp.name, price, percentChange, shares: comp.shares };
+                    };
+                    return fetchWithInfiniteRetry(fetchFn, comp.name);
+                });
+                
+                return Promise.all(componentPromises)
+                    .then(components => {
+                        // Calculate combined metrics based on actual shares and prices
+                        let totalValue = 0;
+                        let totalShares = 0;
+                        let totalValueWeightedPercentChange = 0;
+                        
+                        // Store individual component data even in combined mode (for toggling without refetch)
+                        components.forEach(comp => {
+                            if (!comp.error && comp.price > 0) {
+                                const compShares = comp.shares || 0;
+                                const compValue = comp.price * compShares;
+                                const compValueEur = compValue / usdToEurRate;
+                                const compInitialInvestment = initialInvestments[comp.name] || 0;
+                                const compInitialEuroInvestment = initialEuroInvestments[comp.name] || 0;
+                                
+                                portfolioData[comp.name] = {
+                                    shares: compShares,
+                                    price: comp.price,
+                                    value: compValue,
+                                    valueEur: compValueEur,
+                                    pnl: compValue - compInitialInvestment,
+                                    pnlEur: compValueEur - compInitialEuroInvestment,
+                                    percentChange: comp.percentChange,
+                                    initialInvestment: compInitialInvestment,
+                                    initialEuroInvestment: compInitialEuroInvestment,
+                                    displayPrice: comp.price,
+                                    isEurDenominated: false
+                                };
+                                
+                                if (compShares > 0) {
+                                    const componentValue = compValue;
+                                    totalValue += componentValue;
+                                    totalShares += compShares;
+                                    totalValueWeightedPercentChange += componentValue * comp.percentChange;
+                                }
+                            }
+                        });
+                        
+                        // If no shares, create empty OTR entry
+                        if (totalShares === 0) {
+                            portfolioData['OTR'] = {
+                                shares: 0, price: 0, value: 0, pnl: 0, valueEur: 0, pnlEur: 0,
+                                percentChange: 0, initialInvestment: otrInitialInvestment, 
+                                initialEuroInvestment: otrInitialEuroInvestment,
+                                displayPrice: 0, isEurDenominated: false
+                            };
+                            completedRequests++;
+                            if (completedRequests === totalRequests) {
+                                finishLoading();
+                            }
+                            return;
+                        }
+                        
+                        // Calculate weighted average price
+                        const avgPrice = totalValue / totalShares;
+                        
+                        // Calculate weighted average percent change (weighted by value)
+                        const avgPercentChange = totalValue > 0 ? totalValueWeightedPercentChange / totalValue : 0;
+                        
+                        // Calculate values
+                        const value = totalValue; // Total value in USD
+                        const valueEur = value / usdToEurRate; // Convert to EUR
+                        
+                        // Calculate PnL by summing individual component PnLs (more accurate)
+                        // This ensures OTR PnL matches the sum of individual component PnLs
+                        const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
+                        let totalPnl = 0;
+                        let totalPnlEur = 0;
+                        let totalInitialInvestment = 0;
+                        let totalInitialEuroInvestment = 0;
+                        
+                        otrComponentSymbols.forEach(compName => {
+                            const compData = portfolioData[compName];
+                            if (compData && !compData.error) {
+                                totalPnl += compData.pnl || 0;
+                                totalPnlEur += compData.pnlEur || 0;
+                                totalInitialInvestment += compData.initialInvestment || 0;
+                                totalInitialEuroInvestment += compData.initialEuroInvestment || 0;
+                            }
+                        });
+                        
+                        // Use calculated PnL from components, or fallback to direct calculation
+                        const pnl = totalPnl !== 0 ? totalPnl : (value - otrInitialInvestment);
+                        const pnlEur = totalPnlEur !== 0 ? totalPnlEur : (valueEur - otrInitialEuroInvestment);
+                        
+                        portfolioData['OTR'] = {
+                            shares: totalShares, price: avgPrice, value, pnl, valueEur, pnlEur,
+                            percentChange: avgPercentChange, 
+                            initialInvestment: totalInitialInvestment || otrInitialInvestment, 
+                            initialEuroInvestment: totalInitialEuroInvestment || otrInitialEuroInvestment,
+                            displayPrice: avgPrice, isEurDenominated: false
+                        };
+                    })
+                    .finally(() => {
+                        completedRequests++;
+                        if (completedRequests === totalRequests) {
+                            finishLoading();
+                        }
+                    });
+        })();
+        } else {
+            otrPromise = Promise.resolve(); // No-op promise for individual mode
+        }
+
+        // Handle EQY combination
+        if (eqyCombinedMode) {
+            // Get EQY component shares and initial investments
+            const eqyShares = {
+                'VOO': portfolio['VOO'] || 0,
+                'NANC': portfolio['NANC'] || 0,
+                'IWDE': portfolio['IWDE'] || 0,
+                'XUSE': portfolio['XUSE'] || 0
+            };
+            const eqyInitialInvestment = (initialInvestments['VOO'] || 0) + (initialInvestments['NANC'] || 0) + 
+                                         (initialInvestments['IWDE'] || 0) + (initialInvestments['XUSE'] || 0);
+            const eqyInitialEuroInvestment = (initialEuroInvestments['VOO'] || 0) + (initialEuroInvestments['NANC'] || 0) + 
+                                             (initialEuroInvestments['IWDE'] || 0) + (initialEuroInvestments['XUSE'] || 0);
+
+            // Create EQY promise - combine VOO, NANC, IWDE, XUSE
+            eqyPromise = (() => {
+                const eqyComponents = [
+                    { symbol: 'VOO', name: 'VOO', shares: eqyShares.VOO, useYahooFinance: false },
+                    { symbol: 'NANC', name: 'NANC', shares: eqyShares.NANC, useYahooFinance: false },
+                    { symbol: 'IWDE.L', name: 'IWDE', shares: eqyShares.IWDE, useYahooFinance: true },
+                    { symbol: 'XUSE.AS', name: 'XUSE', shares: eqyShares.XUSE, useYahooFinance: true }
+                ];
+                
+                // Fetch all 4 component prices with infinite retry
+                const componentPromises = eqyComponents.map(comp => {
+                    const fetchFn = async () => {
+                        let url;
+                        if (comp.useYahooFinance) {
+                            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${comp.symbol}`;
+                            url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+                        } else {
+                            url = `https://finnhub.io/api/v1/quote?symbol=${comp.symbol}&token=${apiKey}`;
+                        }
+                        
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                        const data = await response.json();
+                        let price, percentChange;
+                        
+                        if (comp.useYahooFinance) {
+                            const result = data.chart.result[0];
+                            const meta = result.meta;
+                            price = meta.regularMarketPrice;
+                            if (meta.regularMarketChangePercent !== null && meta.regularMarketChangePercent !== undefined) {
+                                percentChange = meta.regularMarketChangePercent * 100;
+                            } else if (meta.previousClose && meta.regularMarketPrice) {
+                                percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
+                            } else {
+                                percentChange = 0;
+                            }
+                        } else {
+                            price = data.c;
+                            percentChange = data.dp;
+                        }
+                        
+                        return { name: comp.name, price, percentChange, shares: comp.shares, isEurDenominated: comp.symbol === 'IWDE.L' };
+                    };
+                    return fetchWithInfiniteRetry(fetchFn, comp.name);
+                });
+                
+                return Promise.all(componentPromises)
+                    .then(components => {
+                        // Calculate combined metrics based on actual shares and prices
+                        let totalValue = 0;
+                        let totalShares = 0;
+                        let totalValueWeightedPercentChange = 0;
+                        
+                        // Store individual component data even in combined mode (for toggling without refetch)
+                        components.forEach(comp => {
+                            if (!comp.error && comp.price > 0) {
+                                const compShares = comp.shares || 0;
+                                let compValue, compValueEur;
+                                
+                                // Handle EUR-denominated assets (IWDE only - XUSE is USD-denominated)
+                                if (comp.isEurDenominated) {
+                                    compValueEur = comp.price * compShares;
+                                    compValue = compValueEur * usdToEurRate; // Convert to USD
+                                } else {
+                                    compValue = comp.price * compShares;
+                                    compValueEur = compValue / usdToEurRate;
+                                }
+                                
+                                const compInitialInvestment = initialInvestments[comp.name] || 0;
+                                const compInitialEuroInvestment = initialEuroInvestments[comp.name] || 0;
+                                
+                                portfolioData[comp.name] = {
+                                    shares: compShares,
+                                    price: comp.price,
+                                    value: compValue,
+                                    valueEur: compValueEur,
+                                    pnl: compValue - compInitialInvestment,
+                                    pnlEur: compValueEur - compInitialEuroInvestment,
+                                    percentChange: comp.percentChange,
+                                    initialInvestment: compInitialInvestment,
+                                    initialEuroInvestment: compInitialEuroInvestment,
+                                    displayPrice: comp.price,
+                                    isEurDenominated: comp.isEurDenominated
+                                };
+                                
+                                if (compShares > 0) {
+                                    totalValue += compValue;
+                                    totalShares += compShares;
+                                    totalValueWeightedPercentChange += compValue * comp.percentChange;
+                                }
+                            }
+                        });
+                        
+                        // If no shares, create empty EQY entry
+                        if (totalShares === 0) {
+                            portfolioData['EQY'] = {
+                                shares: 0, price: 0, value: 0, pnl: 0, valueEur: 0, pnlEur: 0,
+                                percentChange: 0, initialInvestment: eqyInitialInvestment, 
+                                initialEuroInvestment: eqyInitialEuroInvestment,
+                                displayPrice: 0, isEurDenominated: false
+                            };
+                            completedRequests++;
+                            if (completedRequests === totalRequests) {
+                                finishLoading();
+                            }
+                            return;
+                        }
+                        
+                        // Calculate weighted average price
+                        const avgPrice = totalValue / totalShares;
+                        
+                        // Calculate weighted average percent change (weighted by value)
+                        const avgPercentChange = totalValue > 0 ? totalValueWeightedPercentChange / totalValue : 0;
+                        
+                        // Calculate values
+                        const value = totalValue; // Total value in USD
+                        const valueEur = value / usdToEurRate; // Convert to EUR
+                        
+                        // Calculate PnL by summing individual component PnLs (more accurate)
+                        // This ensures EQY PnL matches the sum of individual component PnLs
+                        const eqyComponentSymbols = ['VOO', 'NANC', 'IWDE', 'XUSE'];
+                        let totalPnl = 0;
+                        let totalPnlEur = 0;
+                        let totalInitialInvestment = 0;
+                        let totalInitialEuroInvestment = 0;
+                        
+                        eqyComponentSymbols.forEach(compName => {
+                            const compData = portfolioData[compName];
+                            if (compData && !compData.error) {
+                                totalPnl += compData.pnl || 0;
+                                totalPnlEur += compData.pnlEur || 0;
+                                totalInitialInvestment += compData.initialInvestment || 0;
+                                totalInitialEuroInvestment += compData.initialEuroInvestment || 0;
+                            }
+                        });
+                        
+                        // Use calculated PnL from components, or fallback to direct calculation
+                        const pnl = totalPnl !== 0 ? totalPnl : (value - eqyInitialInvestment);
+                        const pnlEur = totalPnlEur !== 0 ? totalPnlEur : (valueEur - eqyInitialEuroInvestment);
+                        
+                        portfolioData['EQY'] = {
+                            shares: totalShares, price: avgPrice, value, pnl, valueEur, pnlEur,
+                            percentChange: avgPercentChange, 
+                            initialInvestment: totalInitialInvestment || eqyInitialInvestment, 
+                            initialEuroInvestment: totalInitialEuroInvestment || eqyInitialEuroInvestment,
+                            displayPrice: avgPrice, isEurDenominated: false
+                        };
+                    })
+                    .finally(() => {
+                        completedRequests++;
+                        if (completedRequests === totalRequests) {
+                            finishLoading();
+                        }
+                    });
+        })();
+        } else {
+            eqyPromise = Promise.resolve(); // No-op promise for individual mode
+        }
+
+        // Process all other assets
+        const promises = portfolioKeys.map(symbol => {
             const shares = portfolio[symbol];
             const initialInvestment = initialInvestments[symbol];
             const initialEuroInvestment = initialEuroInvestments[symbol];
             
-            // Special handling for RLX - fetch from JSON file
+            // Special handling for RLX - fetch from JSON file with infinite retry
             if (symbol === 'RLX') {
-                return fetch('rlx_price.json')
-                    .then(response => {
-                        if (!response.ok) { throw new Error(`HTTP error! Status: ${response.status}`); }
-                        return response.json();
-                    })
-                    .then(data => {
-                        const price = data.price;
-                        const percentChange = data['24h_change'] || 0; // Use 24h change from JSON
-                        
-                        // RLX is now EUR-denominated
-                        const valueEur = price * shares;
-                        const value = valueEur * usdToEurRate; // Convert to USD for consistency
-                        const pnlEur = valueEur - initialEuroInvestment;
-                        const pnl = value - initialInvestment;
-                        const displayPrice = price;
-                        
-                        portfolioData[symbol] = {
-                            shares, price, value, pnl, valueEur, pnlEur,
-                            percentChange, initialInvestment, initialEuroInvestment,
-                            displayPrice, isEurDenominated: true
-                        };
-                    })
-                    .catch(error => {
-                        portfolioData[symbol] = { error: true };
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td class="symbol">RLX</td>
-                            <td>${shares?.toFixed(4) || 'N/A'}</td>
-                            <td colspan="5">Error loading data</td>
-                        `;
-                        portfolioDataEl.appendChild(row);
-                    })
+                const fetchFn = async () => {
+                    const response = await fetch('rlx_price.json');
+                    if (!response.ok) { throw new Error(`HTTP error! Status: ${response.status}`); }
+                    const data = await response.json();
+                    const price = data.price;
+                    const percentChange = data['24h_change'] || 0; // Use 24h change from JSON
+                    
+                    // RLX is now EUR-denominated
+                    const valueEur = price * shares;
+                    const value = valueEur * usdToEurRate; // Convert to USD for consistency
+                    const pnlEur = valueEur - initialEuroInvestment;
+                    const pnl = value - initialInvestment;
+                    const displayPrice = price;
+                    
+                    portfolioData[symbol] = {
+                        shares, price, value, pnl, valueEur, pnlEur,
+                        percentChange, initialInvestment, initialEuroInvestment,
+                        displayPrice, isEurDenominated: true
+                    };
+                };
+                
+                return fetchWithInfiniteRetry(fetchFn, symbol)
                     .finally(() => {
                         completedRequests++;
                         if (completedRequests === totalRequests) {
@@ -570,88 +1095,99 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             if (symbol === 'BINANCE:BTCUSDT') {
                 apiSymbol = 'BINANCE:BTCUSDT'; // Keep Bitcoin on Finnhub
                 useYahooFinance = false;
-            } else if (symbol === 'IWDE') {
+            } else if (symbol === 'IWDE' && !eqyCombinedMode) {
                 apiSymbol = 'IWDE.L'; // iShares World Developed Markets on London exchange
+                useYahooFinance = true;
+            } else if (symbol === 'XUSE' && !eqyCombinedMode) {
+                apiSymbol = 'XUSE.AS'; // iShares MSCI World ex-USA UCITS ETF on Amsterdam Euronext
+                useYahooFinance = true;
+            } else if (symbol === 'VOO' && !eqyCombinedMode) {
+                apiSymbol = 'VOO';
+                useYahooFinance = false;
+            } else if (symbol === 'NANC' && !eqyCombinedMode) {
+                apiSymbol = 'NANC';
+                useYahooFinance = false;
+            } else if (symbol === 'URNU') {
+                apiSymbol = 'URNU.L'; // Uranium UCITS ETF on London Stock Exchange
+                useYahooFinance = true;
+            } else if (symbol === 'COPX') {
+                apiSymbol = 'COPX.L'; // Global X Copper Miners ETF on London Stock Exchange
+                useYahooFinance = true;
+            } else if (symbol === 'PALL') {
+                apiSymbol = 'PALL'; // abrdn Physical Palladium Shares ETF on US exchange
+                useYahooFinance = true;
+            } else if (symbol === 'SIVR') {
+                apiSymbol = 'SIVR'; // abrdn Physical Silver Shares ETF on US exchange
                 useYahooFinance = true;
             }
             
-            let url;
-            if (useYahooFinance) {
-                // Use Yahoo Finance API with CORS proxy
-                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${apiSymbol}`;
-                url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
-            } else {
-                url = `https://finnhub.io/api/v1/quote?symbol=${apiSymbol}&token=${apiKey}`;
-            }
+            const fetchFn = async () => {
+                let url;
+                if (useYahooFinance) {
+                    // Use Yahoo Finance API with CORS proxy
+                    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${apiSymbol}`;
+                    url = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+                } else {
+                    url = `https://finnhub.io/api/v1/quote?symbol=${apiSymbol}&token=${apiKey}`;
+                }
 
-            return fetch(url)
-                .then(response => {
-                    if (!response.ok) { throw new Error(`HTTP error! Status: ${response.status}`); }
-                    return response.json();
-                })
-                .then(data => {
-                    let price, percentChange;
+                const response = await fetch(url);
+                if (!response.ok) { throw new Error(`HTTP error! Status: ${response.status}`); }
+                const data = await response.json();
+                
+                let price, percentChange;
+                
+                if (useYahooFinance) {
+                    // Parse Yahoo Finance API response
+                    const result = data.chart.result[0];
+                    const meta = result.meta;
+                    price = meta.regularMarketPrice;
                     
-                    if (useYahooFinance) {
-                        // Parse Yahoo Finance API response
-                        const result = data.chart.result[0];
-                        const meta = result.meta;
-                        price = meta.regularMarketPrice;
-                        
-                        // Try different possible fields for percent change
-                        percentChange = 0;
-                        if (meta.regularMarketChangePercent !== null && meta.regularMarketChangePercent !== undefined) {
-                            percentChange = meta.regularMarketChangePercent * 100;
-                        } else if (meta.previousClose && meta.regularMarketPrice) {
-                            // Calculate percent change manually if not provided
-                            percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
-                        } else if (meta.change !== null && meta.change !== undefined) {
-                            // Try the change field
-                            percentChange = meta.change;
-                        }
-                    } else {
-                        // Parse Finnhub API response
-                        price = data.c;
-                        percentChange = data.dp;
+                    // Try different possible fields for percent change
+                    percentChange = 0;
+                    if (meta.regularMarketChangePercent !== null && meta.regularMarketChangePercent !== undefined) {
+                        percentChange = meta.regularMarketChangePercent * 100;
+                    } else if (meta.previousClose && meta.regularMarketPrice) {
+                        // Calculate percent change manually if not provided
+                        percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
+                    } else if (meta.change !== null && meta.change !== undefined) {
+                        // Try the change field
+                        percentChange = meta.change;
                     }
-                    
-                    // Handle currency conversion for EUR-denominated assets
-                    let value, valueEur, pnl, pnlEur, displayPrice;
-                    
-                    if (symbol === 'IWDE') {
-                        // IWDE is EUR-denominated, so price is in EUR
-                        valueEur = price * shares; // Value in EUR
-                        value = valueEur * usdToEurRate; // Convert to USD
-                        pnlEur = valueEur - initialEuroInvestment;
-                        pnl = value - initialInvestment;
-                        // Store the original EUR price for display
-                        displayPrice = price; // This is in EUR
-                    } else {
-                        // Other assets are USD-denominated
-                        value = price * shares; // Value in USD
-                        valueEur = value / usdToEurRate; // Convert to EUR
-                        pnl = value - initialInvestment;
-                        pnlEur = valueEur - initialEuroInvestment;
-                        displayPrice = price; // This is in USD
-                    }
+                } else {
+                    // Parse Finnhub API response
+                    price = data.c;
+                    percentChange = data.dp;
+                }
+                
+                // Handle currency conversion for EUR-denominated assets
+                let value, valueEur, pnl, pnlEur, displayPrice;
+                
+                if ((symbol === 'IWDE' && !eqyCombinedMode) || (symbol === 'XUSE' && !eqyCombinedMode)) {
+                    // IWDE and XUSE are EUR-denominated, so price is in EUR
+                    valueEur = price * shares; // Value in EUR
+                    value = valueEur * usdToEurRate; // Convert to USD
+                    pnlEur = valueEur - initialEuroInvestment;
+                    pnl = value - initialInvestment;
+                    // Store the original EUR price for display
+                    displayPrice = price; // This is in EUR
+                } else {
+                    // Other assets are USD-denominated
+                    value = price * shares; // Value in USD
+                    valueEur = value / usdToEurRate; // Convert to EUR
+                    pnl = value - initialInvestment;
+                    pnlEur = valueEur - initialEuroInvestment;
+                    displayPrice = price; // This is in USD
+                }
 
-                    portfolioData[symbol] = {
-                        shares, price, value, pnl, valueEur, pnlEur,
-                        percentChange, initialInvestment, initialEuroInvestment,
-                        displayPrice, isEurDenominated: symbol === 'IWDE'
-                    };
-                })
-                .catch(error => {
-                    portfolioData[symbol] = { error: true };
-                    const row = document.createElement('tr');
-                    const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
-                    row.innerHTML = `
-                        <td class="symbol">${displaySymbol}</td>
-                        <td>${shares?.toFixed(4) || 'N/A'}</td>
-                        <td colspan="5">Error loading data</td>
-                    `;
-                    portfolioDataEl.appendChild(row); // Append error row immediately
-                })
+                portfolioData[symbol] = {
+                    shares, price, value, pnl, valueEur, pnlEur,
+                    percentChange, initialInvestment, initialEuroInvestment,
+                    displayPrice, isEurDenominated: (symbol === 'IWDE' && !eqyCombinedMode) || (symbol === 'XUSE' && !eqyCombinedMode)
+                };
+            };
+            
+            return fetchWithInfiniteRetry(fetchFn, symbol)
                 .finally(() => {
                     completedRequests++;
                     if (completedRequests === totalRequests) {
@@ -660,7 +1196,11 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                 });
         });
 
-        await Promise.allSettled(promises);
+        const allPromises = [];
+        if (otrCombinedMode) allPromises.push(otrPromise);
+        if (eqyCombinedMode) allPromises.push(eqyPromise);
+        allPromises.push(...promises);
+        await Promise.allSettled(allPromises);
         setupAutoRefresh();
         fetchCbbiData(); // Fetch CBBI data after stock data
     }
@@ -671,15 +1211,9 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         const row = document.createElement('tr');
         row.dataset.symbol = symbol;
 
+        // Don't show rows for assets that haven't loaded yet - they're still retrying
         if (!data || data.error) {
-             const existingErrorRow = portfolioDataEl.querySelector(`tr[data-symbol="${symbol}"] td[colspan="5"]`);
-              if (existingErrorRow) return null; // Don't recreate if error row exists
-              row.innerHTML = `
-                <td class="symbol">${displaySymbol}</td>
-                <td>${portfolio[symbol]?.toFixed(4) || 'N/A'}</td>
-                <td colspan="5">Error loading data</td>
-                `;
-               return row;
+            return null; // Return null so row isn't created - asset is still loading
         }
 
         const primaryCurrency = displayCurrency;
@@ -825,6 +1359,62 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         createPieChart();
     }
 
+    async function toggleOTRView() {
+        otrCombinedMode = !otrCombinedMode;
+        
+        // Update button text and active state
+        const otrToggleBtn = document.getElementById('mtl-toggle-btn');
+        const otrToggleText = document.getElementById('mtl-toggle-text');
+        if (otrToggleBtn && otrToggleText) {
+            otrToggleText.textContent = otrCombinedMode ? 'OTR' : 'Individual';
+            otrToggleBtn.title = otrCombinedMode ? 'Switch to individual metals view' : 'Switch to OTR (combined) view';
+            otrToggleBtn.classList.toggle('active', otrCombinedMode);
+        }
+        
+        // Just recalculate from existing data - no need to fetch new prices
+        recalculateTotals();
+        updateAverageBuyPriceDisplay();
+        updateYtdDisplay();
+        createPieChart();
+        if (typeof loadHistoryChart === 'function') {
+            loadHistoryChart();
+        }
+        if (typeof loadAssetReturns === 'function') {
+            loadAssetReturns();
+        }
+        if (typeof calculateHistoricalReturns === 'function') {
+            calculateHistoricalReturns();
+        }
+    }
+
+    async function toggleEQYView() {
+        eqyCombinedMode = !eqyCombinedMode;
+        
+        // Update button text and active state
+        const eqyToggleBtn = document.getElementById('eqy-toggle-btn');
+        const eqyToggleText = document.getElementById('eqy-toggle-text');
+        if (eqyToggleBtn && eqyToggleText) {
+            eqyToggleText.textContent = eqyCombinedMode ? 'EQY' : 'Individual';
+            eqyToggleBtn.title = eqyCombinedMode ? 'Switch to individual equities view' : 'Switch to EQY (combined) view';
+            eqyToggleBtn.classList.toggle('active', eqyCombinedMode);
+        }
+        
+        // Just recalculate from existing data - no need to fetch new prices
+        recalculateTotals();
+        updateAverageBuyPriceDisplay();
+        updateYtdDisplay();
+        createPieChart();
+        if (typeof loadHistoryChart === 'function') {
+            loadHistoryChart();
+        }
+        if (typeof loadAssetReturns === 'function') {
+            loadAssetReturns();
+        }
+        if (typeof calculateHistoricalReturns === 'function') {
+            calculateHistoricalReturns();
+        }
+    }
+
     function sortTable(columnIndex) {
         const rowsArray = Array.from(portfolioDataEl.querySelectorAll('tr'));
         const header = portfolioTable.querySelector(`th:nth-child(${columnIndex + 1})`);
@@ -913,10 +1503,30 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         const backgroundColors = [];
         const assetTooltips = {};
         let totalValue = 0;
+        
+        // Define component symbols
+        const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
+        const eqyComponentSymbols = ['VOO', 'NANC', 'IWDE', 'XUSE'];
 
         // First, collect all assets with their data
         const assetsArray = [];
-        Object.keys(portfolio).forEach(symbol => {
+        let allSymbols = Object.keys(portfolioData);
+        
+        // Filter out components based on mode (OTR/EQY are already in portfolioData from fetchStockData)
+        if (otrCombinedMode) {
+            allSymbols = allSymbols.filter(symbol => !otrComponentSymbols.includes(symbol));
+        } else {
+            // In individual mode, filter out OTR
+            allSymbols = allSymbols.filter(symbol => symbol !== 'OTR');
+        }
+        if (eqyCombinedMode) {
+            allSymbols = allSymbols.filter(symbol => !eqyComponentSymbols.includes(symbol));
+        } else {
+            // In individual mode, filter out EQY
+            allSymbols = allSymbols.filter(symbol => symbol !== 'EQY');
+        }
+        
+        allSymbols.forEach(symbol => {
             const assetData = portfolioData[symbol];
             if (!excludedAssets.has(symbol) && assetData && !assetData.error) {
                 let value;
@@ -927,12 +1537,27 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                 }
                 totalValue += value;
                 
+                // Determine asset class and color
+                let assetClass = assetClassLabels[symbol] || 'Other';
+                let assetColor = assetColors[symbol];
+                
+                // For OTR components in individual mode, use Commodities
+                if (otrComponentSymbols.includes(symbol)) {
+                    assetClass = 'Commodities';
+                    assetColor = '#FFCE56';
+                }
+                // For EQY components in individual mode, use Equities
+                if (eqyComponentSymbols.includes(symbol)) {
+                    assetClass = 'Equities';
+                    assetColor = '#36A2EB';
+                }
+                
                 assetsArray.push({
                     symbol: symbol,
                     displaySymbol: symbol.includes('BINANCE:') ? 'BTC' : symbol,
                     value: value,
-                    assetClass: assetClassLabels[symbol] || 'Other',
-                    color: assetColors[symbol]
+                    assetClass: assetClass,
+                    color: assetColor
                 });
             }
         });
@@ -1008,12 +1633,41 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
 
         chartLegendEl.innerHTML = '';
         const classGroups = {};
-        Object.keys(assetClassLabels).forEach(symbol => {
+        let allSymbolsForLegend = Object.keys(portfolioData);
+        
+        // Filter out components based on mode (OTR/EQY are already in portfolioData from fetchStockData)
+        if (otrCombinedMode) {
+            allSymbolsForLegend = allSymbolsForLegend.filter(symbol => !otrComponentSymbols.includes(symbol));
+        } else {
+            // In individual mode, filter out OTR
+            allSymbolsForLegend = allSymbolsForLegend.filter(symbol => symbol !== 'OTR');
+        }
+        if (eqyCombinedMode) {
+            allSymbolsForLegend = allSymbolsForLegend.filter(symbol => !eqyComponentSymbols.includes(symbol));
+        } else {
+            // In individual mode, filter out EQY
+            allSymbolsForLegend = allSymbolsForLegend.filter(symbol => symbol !== 'EQY');
+        }
+        
+        allSymbolsForLegend.forEach(symbol => {
              const assetData = portfolioData[symbol];
             if (!excludedAssets.has(symbol) && assetData && !assetData.error) {
-                const className = assetClassLabels[symbol];
+                // For OTR components in individual mode, use Commodities class
+                let className = assetClassLabels[symbol] || 'Other';
+                if (otrComponentSymbols.includes(symbol)) {
+                    className = 'Commodities';
+                }
+                // For EQY components in individual mode, use Equities class
+                if (eqyComponentSymbols.includes(symbol)) {
+                    className = 'Equities';
+                }
+                
                 if (!classGroups[className]) {
-                    classGroups[className] = { color: assetColors[symbol], assets: [], totalPercentage: 0 };
+                    // Use commodity color for OTR components, equity color for EQY components
+                    const color = otrComponentSymbols.includes(symbol) ? '#FFCE56' : 
+                                 (eqyComponentSymbols.includes(symbol) ? '#36A2EB' : 
+                                 (assetColors[symbol] || '#999999'));
+                    classGroups[className] = { color: color, assets: [], totalPercentage: 0 };
                 }
                 const displaySymbol = symbol.includes('BINANCE:') ? 'BTC' : symbol;
                 const assetPercentage = assetTooltips[displaySymbol]?.percentage || 0;
@@ -1073,28 +1727,65 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     }
 
     async function loadHistoryChart() {
+        // Prevent concurrent calls
+        if (isLoadingHistoryChart) {
+            return;
+        }
+        
+        const historySection = document.getElementById('history-section');
+        if (!historySection) {
+            console.error('History section element not found');
+            return;
+        }
+        
+        isLoadingHistoryChart = true;
+        
         try {
+            const historyChartEl = document.getElementById('history-chart');
+            if (!historyChartEl) {
+                console.error('History chart element not found');
+                historySection.style.display = 'none';
+                return;
+            }
+            
+            // Always show the section - never hide it unless there's truly no data
+            historySection.style.display = 'block';
+            // Use !important to prevent other code from hiding it
+            historySection.style.setProperty('display', 'block', 'important');
+            
             if (window.historyChart instanceof Chart) {
                 window.historyChart.destroy();
             }
 
-            const historyChartEl = document.getElementById('history-chart');
             const ctx = historyChartEl.getContext('2d');
             const response = await fetch('portfolio_history.json');
             const data = await response.json();
             const historicalEntries = data.history;
 
             if (!historicalEntries || !Array.isArray(historicalEntries) || historicalEntries.length === 0) {
-                document.getElementById('history-section').style.display = 'none';
+                // Only hide if there's truly no data
+                console.warn('No historical entries found');
+                historySection.style.display = 'none';
                 return;
             }
 
             // --- Calculate historical values based on current state ---
             const valueKey = displayCurrency === 'USD' ? 'value_usd' : 'value_eur';
+            const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
+            const eqyComponentSymbols = ['VOO', 'NANC', 'IWDE', 'XUSE'];
             const calculatedHistory = historicalEntries.map(entry => {
                 let dailyTotal = 0;
                 if (entry && typeof entry.assets === 'object' && entry.assets !== null) {
                     Object.keys(entry.assets).forEach(symbol => {
+                        // Skip OTR components if in combined mode
+                        if (otrCombinedMode && otrComponentSymbols.includes(symbol)) {
+                            return;
+                        }
+                        // Skip EQY components if in combined mode
+                        if (eqyCombinedMode && eqyComponentSymbols.includes(symbol)) {
+                            return;
+                        }
+                        
                         if (!excludedAssets.has(symbol) && entry.assets[symbol] && typeof entry.assets[symbol] === 'object') {
                             const value = entry.assets[symbol][valueKey];
                             if (typeof value === 'number' && !isNaN(value)) {
@@ -1102,33 +1793,126 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                             }
                         }
                     });
-                } else {
+                    
+                    // Add OTR if in combined mode
+                    if (otrCombinedMode) {
+                        let otrValue = 0;
+                        otrComponentSymbols.forEach(compSymbol => {
+                            if (entry.assets[compSymbol] && typeof entry.assets[compSymbol] === 'object') {
+                                const value = entry.assets[compSymbol][valueKey];
+                                if (typeof value === 'number' && !isNaN(value)) {
+                                    otrValue += value;
+                                }
+                            }
+                        });
+                        if (otrValue > 0 && !excludedAssets.has('OTR')) {
+                            dailyTotal += otrValue;
+                        }
+                    }
+                    
+                    // Add EQY if in combined mode
+                    if (eqyCombinedMode) {
+                        let eqyValue = 0;
+                        eqyComponentSymbols.forEach(compSymbol => {
+                            if (entry.assets[compSymbol] && typeof entry.assets[compSymbol] === 'object') {
+                                const value = entry.assets[compSymbol][valueKey];
+                                if (typeof value === 'number' && !isNaN(value)) {
+                                    eqyValue += value;
+                                }
+                            }
+                        });
+                        if (eqyValue > 0 && !excludedAssets.has('EQY')) {
+                            dailyTotal += eqyValue;
+                        }
+                    }
                 }
+                // Always return an object, even if dailyTotal is 0
                 return { date: entry.date, value: isNaN(dailyTotal) ? 0 : dailyTotal };
-            }).filter(item => item !== null);
+            }).filter(item => item !== null && item !== undefined && item.date);
 
 
             // --- Calculate current value based on live data ---
-            let currentTotalValue = 0;
-            Object.keys(portfolioData).forEach(symbol => {
-                const assetData = portfolioData[symbol];
-                if (assetData && !assetData.error && !excludedAssets.has(symbol) && typeof assetData === 'object') {
-                    const liveValue = displayCurrency === 'USD' ? assetData.value : assetData.valueEur;
-                    if (typeof liveValue === 'number' && !isNaN(liveValue)) {
-                        currentTotalValue += liveValue;
+            // Use the EXACT same value that was calculated in recalculateTotals() to ensure consistency
+            // This ensures the chart always matches what's displayed in the totals
+            let currentTotalValue = lastCalculatedTotal;
+            
+            // If lastCalculatedTotal is 0 or not set, fall back to calculating it
+            // (this can happen if loadHistoryChart is called before recalculateTotals)
+            // Use the EXACT same logic as recalculateTotals
+            if (currentTotalValue === 0 || isNaN(currentTotalValue)) {
+                const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
+                const eqyComponentSymbols = ['VOO', 'NANC', 'IWDE', 'XUSE'];
+                
+                if (portfolioData && Object.keys(portfolioData).length > 0) {
+                    let assetsToProcess = Object.keys(portfolioData);
+                    
+                    // Same logic as recalculateTotals: prefer combined if available, otherwise use components
+                    if (otrCombinedMode) {
+                        const hasValidOTR = portfolioData['OTR'] && !portfolioData['OTR'].error;
+                        if (hasValidOTR) {
+                            assetsToProcess = assetsToProcess.filter(symbol => !otrComponentSymbols.includes(symbol));
+                        } else {
+                            assetsToProcess = assetsToProcess.filter(symbol => symbol !== 'OTR');
+                        }
+                    } else {
+                        assetsToProcess = assetsToProcess.filter(symbol => symbol !== 'OTR');
                     }
+                    
+                    if (eqyCombinedMode) {
+                        const hasValidEQY = portfolioData['EQY'] && !portfolioData['EQY'].error;
+                        if (hasValidEQY) {
+                            assetsToProcess = assetsToProcess.filter(symbol => !eqyComponentSymbols.includes(symbol));
+                        } else {
+                            assetsToProcess = assetsToProcess.filter(symbol => symbol !== 'EQY');
+                        }
+                    } else {
+                        assetsToProcess = assetsToProcess.filter(symbol => symbol !== 'EQY');
+                    }
+                    
+                    assetsToProcess.forEach(symbol => {
+                        const assetData = portfolioData[symbol];
+                        if (assetData && !assetData.error && !excludedAssets.has(symbol) && typeof assetData === 'object') {
+                            const liveValue = displayCurrency === 'USD' ? assetData.value : assetData.valueEur;
+                            if (typeof liveValue === 'number' && !isNaN(liveValue)) {
+                                currentTotalValue += liveValue;
+                            }
+                        }
+                    });
                 }
-            });
+            }
+            
             currentTotalValue = isNaN(currentTotalValue) ? 0 : currentTotalValue;
 
 
             const today = new Date();
 
             if (calculatedHistory && calculatedHistory.length > 0) {
+                // Always add today's value, even if it's 0 (portfolioData might not be loaded yet)
                 calculatedHistory.push({ date: today.toISOString().split('T')[0], value: currentTotalValue });
             } else {
-                document.getElementById('history-section').style.display = 'none';
-                return;
+                // If calculatedHistory is empty, it might be because all values were filtered out
+                // But we still have historicalEntries, so let's create a basic history from the raw data
+                console.warn('calculatedHistory is empty, creating fallback from raw historical entries');
+                if (historicalEntries && historicalEntries.length > 0) {
+                    // Create a simple history from the raw entries
+                    calculatedHistory = historicalEntries.map(entry => {
+                        let total = 0;
+                        if (entry && entry.assets) {
+                            Object.keys(entry.assets).forEach(symbol => {
+                                const assetData = entry.assets[symbol];
+                                if (assetData && assetData[valueKey]) {
+                                    total += assetData[valueKey] || 0;
+                                }
+                            });
+                        }
+                        return { date: entry.date, value: total };
+                    });
+                    calculatedHistory.push({ date: today.toISOString().split('T')[0], value: currentTotalValue });
+                } else {
+                    // If no historical data at all, hide the section
+                    historySection.style.display = 'none';
+                    return;
+                }
             }
 
 
@@ -1141,11 +1925,30 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                 }
             }
 
-            // Ensure calculatedHistory is valid before proceeding
-            if (!displayHistory || displayHistory.length === 0) { // Check the potentially filtered array
-                document.getElementById('history-section').style.display = 'none';
+            // Ensure displayHistory is valid before proceeding
+            if (!displayHistory || displayHistory.length === 0) {
+                // If no data to display, hide the section
+                console.warn('No display history data available');
+                historySection.style.display = 'none';
                 return;
             }
+            
+            // Ensure we have at least some valid data points (including zeros - they're still valid)
+            const hasValidData = displayHistory.some(item => item && typeof item.value === 'number' && !isNaN(item.value));
+            if (!hasValidData) {
+                console.warn('No valid data points in display history');
+                historySection.style.display = 'none';
+                return;
+            }
+            
+            // Log for debugging
+            console.log('History chart data:', {
+                calculatedHistoryLength: calculatedHistory.length,
+                displayHistoryLength: displayHistory.length,
+                hasValidData: hasValidData,
+                firstValue: displayHistory[0]?.value,
+                lastValue: displayHistory[displayHistory.length - 1]?.value
+            });
 
             const dates = displayHistory.map(item => new Date(item.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
             const values = displayHistory.map(item => item.value);
@@ -1259,12 +2062,22 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             }
             // --- End Title Update --- //
 
-            document.getElementById('history-section').style.display = 'block';
+            // Force show the section - use important to override any other styles
+            historySection.style.setProperty('display', 'block', 'important');
         } catch (error) {
-            document.getElementById('history-section').style.display = 'none';
+            console.error('Error loading history chart:', error);
+            // Keep section visible even on error - don't hide it
+            if (historySection) {
+                historySection.style.setProperty('display', 'block', 'important');
+            }
+        } finally {
+            isLoadingHistoryChart = false;
         }
     }
 
+    // Store the calculated total so the chart can use it
+    let lastCalculatedTotal = 0;
+    
     function recalculateTotals() {
         let totalValuePrimary = 0;
         let totalValueSecondary = 0;
@@ -1274,8 +2087,49 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
 
         const primaryCurrency = displayCurrency;
         const secondaryCurrency = (primaryCurrency === 'USD') ? 'EUR' : 'USD';
+        
+        // Define component symbols
+        const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
+        const eqyComponentSymbols = ['VOO', 'NANC', 'IWDE', 'XUSE'];
+        
+        // Get assets to process (filter based on combined/individual mode)
+        // IMPORTANT: Always calculate the same total regardless of toggle state
+        let assetsToProcess = Object.keys(portfolioData);
+        
+        // For OTR: In combined mode, prefer OTR if available, otherwise use components
+        // In individual mode, always use components
+        if (otrCombinedMode) {
+            // Combined mode: Use OTR if it's loaded and valid, otherwise use components
+            const hasValidOTR = portfolioData['OTR'] && !portfolioData['OTR'].error;
+            if (hasValidOTR) {
+                // OTR is loaded, exclude individual components
+                assetsToProcess = assetsToProcess.filter(symbol => !otrComponentSymbols.includes(symbol));
+            } else {
+                // OTR not loaded yet, use individual components instead
+                assetsToProcess = assetsToProcess.filter(symbol => symbol !== 'OTR');
+            }
+        } else {
+            // Individual mode: filter out OTR, keep components
+            assetsToProcess = assetsToProcess.filter(symbol => symbol !== 'OTR');
+        }
+        
+        // For EQY: Same logic
+        if (eqyCombinedMode) {
+            // Combined mode: Use EQY if it's loaded and valid, otherwise use components
+            const hasValidEQY = portfolioData['EQY'] && !portfolioData['EQY'].error;
+            if (hasValidEQY) {
+                // EQY is loaded, exclude individual components
+                assetsToProcess = assetsToProcess.filter(symbol => !eqyComponentSymbols.includes(symbol));
+            } else {
+                // EQY not loaded yet, use individual components instead
+                assetsToProcess = assetsToProcess.filter(symbol => symbol !== 'EQY');
+            }
+        } else {
+            // Individual mode: filter out EQY, keep components
+            assetsToProcess = assetsToProcess.filter(symbol => symbol !== 'EQY');
+        }
 
-        Object.keys(portfolioData).forEach(symbol => {
+        assetsToProcess.forEach(symbol => {
             const data = portfolioData[symbol];
             if (data && !data.error && !excludedAssets.has(symbol)) {
                 if (primaryCurrency === 'USD') {
@@ -1293,19 +2147,51 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                 }
             }
         });
+        
+        // Debug logging (commented out to reduce noise, uncomment if needed for debugging)
+        //         // Debug logging (commented out to reduce noise, uncomment if needed for debugging)
+        // console.log('recalculateTotals:', {
+        //     otrCombinedMode,
+        //     eqyCombinedMode,
+        //     hasOTR: !!portfolioData['OTR'],
+        //     hasEQY: !!portfolioData['EQY'],
+        //     otrError: portfolioData['OTR']?.error,
+        //     eqyError: portfolioData['EQY']?.error,
+        //     otrValue: portfolioData['OTR']?.value,
+        //     eqyValue: portfolioData['EQY']?.value,
+        //     assetsToProcess,
+        //     totalValuePrimary,
+        //     portfolioDataKeys: Object.keys(portfolioData),
+        //     assetValues: assetsToProcess.map(s => ({ symbol: s, value: portfolioData[s]?.value, error: portfolioData[s]?.error }))
+        // });
 
         portfolioDataEl.innerHTML = '';
         let currentSortColumn = -1;
         let currentSortHeader = null;
-         portfolioTable.querySelectorAll('th').forEach((th, index) => {
-             if (th.classList.contains('sort-asc') || th.classList.contains('sort-desc')) {
-                 currentSortColumn = index;
-                 currentSortHeader = th; // Store the header element
-             }
-         });
+        portfolioTable.querySelectorAll('th').forEach((th, index) => {
+            if (th.classList.contains('sort-asc') || th.classList.contains('sort-desc')) {
+                currentSortColumn = index;
+                currentSortHeader = th; // Store the header element
+            }
+        });
+        
+        // Get the correct asset list based on toggle state
+        let assetsToDisplay = Object.keys(portfolioData);
+        // Filter out components if in combined mode (OTR/EQY are already in portfolioData from fetchStockData)
+        if (otrCombinedMode) {
+            assetsToDisplay = assetsToDisplay.filter(symbol => !otrComponentSymbols.includes(symbol));
+        } else {
+            // In individual mode, filter out OTR
+            assetsToDisplay = assetsToDisplay.filter(symbol => symbol !== 'OTR');
+        }
+        if (eqyCombinedMode) {
+            assetsToDisplay = assetsToDisplay.filter(symbol => !eqyComponentSymbols.includes(symbol));
+        } else {
+            // In individual mode, filter out EQY
+            assetsToDisplay = assetsToDisplay.filter(symbol => symbol !== 'EQY');
+        }
 
-
-        Object.keys(portfolioData).forEach(symbol => {
+        assetsToDisplay.forEach(symbol => {
              const row = createTableRow(symbol);
              if(row) { // Only append if row is not null (i.e., not an existing error row)
                  portfolioDataEl.appendChild(row);
@@ -1356,18 +2242,21 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         mainPnlBadgeEl.className = `badge ${totalPnLPercentagePrimary >= 0 ? 'positive' : 'negative'}`;
         // Update dual currency button display
         updateDualCurrencyButton();
+        
+        // Store the calculated total for the chart to use
+        lastCalculatedTotal = totalValuePrimary;
 
         createPieChart();
-        loadHistoryChart();
+        // Don't call loadHistoryChart here - it's already called by finishLoading()
         updateYtdDisplay(); // Update YTD display when currency changes
 
-         if (currentSortColumn !== -1 && currentSortHeader) {
-             const sortClass = currentSortHeader.classList.contains('sort-asc') ? 'sort-asc' : 'sort-desc';
-             currentSortHeader.classList.remove(sortClass);
-             sortTable(currentSortColumn);
-         } else {
+        if (currentSortColumn !== -1 && currentSortHeader) {
+            const sortClass = currentSortHeader.classList.contains('sort-asc') ? 'sort-asc' : 'sort-desc';
+            currentSortHeader.classList.remove(sortClass);
+            sortTable(currentSortColumn);
+        } else {
             sortTable(6); // Default sort by 24hr change if no sort was active
-         }
+        }
     }
 
     tableHeaders.forEach((header, index) => {
@@ -1378,6 +2267,28 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     // --- Event Listener for Pie Chart Toggle --- //
     const pieChartToggleBtn = document.getElementById('pie-chart-toggle-btn');
     pieChartToggleBtn.addEventListener('click', togglePieChartView);
+    
+    const otrToggleBtn = document.getElementById('mtl-toggle-btn');
+    if (otrToggleBtn) {
+        otrToggleBtn.addEventListener('click', toggleOTRView);
+        // Initialize button state
+        const otrToggleText = document.getElementById('mtl-toggle-text');
+        if (otrToggleText) {
+            otrToggleText.textContent = otrCombinedMode ? 'OTR' : 'Individual';
+            otrToggleBtn.classList.toggle('active', otrCombinedMode);
+        }
+    }
+    
+    const eqyToggleBtn = document.getElementById('eqy-toggle-btn');
+    if (eqyToggleBtn) {
+        eqyToggleBtn.addEventListener('click', toggleEQYView);
+        // Initialize button state
+        const eqyToggleText = document.getElementById('eqy-toggle-text');
+        if (eqyToggleText) {
+            eqyToggleText.textContent = eqyCombinedMode ? 'EQY' : 'Individual';
+            eqyToggleBtn.classList.toggle('active', eqyCombinedMode);
+        }
+    }
 
     // --- Event Listener for Timeframe Change --- //
     timeframeSelectEl.addEventListener('change', (event) => {
@@ -1973,8 +2884,31 @@ function calculateReturn(startValue, endValue) {
         }
 
         const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+        const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
+        const eqyComponentSymbols = ['VOO', 'NANC', 'IWDE', 'XUSE'];
         
         const calculateAssetValue = (entry) => {
+            // Handle OTR - combine components
+            if (assetSymbol === 'OTR') {
+                let total = 0;
+                otrComponentSymbols.forEach(compSymbol => {
+                    if (entry.assets[compSymbol] && entry.assets[compSymbol][valueKey]) {
+                        total += entry.assets[compSymbol][valueKey];
+                    }
+                });
+                return total;
+            }
+            // Handle EQY - combine components
+            if (assetSymbol === 'EQY') {
+                let total = 0;
+                eqyComponentSymbols.forEach(compSymbol => {
+                    if (entry.assets[compSymbol] && entry.assets[compSymbol][valueKey]) {
+                        total += entry.assets[compSymbol][valueKey];
+                    }
+                });
+                return total;
+            }
+            // Regular asset
             if (entry.assets[assetSymbol] && entry.assets[assetSymbol][valueKey]) {
                 return entry.assets[assetSymbol][valueKey];
             }
@@ -1985,32 +2919,60 @@ function calculateReturn(startValue, endValue) {
         const endValue = calculateAssetValue(endEntry);
 
         // Get transactions for this asset during the period
-        const assetTransactions = transactionData.transactions.filter(tx => 
-            tx.ticker === assetSymbol && tx.currency === currency
-        );
+        let assetTransactions;
+        if (assetSymbol === 'OTR') {
+            // Get transactions for all OTR components
+            assetTransactions = transactionData.transactions.filter(tx => 
+                otrComponentSymbols.includes(tx.ticker) && tx.currency === currency
+            );
+        } else if (assetSymbol === 'EQY') {
+            // Get transactions for all EQY components
+            assetTransactions = transactionData.transactions.filter(tx => 
+                eqyComponentSymbols.includes(tx.ticker) && tx.currency === currency
+            );
+        } else {
+            assetTransactions = transactionData.transactions.filter(tx => 
+                tx.ticker === assetSymbol && tx.currency === currency
+            );
+        }
 
         // Check for investments on the start date for this specific asset
-        const startDateTransactions = transactionData.transactions.filter(tx => {
-            const txDate = new Date(tx.timestamp);
-            return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker === assetSymbol;
-        });
+        let startDateTransactions;
+        if (assetSymbol === 'OTR') {
+            startDateTransactions = transactionData.transactions.filter(tx => {
+                const txDate = new Date(tx.timestamp);
+                return txDate.getTime() === startDate.getTime() && tx.currency === currency && otrComponentSymbols.includes(tx.ticker);
+            });
+        } else if (assetSymbol === 'EQY') {
+            startDateTransactions = transactionData.transactions.filter(tx => {
+                const txDate = new Date(tx.timestamp);
+                return txDate.getTime() === startDate.getTime() && tx.currency === currency && eqyComponentSymbols.includes(tx.ticker);
+            });
+        } else {
+            startDateTransactions = transactionData.transactions.filter(tx => {
+                const txDate = new Date(tx.timestamp);
+                return txDate.getTime() === startDate.getTime() && tx.currency === currency && tx.ticker === assetSymbol;
+            });
+        }
 
         if (currency === 'USD') {
             startDateTransactions.forEach(tx => {
-                if (tx.action === 'increase' && tx.ticker === assetSymbol) {
+                if (tx.action === 'increase') {
                     startValue += tx.amount;
                 }
             });
-        } else if (currency === 'EUR') {
-            const euroInvestmentTx = startDateTransactions.find(tx => tx.ticker === assetSymbol);
-            if (euroInvestmentTx && euroInvestmentTx.action === 'increase') {
-                startValue += euroInvestmentTx.amount;
-            }
+        } else         if (currency === 'EUR') {
+            startDateTransactions.forEach(tx => {
+                if (tx.action === 'increase') {
+                    startValue += tx.amount;
+                }
+            });
         }
 
-        const relevantTransactions = transactionData.transactions.filter(tx => {
+        // Get transactions between start and end dates (excluding start date transactions)
+        const relevantTransactions = assetTransactions.filter(tx => {
             const txDate = new Date(tx.timestamp);
-            return txDate > startDate && txDate < endDate && tx.currency === currency && tx.ticker === assetSymbol;
+            return txDate > startDate && txDate < endDate;
         });
 
         const cashFlows = [];
@@ -2295,9 +3257,32 @@ function calculateTWRForRiskAssets(historyData, transactionData, startDate, endD
 // Fixed TWR calculation for individual assets
 function calculateTWRForAsset(historyData, transactionData, startDate, endDate, currency, assetSymbol) {
     const valueKey = currency === 'USD' ? 'value_usd' : 'value_eur';
+    const otrComponentSymbols = ['URNU', 'COPX', 'PALL', 'SIVR'];
+        const eqyComponentSymbols = ['VOO', 'NANC', 'IWDE', 'XUSE'];
     
     // Define the asset value calculation function
     const calculateAssetValue = (entry) => {
+        // Handle OTR - combine components
+        if (assetSymbol === 'OTR') {
+            let total = 0;
+            otrComponentSymbols.forEach(compSymbol => {
+                if (entry.assets[compSymbol] && entry.assets[compSymbol][valueKey]) {
+                    total += entry.assets[compSymbol][valueKey];
+                }
+            });
+            return total;
+        }
+        // Handle EQY - combine components
+        if (assetSymbol === 'EQY') {
+            let total = 0;
+            eqyComponentSymbols.forEach(compSymbol => {
+                if (entry.assets[compSymbol] && entry.assets[compSymbol][valueKey]) {
+                    total += entry.assets[compSymbol][valueKey];
+                }
+            });
+            return total;
+        }
+        // Regular asset
         if (entry.assets[assetSymbol] && entry.assets[assetSymbol][valueKey]) {
             return entry.assets[assetSymbol][valueKey];
         }
@@ -2305,11 +3290,26 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
     };
 
     // Get relevant transactions (AFTER start, BEFORE end)
-    const relevantTransactions = transactionData.transactions.filter(tx => {
-        const txDate = new Date(tx.timestamp);
-        return txDate > startDate && txDate < endDate && 
-               tx.currency === currency && tx.ticker === assetSymbol;
-    });
+    let relevantTransactions;
+    if (assetSymbol === 'OTR') {
+        relevantTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate > startDate && txDate < endDate && 
+                   tx.currency === currency && otrComponentSymbols.includes(tx.ticker);
+        });
+    } else if (assetSymbol === 'EQY') {
+        relevantTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate > startDate && txDate < endDate && 
+                   tx.currency === currency && eqyComponentSymbols.includes(tx.ticker);
+        });
+    } else {
+        relevantTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate > startDate && txDate < endDate && 
+                   tx.currency === currency && tx.ticker === assetSymbol;
+        });
+    }
 
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
@@ -2325,11 +3325,26 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
     const endValue = calculateAssetValue(endEntry);
 
     // Include start date transactions in the starting value
-    const startDateTransactions = transactionData.transactions.filter(tx => {
-        const txDate = new Date(tx.timestamp);
-        return txDate.getTime() === startDate.getTime() && 
-               tx.currency === currency && tx.ticker === assetSymbol;
-    });
+    let startDateTransactions;
+    if (assetSymbol === 'OTR') {
+        startDateTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate.getTime() === startDate.getTime() && 
+                   tx.currency === currency && otrComponentSymbols.includes(tx.ticker);
+        });
+    } else if (assetSymbol === 'EQY') {
+        startDateTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate.getTime() === startDate.getTime() && 
+                   tx.currency === currency && eqyComponentSymbols.includes(tx.ticker);
+        });
+    } else {
+        startDateTransactions = transactionData.transactions.filter(tx => {
+            const txDate = new Date(tx.timestamp);
+            return txDate.getTime() === startDate.getTime() && 
+                   tx.currency === currency && tx.ticker === assetSymbol;
+        });
+    }
 
     startDateTransactions.forEach(tx => {
         if (tx.action === 'increase') {
@@ -2407,7 +3422,17 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
             
             let usdResult, eurResult, usdRiskResult, eurRiskResult;
             const assetResults = {};
-            const assets = ['VOO', 'NANC', 'IAU', 'SGOV', 'BINANCE:BTCUSDT', 'IWDE', 'RLX'];
+            let assets = ['IAU', 'SGOV', 'BINANCE:BTCUSDT', 'RLX'];
+            if (eqyCombinedMode) {
+                assets.push('EQY');
+            } else {
+                assets.push('VOO', 'NANC', 'IWDE', 'XUSE');
+            }
+            if (otrCombinedMode) {
+                assets.push('OTR');
+            } else {
+                assets.push('URNU', 'COPX', 'PALL', 'SIVR');
+            }
 
             if (currentReturnType === 'mwr') {
                 // Total portfolio
@@ -2482,8 +3507,19 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
                         <div class="historical-assets-grid">
             `;
             
-            // Use consistent order: BTC, IAU, VOO, NANC, IWDE, SGOV, RLX
-            const orderedAssets = ['BINANCE:BTCUSDT', 'IAU', 'VOO', 'NANC', 'IWDE', 'SGOV', 'RLX'];
+            // Use consistent order: BTC, IAU, then EQY/equities, SGOV, RLX, then OTR/metals
+            let orderedAssets = ['BINANCE:BTCUSDT', 'IAU'];
+            if (eqyCombinedMode) {
+                orderedAssets.push('EQY');
+            } else {
+                orderedAssets.push('VOO', 'NANC', 'IWDE', 'XUSE');
+            }
+            orderedAssets.push('SGOV', 'RLX');
+            if (otrCombinedMode) {
+                orderedAssets.push('OTR');
+            } else {
+                orderedAssets.push('URNU', 'COPX', 'PALL', 'SIVR');
+            }
 
             orderedAssets.forEach(asset => {
                 const assetResult = assetResults[asset];
@@ -2529,14 +3565,37 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
 
     fetchInitialData(); // Start the process
 
-    // Asset Returns Tracker functionality
-    const ASSETS_RETURNS = [
-        { symbol: 'BTC-USD', name: 'Bitcoin' },
-        { symbol: 'IAU', name: 'iShares Gold Trust' },
-        { symbol: 'VOO', name: 'Vanguard S&P 500 ETF' },
-        { symbol: 'NANC', name: 'NANC ETF' },
-        { symbol: 'IWDE.L', name: 'iShares World Developed Markets' },
-    ];
+    // Asset Returns Tracker functionality - make it a function to recalculate when mode changes
+    function getAssetsReturns() {
+        const assets = [
+            { symbol: 'BTC-USD', name: 'Bitcoin' },
+            { symbol: 'IAU', name: 'iShares Gold Trust' }
+        ];
+        
+        if (eqyCombinedMode) {
+            assets.push({ symbol: 'EQY', name: 'Equities (VOO, NANC, IWDE, XUSE)' });
+        } else {
+            assets.push(
+                { symbol: 'VOO', name: 'Vanguard S&P 500 ETF' },
+                { symbol: 'NANC', name: 'NANC ETF' },
+                { symbol: 'IWDE.L', name: 'iShares World Developed Markets' },
+                { symbol: 'XUSE.AS', name: 'iShares MSCI World ex-USA UCITS ETF' }
+            );
+        }
+        
+        if (otrCombinedMode) {
+            assets.push({ symbol: 'OTR', name: 'Metals (URNU, COPX, PALL, SIVR)' });
+        } else {
+            assets.push(
+                { symbol: 'URNU.L', name: 'Uranium UCITS ETF' },
+                { symbol: 'COPX.L', name: 'Global X Copper Miners ETF' },
+                { symbol: 'PALL', name: 'abrdn Physical Palladium Shares ETF' },
+                { symbol: 'SIVR', name: 'abrdn Physical Silver Shares ETF' }
+            );
+        }
+        
+        return assets;
+    }
 
     const PERIOD_DAYS = {
         '1 week': 7,
@@ -2625,17 +3684,77 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
         }
 
         // Try to get real data first
+        const ASSETS_RETURNS = getAssetsReturns();
         for (let i = 0; i < ASSETS_RETURNS.length; i++) {
             const asset = ASSETS_RETURNS[i];
             try {
                 let usdReturn, eurReturn;
                 
-                if (asset.symbol === 'IWDE.L') {
+                if (eqyCombinedMode && asset.symbol === 'EQY') {
+                    // EQY combines VOO, NANC, IWDE.L, XUSE.AS - calculate average return
+                    const eqyComponents = ['VOO', 'NANC', 'IWDE.L', 'XUSE.AS'];
+                    const componentReturns = [];
+                    
+                    for (const compSymbol of eqyComponents) {
+                        try {
+                            const compReturn = await calculateAssetReturn(compSymbol, startDate, endDate);
+                            componentReturns.push(compReturn);
+                            await new Promise(resolve => setTimeout(resolve, 200)); // Delay between requests
+                        } catch (error) {
+                            // Silently retry - don't log errors
+                        }
+                    }
+                    
+                    if (componentReturns.length > 0) {
+                        // Calculate average return
+                        usdReturn = componentReturns.reduce((sum, r) => sum + r, 0) / componentReturns.length;
+                        usdReturn = Math.round(usdReturn * 100) / 100;
+                        // Calculate EUR return: (1 + USD return) / (1 + EUR/USD return) - 1
+                        eurReturn = ((1 + usdReturn / 100) / (1 + eurUsdReturn / 100) - 1) * 100;
+                        eurReturn = Math.round(eurReturn * 100) / 100;
+                    } else {
+                        // If no components loaded, set to 0 instead of throwing
+                        usdReturn = 0;
+                        eurReturn = 0;
+                    }
+                } else if (otrCombinedMode && asset.symbol === 'OTR') {
+                    // OTR combines URNU.L, COPX.L, PALL, SIVR - calculate average return
+                    const otrComponents = ['URNU.L', 'COPX.L', 'PALL', 'SIVR'];
+                    const componentReturns = [];
+                    
+                    for (const compSymbol of otrComponents) {
+                        try {
+                            const compReturn = await calculateAssetReturn(compSymbol, startDate, endDate);
+                            componentReturns.push(compReturn);
+                            await new Promise(resolve => setTimeout(resolve, 200)); // Delay between requests
+                        } catch (error) {
+                            // Silently retry - don't log errors
+                        }
+                    }
+                    
+                    if (componentReturns.length > 0) {
+                        // Calculate average return
+                        usdReturn = componentReturns.reduce((sum, r) => sum + r, 0) / componentReturns.length;
+                        usdReturn = Math.round(usdReturn * 100) / 100;
+                        // Calculate EUR return: (1 + USD return) / (1 + EUR/USD return) - 1
+                        eurReturn = ((1 + usdReturn / 100) / (1 + eurUsdReturn / 100) - 1) * 100;
+                        eurReturn = Math.round(eurReturn * 100) / 100;
+                    } else {
+                        // If no components loaded, set to 0 instead of throwing
+                        usdReturn = 0;
+                        eurReturn = 0;
+                    }
+                } else if (asset.symbol === 'IWDE.L' && !eqyCombinedMode) {
                     // IWDE is EUR-denominated, so calculate return directly in EUR
                     eurReturn = await calculateAssetReturn(asset.symbol, startDate, endDate);
                     // Convert EUR return to USD: (1 + EUR return) * (1 + EUR/USD return) - 1
                     usdReturn = ((1 + eurReturn / 100) * (1 + eurUsdReturn / 100) - 1) * 100;
                     usdReturn = Math.round(usdReturn * 100) / 100;
+                } else if (asset.symbol === 'XUSE.AS' && !eqyCombinedMode) {
+                    // XUSE is USD-denominated but trades on Amsterdam, calculate normally
+                    usdReturn = await calculateAssetReturn(asset.symbol, startDate, endDate);
+                    eurReturn = ((1 + usdReturn / 100) / (1 + eurUsdReturn / 100) - 1) * 100;
+                    eurReturn = Math.round(eurReturn * 100) / 100;
                 } else {
                     // Other assets are USD-denominated
                     usdReturn = await calculateAssetReturn(asset.symbol, startDate, endDate);
@@ -2648,19 +3767,15 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
                 returns.eur[asset.symbol] = eurReturn;
                 
                 // Small delay between assets to avoid overwhelming proxies
-                if (i < ASSETS_RETURNS.length - 1) {
+                const ASSETS_RETURNS_LOCAL = getAssetsReturns();
+                if (i < ASSETS_RETURNS_LOCAL.length - 1) {
                     await new Promise(resolve => setTimeout(resolve, 200)); // 200ms delay
                 }
             } catch (error) {
-                console.error(`Failed to fetch data for ${asset.symbol}:`, error);
-                useFallback = true;
-                break; // If any asset fails, use fallback for all
+                // Silently continue - don't log, don't throw, just skip this asset
+                // Asset will keep retrying in the background via infinite retry
+                continue;
             }
-        }
-
-        // If API failed, throw error
-        if (useFallback) {
-            throw new Error('Failed to fetch asset data from all sources');
         }
 
         return returns;
@@ -2743,6 +3858,7 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
         ];
         
         // Get a different User-Agent for each symbol to avoid rate limiting
+        const ASSETS_RETURNS = getAssetsReturns();
         const symbolIndex = ASSETS_RETURNS.findIndex(asset => asset.symbol === symbol);
         const userAgent = userAgents[symbolIndex % userAgents.length];
         
@@ -2830,6 +3946,7 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
         
         returnsGrid.innerHTML = '';
 
+        const ASSETS_RETURNS = getAssetsReturns();
         ASSETS_RETURNS.forEach(asset => {
             const returnValue = displayCurrency === 'USD' ? returns.usd[asset.symbol] : returns.eur[asset.symbol];
             const card = createReturnsCard(asset, returnValue, period);
@@ -2846,12 +3963,22 @@ function calculateTWRForAsset(historyData, transactionData, startDate, endDate, 
 
         const name = document.createElement('span');
         name.className = 'returns-name';
-        // Display "BTC" instead of "BTC-USD" and "IWDE" instead of "IWDE.L"
+        // Display "BTC" instead of "BTC-USD" and "IWDE" instead of "IWDE.L", etc.
         let displayName = asset.symbol;
         if (asset.symbol === 'BTC-USD') {
             displayName = 'BTC';
         } else if (asset.symbol === 'IWDE.L') {
             displayName = 'IWDE';
+        } else if (asset.symbol === 'XUSE.AS') {
+            displayName = 'XUSE';
+        } else if (asset.symbol === 'EQY') {
+            displayName = 'EQY';
+        } else if (asset.symbol === 'OTR') {
+            displayName = 'OTR';
+        } else if (asset.symbol === 'URNU.L') {
+            displayName = 'URNU';
+        } else if (asset.symbol === 'COPX.L') {
+            displayName = 'COPX';
         }
         name.textContent = displayName;
 
