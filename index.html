@@ -103,6 +103,16 @@
             </div>
         </div>
 
+        <!-- View Toggles -->
+        <div class="view-toggles-container">
+            <button id="mtl-toggle-btn" class="view-toggle-btn" title="Toggle between OTR (combined) and individual metals view">
+                <span id="mtl-toggle-text">OTR</span>
+            </button>
+            <button id="eqy-toggle-btn" class="view-toggle-btn" title="Toggle between EQY (combined) and individual equities view">
+                <span id="eqy-toggle-text">EQY</span>
+            </button>
+        </div>
+
         <!-- History chart section -->
         <div id="history-section" class="card">
             <div class="card-header">
@@ -148,7 +158,6 @@
                         <input type="date" id="endDate" value="2025-08-01" min="2025-08-02" max="">
                     </div>
                 </div>
-
                 <div class="return-type-toggle">
                     <button class="toggle-btn active" id="mwr-toggle" data-type="mwr">MWR</button>
                     <button class="toggle-btn" id="twr-toggle" data-type="twr">TWR</button>
