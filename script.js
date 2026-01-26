@@ -3,9 +3,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
     const WARNING_TIMEOUT = 60 * 1000; // 1 minute before showing warning
     
-    // Cache for price data from price-updater.onrender.com
-    let priceDataCache = null;
-    let priceDataTimestamp = null;
+    // Current price data (fresh on each fetch, never cached)
+    let currentPrices = null;
     
     // Track failed assets and their warning status
     const failedAssets = new Map(); // Map<assetName, {failureStartTime, warningShown}>
@@ -689,13 +688,8 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     function finishLoading() {
         loadingEl.style.display = 'none';
         portfolioTable.style.display = 'table';
-        // Use timestamp from price data if available, otherwise use current time
-        if (priceDataTimestamp) {
-            const timestampDate = new Date(priceDataTimestamp);
-            lastUpdatedEl.textContent = timestampDate.toLocaleString();
-        } else {
-            lastUpdatedEl.textContent = new Date().toLocaleString();
-        }
+        // Always use current time (no caching)
+        lastUpdatedEl.textContent = new Date().toLocaleString();
         recalculateTotals();
         createPieChart();
         updateAverageBuyPriceDisplay();
@@ -709,82 +703,61 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     }
     
     // Fetch all prices from price-updater.onrender.com (single call)
-    // Parallel proxy fetch - returns immediately when first proxy succeeds
+    // NO CACHING - always fetches fresh data
+    // Direct fetch - add CORS headers to your Render API to allow this origin
     async function fetchAllPrices() {
         const url = 'https://price-updater.onrender.com/';
         
-        // All proxies run in parallel - first success wins, no delays
-        const proxyFetches = [
-            // Proxy 1: api.allorigins.win
-            fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, {
-                cache: 'no-store'
-            }).then(async response => {
-                if (!response.ok) throw new Error(`AllOrigins HTTP ${response.status}`);
-                const text = await response.text();
-                try {
-                    return JSON.parse(text);
-                } catch {
-                    const wrapped = JSON.parse(text);
-                    return typeof wrapped.contents === 'string' ? JSON.parse(wrapped.contents) : wrapped;
-                }
-            }),
-            
-            // Proxy 2: corsproxy.io
-            fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, {
-                cache: 'no-store'
-            }).then(async response => {
-                if (!response.ok) throw new Error(`CorsProxy HTTP ${response.status}`);
-                return await response.json();
-            }),
-            
-            // Proxy 3: thingproxy.freeboard.io
-            fetch(`https://thingproxy.freeboard.io/fetch/${url}`, {
-                cache: 'no-store'
-            }).then(async response => {
-                if (!response.ok) throw new Error(`ThingProxy HTTP ${response.status}`);
-                return await response.json();
-            })
-        ];
+        const response = await fetch(url, {
+            method: 'GET',
+            cache: 'no-store',
+            headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+            }
+        });
         
-        // Race all proxies - return immediately when first succeeds
-        const data = await Promise.race(proxyFetches);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         
-        // Validate response
+        const data = await response.json();
+        
         if (!data || !data.assets || !data.timestamp) {
             throw new Error('Invalid response format from price-updater');
         }
         
-        // Cache the data immediately
-        priceDataCache = data.assets;
-        priceDataTimestamp = data.timestamp;
+        // Store fresh data (not cached, just for current fetch cycle)
+        currentPrices = data.assets;
         
         return data;
     }
     
-    // Get price from cache (with symbol mapping)
-    function getPriceFromCache(symbol) {
-        if (!priceDataCache) {
+    // Get price from current fetch (with symbol mapping)
+    // NO CACHE - only uses data from the current fetch
+    function getPriceFromCurrentFetch(symbol) {
+        if (!currentPrices) {
             return null;
         }
         
-        // Map internal symbols to cache keys
-        let cacheKey = symbol;
+        // Map internal symbols to keys
+        let key = symbol;
         
         // Handle special symbol mappings
         if (symbol === 'BINANCE:BTCUSDT') {
-            cacheKey = 'BINANCE:BTCUSDT';
+            key = 'BINANCE:BTCUSDT';
         } else if (symbol === 'IWDE' || symbol === 'IWDE.L') {
-            cacheKey = 'IWDE';
+            key = 'IWDE';
         } else if (symbol === 'XUSE' || symbol === 'XUSE.AS') {
-            cacheKey = 'XUSE';
+            key = 'XUSE';
         } else if (symbol === 'URNU' || symbol === 'URNU.L') {
-            cacheKey = 'URNU';
+            key = 'URNU';
         } else if (symbol === 'COPX' || symbol === 'COPX.L') {
-            cacheKey = 'COPX';
+            key = 'COPX';
         }
         // VOO, NANC, PALL, SIVR, IAU, SGOV should match directly
         
-        const assetData = priceDataCache[cacheKey];
+        const assetData = currentPrices[key];
         if (assetData) {
             return {
                 price: assetData.price,
@@ -800,22 +773,14 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         portfolioTable.style.display = 'none';
         portfolioDataEl.innerHTML = '';
 
+        // Clear any old data before fetching fresh
+        currentPrices = null;
+        
         // Fetch exchange rate and prices in parallel for faster loading
-        // Direct fetch - no retries, immediate response
+        // NO CACHING - always fetches fresh data
         await Promise.all([
             fetchExchangeRate(),
-            fetchAllPrices().catch(error => {
-                // If fetch fails, use cached data if available
-                if (priceDataCache && priceDataTimestamp) {
-                    console.warn('Using cached price data:', error.message);
-                    return {
-                        assets: priceDataCache,
-                        timestamp: priceDataTimestamp
-                    };
-                }
-                // Re-throw if no cache available
-                throw error;
-            })
+            fetchAllPrices()
         ]);
 
         let completedRequests = 0;
@@ -866,7 +831,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                 // Get prices from cache (no API calls needed)
                 const componentPromises = otrComponents.map(comp => {
                     const fetchFn = async () => {
-                        const priceData = getPriceFromCache(comp.name);
+                        const priceData = getPriceFromCurrentFetch(comp.name);
                         if (!priceData) {
                             throw new Error(`Price data not found for ${comp.name}`);
                         }
@@ -1006,7 +971,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                 // Get prices from cache (no API calls needed)
                 const componentPromises = eqyComponents.map(comp => {
                     const fetchFn = async () => {
-                        const priceData = getPriceFromCache(comp.name);
+                        const priceData = getPriceFromCurrentFetch(comp.name);
                         if (!priceData) {
                             throw new Error(`Price data not found for ${comp.name}`);
                         }
@@ -1203,7 +1168,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             
             const fetchFn = async () => {
                 // Get price from cache instead of API calls
-                const priceData = getPriceFromCache(symbol);
+                const priceData = getPriceFromCurrentFetch(symbol);
                 if (!priceData) {
                     throw new Error(`Price data not found for ${symbol}`);
                 }
