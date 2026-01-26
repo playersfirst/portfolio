@@ -274,7 +274,14 @@ class PortfolioUpdater:
                         symbol_container = cells[0].find_element(By.CLASS_NAME, "symbol-container")
                         raw_symbol_text = symbol_container.text
                         symbol = raw_symbol_text.replace('⊕', '').replace('⊖', '').strip()
-                        internal_symbol = 'BINANCE:BTCUSDT' if symbol == 'BTC' else ('IWDE' if symbol == 'IWDE.L' else symbol)
+                        if symbol == 'BTC':
+                            internal_symbol = 'BINANCE:BTCUSDT'
+                        elif symbol == 'IWDE.L':
+                            internal_symbol = 'IWDE'
+                        elif symbol == 'XUSE.L' or symbol == 'XUSE.AS':
+                            internal_symbol = 'XUSE'
+                        else:
+                            internal_symbol = symbol
                         
                         value_text = cells[3].text.strip()
                         
