@@ -709,23 +709,97 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
     }
     
     // Fetch all prices from price-updater.onrender.com (single call)
+    // Uses multiple fallback methods for reliability
     async function fetchAllPrices() {
-        try {
-            // Use CORS proxy to avoid CORS issues
-            const url = 'https://price-updater.onrender.com/';
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-            const response = await fetch(proxyUrl);
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
+        const url = 'https://price-updater.onrender.com/';
+        const maxRetries = 3;
+        const retryDelay = 1000; // 1 second
+        
+        // List of CORS proxy methods to try
+        const fetchMethods = [
+            // Method 1: api.allorigins.win proxy
+            async () => {
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl, { 
+                    signal: AbortSignal.timeout(15000) 
+                });
+                if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+                const text = await response.text();
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    const wrapped = JSON.parse(text);
+                    return typeof wrapped.contents === 'string' ? JSON.parse(wrapped.contents) : wrapped;
+                }
+            },
+            // Method 2: corsproxy.io proxy
+            async () => {
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+                const response = await fetch(proxyUrl, { 
+                    signal: AbortSignal.timeout(15000) 
+                });
+                if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+                return await response.json();
+            },
+            // Method 3: thingproxy.freeboard.io proxy
+            async () => {
+                const proxyUrl = `https://thingproxy.freeboard.io/fetch/${url}`;
+                const response = await fetch(proxyUrl, { 
+                    signal: AbortSignal.timeout(15000) 
+                });
+                if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`);
+                return await response.json();
             }
-            const data = await response.json();
-            priceDataCache = data.assets;
-            priceDataTimestamp = data.timestamp;
-            return data;
-        } catch (error) {
-            console.error('Error fetching prices from price-updater:', error);
-            throw error;
+        ];
+        
+        // Try each method with retries
+        for (let methodIndex = 0; methodIndex < fetchMethods.length; methodIndex++) {
+            const fetchMethod = fetchMethods[methodIndex];
+            
+            for (let attempt = 0; attempt < maxRetries; attempt++) {
+                try {
+                    const data = await fetchMethod();
+                    
+                    // Validate response
+                    if (!data || !data.assets || !data.timestamp) {
+                        throw new Error('Invalid response format from price-updater');
+                    }
+                    
+                    // Success! Cache and return
+                    priceDataCache = data.assets;
+                    priceDataTimestamp = data.timestamp;
+                    return data;
+                    
+                } catch (error) {
+                    const isLastAttempt = attempt === maxRetries - 1;
+                    const isLastMethod = methodIndex === fetchMethods.length - 1;
+                    
+                    if (isLastAttempt && isLastMethod) {
+                        // All methods and retries exhausted
+                        console.error('All fetch methods failed for price-updater:', error);
+                        
+                        // If we have cached data, use it instead of throwing
+                        if (priceDataCache && priceDataTimestamp) {
+                            console.warn('Using cached price data due to fetch failure');
+                            return {
+                                assets: priceDataCache,
+                                timestamp: priceDataTimestamp
+                            };
+                        }
+                        
+                        throw error;
+                    }
+                    
+                    // Wait before retrying (exponential backoff)
+                    if (!isLastAttempt) {
+                        await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
+                    }
+                }
+            }
         }
+        
+        // Should never reach here, but just in case
+        throw new Error('All fetch methods exhausted');
     }
     
     // Get price from cache (with symbol mapping)
