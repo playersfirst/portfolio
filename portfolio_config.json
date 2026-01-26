@@ -7,7 +7,12 @@
     "SGOV": 17857,
     "BINANCE:BTCUSDT": 7830,
     "IWDE": 4026,
-    "RLX": 6370
+    "RLX": 6370,
+    "XUSE": 0,
+    "URNU": 0,
+    "COPX": 0,
+    "PALL": 0,
+    "SIVR": 0
   },
   "initialEuroInvestments": {
     "VOO": 4779,
@@ -16,7 +21,12 @@
     "SGOV": 15975,
     "BINANCE:BTCUSDT": 7096,
     "IWDE": 3459,
-    "RLX": 5421
+    "RLX": 5421,
+    "XUSE": 0,
+    "URNU": 0,
+    "COPX": 0,
+    "PALL": 0,
+    "SIVR": 0
   },
   "currentPortfolio": {
     "VOO": 9.5766,
@@ -25,6 +35,11 @@
     "SGOV": 181.778,
     "BINANCE:BTCUSDT": 0.11792921,
     "IWDE": 33.5028,
-    "RLX": 1
+    "RLX": 1,
+    "XUSE": 0,
+    "URNU": 0,
+    "COPX": 0,
+    "PALL": 0,
+    "SIVR": 0
   }
 }
