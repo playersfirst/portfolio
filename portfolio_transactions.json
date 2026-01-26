@@ -2122,6 +2122,248 @@
       "newAmount": 51611,
       "difference": 400,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 236,
+      "oldAmount": 5451,
+      "newAmount": 5687,
+      "difference": 236,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 116,
+      "oldAmount": 10509,
+      "newAmount": 10625,
+      "difference": 116,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "XUSE",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 236,
+      "oldAmount": 0,
+      "newAmount": 236,
+      "difference": 236,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "URNU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 356,
+      "oldAmount": 0,
+      "newAmount": 356,
+      "difference": 356,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "COPX",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 356,
+      "oldAmount": 0,
+      "newAmount": 356,
+      "difference": 356,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "PALL",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 118,
+      "oldAmount": 0,
+      "newAmount": 118,
+      "difference": 118,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "SIVR",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 356,
+      "oldAmount": 0,
+      "newAmount": 356,
+      "difference": 356,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 200,
+      "oldAmount": 4779,
+      "newAmount": 4979,
+      "difference": 200,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 100,
+      "oldAmount": 9153,
+      "newAmount": 9253,
+      "difference": 100,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "XUSE",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 200,
+      "oldAmount": 0,
+      "newAmount": 200,
+      "difference": 200,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "URNU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 300,
+      "oldAmount": 0,
+      "newAmount": 300,
+      "difference": 300,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "COPX",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 300,
+      "oldAmount": 0,
+      "newAmount": 300,
+      "difference": 300,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "PALL",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 100,
+      "oldAmount": 0,
+      "newAmount": 100,
+      "difference": 100,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "SIVR",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 300,
+      "oldAmount": 0,
+      "newAmount": 300,
+      "difference": 300,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.37150000000000105,
+      "oldAmount": 9.5766,
+      "newAmount": 9.9481,
+      "difference": 0.37150000000000105,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 1.1993000000000222,
+      "oldAmount": 152.2454,
+      "newAmount": 153.4447,
+      "difference": 1.1993000000000222,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "XUSE",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 34.6765,
+      "oldAmount": 0,
+      "newAmount": 34.6765,
+      "difference": 34.6765,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "URNU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 9.8315,
+      "oldAmount": 0,
+      "newAmount": 9.8315,
+      "difference": 9.8315,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "COPX",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 5.0925,
+      "oldAmount": 0,
+      "newAmount": 5.0925,
+      "difference": 5.0925,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "PALL",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.6243,
+      "oldAmount": 0,
+      "newAmount": 0.6243,
+      "difference": 0.6243,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "SIVR",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 3.4002,
+      "oldAmount": 0,
+      "newAmount": 3.4002,
+      "difference": 3.4002,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-26T14:40:59.767Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 1500,
+      "oldAmount": 51611,
+      "newAmount": 53111,
+      "difference": 1500,
+      "currency": "EUR"
     }
   ]
 }
