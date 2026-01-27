@@ -2364,6 +2364,116 @@
       "newAmount": 53111,
       "difference": 1500,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "SGOV",
+      "type": "initial_investment",
+      "action": "decrease",
+      "amount": 200,
+      "oldAmount": 17857,
+      "newAmount": 17657,
+      "difference": -200,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "XUSE",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 200,
+      "oldAmount": 236,
+      "newAmount": 436,
+      "difference": 200,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "PALL",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 238,
+      "oldAmount": 118,
+      "newAmount": 356,
+      "difference": 238,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "SGOV",
+      "type": "initial_euro_investment",
+      "action": "decrease",
+      "amount": 167,
+      "oldAmount": 15975,
+      "newAmount": 15808,
+      "difference": -167,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "XUSE",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 167,
+      "oldAmount": 200,
+      "newAmount": 367,
+      "difference": 167,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "PALL",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 200,
+      "oldAmount": 100,
+      "newAmount": 300,
+      "difference": 200,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "sell",
+      "amount": 2,
+      "oldAmount": 181.778,
+      "newAmount": 179.778,
+      "difference": -2,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "XUSE",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 28.7941,
+      "oldAmount": 34.6765,
+      "newAmount": 63.4706,
+      "difference": 28.7941,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "PALL",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 1.245,
+      "oldAmount": 0.6243,
+      "newAmount": 1.8693,
+      "difference": 1.245,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-01-27T15:21:47.401Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 200,
+      "oldAmount": 53111,
+      "newAmount": 53311,
+      "difference": 200,
+      "currency": "EUR"
     }
   ]
 }
