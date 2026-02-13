@@ -2760,6 +2760,61 @@
       "newAmount": 172.1654,
       "difference": 0.38740000000001373,
       "currency": "units"
+    },
+    {
+      "timestamp": "2026-02-13T15:33:49.770Z",
+      "ticker": "VOO",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 176,
+      "oldAmount": 5787,
+      "newAmount": 5963,
+      "difference": 176,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-02-13T15:33:49.770Z",
+      "ticker": "SGOV",
+      "type": "initial_investment",
+      "action": "decrease",
+      "amount": 176,
+      "oldAmount": 16857,
+      "newAmount": 16681,
+      "difference": -176,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-02-13T15:33:49.770Z",
+      "ticker": "VOO",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 148,
+      "oldAmount": 5064,
+      "newAmount": 5212,
+      "difference": 148,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-02-13T15:33:49.770Z",
+      "ticker": "SGOV",
+      "type": "initial_euro_investment",
+      "action": "decrease",
+      "amount": 148,
+      "oldAmount": 15131,
+      "newAmount": 14983,
+      "difference": -148,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-02-13T15:33:49.770Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.279300000000001,
+      "oldAmount": 10.1083,
+      "newAmount": 10.3876,
+      "difference": 0.279300000000001,
+      "currency": "units"
     }
   ]
 }
