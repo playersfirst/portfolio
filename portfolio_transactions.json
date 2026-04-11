@@ -3453,6 +3453,28 @@
       "newAmount": 59310,
       "difference": 150,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-04-11T03:28:33.544Z",
+      "ticker": "VOO",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.026900000000001256,
+      "oldAmount": 12.9126,
+      "newAmount": 12.9395,
+      "difference": 0.026900000000001256,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-04-11T03:28:33.544Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.3516999999999939,
+      "oldAmount": 172.4922,
+      "newAmount": 172.8439,
+      "difference": 0.3516999999999939,
+      "currency": "units"
     }
   ]
 }
