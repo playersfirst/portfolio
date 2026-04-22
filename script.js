@@ -2256,6 +2256,10 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
              }
         }
 
+        const exchangeRateValueEl = document.getElementById('exchange-rate-value');
+        if (exchangeRateValueEl && usdToEurRate !== 1.0) {
+            exchangeRateValueEl.textContent = usdToEurRate.toFixed(4);
+        }
 
         mainTotalValueEl.textContent = formatCurrency(totalValuePrimary, primaryCurrency);
         mainEuroValueEl.style.display = hasExcludedAssets ? 'none' : 'inline';
