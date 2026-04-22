@@ -690,6 +690,11 @@ body {
   }
 }
 
+/* Exchange rate in info bar */
+.exchange-rate-info {
+  font-weight: 500;
+}
+
 /* Styles for excluded assets */
 tr.excluded {
   opacity: 0.6;
