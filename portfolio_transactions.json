@@ -3475,6 +3475,17 @@
       "newAmount": 172.8439,
       "difference": 0.3516999999999939,
       "currency": "units"
+    },
+    {
+      "timestamp": "2026-05-09T15:21:24.081Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.3586999999999989,
+      "oldAmount": 172.8439,
+      "newAmount": 173.2026,
+      "difference": 0.3586999999999989,
+      "currency": "units"
     }
   ]
 }
