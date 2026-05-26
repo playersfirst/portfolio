@@ -3486,6 +3486,72 @@
       "newAmount": 173.2026,
       "difference": 0.3586999999999989,
       "currency": "units"
+    },
+    {
+      "timestamp": "2026-05-26T16:57:22.759Z",
+      "ticker": "IAU",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 705,
+      "oldAmount": 13817,
+      "newAmount": 14522,
+      "difference": 705,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-05-26T16:57:22.759Z",
+      "ticker": "SGOV",
+      "type": "initial_investment",
+      "action": "decrease",
+      "amount": 705,
+      "oldAmount": 16681,
+      "newAmount": 15976,
+      "difference": -705,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-05-26T16:57:22.759Z",
+      "ticker": "IAU",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 606,
+      "oldAmount": 11988,
+      "newAmount": 12594,
+      "difference": 606,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-05-26T16:57:22.759Z",
+      "ticker": "SGOV",
+      "type": "initial_euro_investment",
+      "action": "decrease",
+      "amount": 606,
+      "oldAmount": 14983,
+      "newAmount": 14377,
+      "difference": -606,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-05-26T16:57:22.759Z",
+      "ticker": "IAU",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 8.306799999999981,
+      "oldAmount": 189.2323,
+      "newAmount": 197.5391,
+      "difference": 8.306799999999981,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-05-26T16:57:22.759Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "sell",
+      "amount": 7,
+      "oldAmount": 173.2026,
+      "newAmount": 166.2026,
+      "difference": -7,
+      "currency": "units"
     }
   ]
 }
