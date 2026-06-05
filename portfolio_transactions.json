@@ -3629,6 +3629,50 @@
       "newAmount": 59810,
       "difference": 500,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-06-05T14:42:42.635Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "initial_investment",
+      "action": "increase",
+      "amount": 462,
+      "oldAmount": 9845,
+      "newAmount": 10307,
+      "difference": 462,
+      "currency": "USD"
+    },
+    {
+      "timestamp": "2026-06-05T14:42:42.635Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "initial_euro_investment",
+      "action": "increase",
+      "amount": 400,
+      "oldAmount": 8695,
+      "newAmount": 9095,
+      "difference": 400,
+      "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-06-05T14:42:42.635Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.007588070000000002,
+      "oldAmount": 0.14356685,
+      "newAmount": 0.15115492,
+      "difference": 0.007588070000000002,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-06-05T14:42:42.635Z",
+      "ticker": "EURO_INVESTMENT",
+      "type": "original_euro_investment",
+      "action": "increase",
+      "amount": 400,
+      "oldAmount": 59810,
+      "newAmount": 60210,
+      "difference": 400,
+      "currency": "EUR"
     }
   ]
 }
