@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const apiKey = 'cvneau1r01qq3c7eq690cvneau1r01qq3c7eq69g';
     const REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
     const WARNING_TIMEOUT = 60 * 1000; // 1 minute before showing warning
     
@@ -775,6 +774,69 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         return null;
     }
 
+    async function fetchBitcoinPrice() {
+        try {
+            const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.bitcoin?.usd) {
+                    return {
+                        price: data.bitcoin.usd,
+                        percentChange: data.bitcoin.usd_24h_change ?? 0
+                    };
+                }
+            }
+        } catch (error) {
+            // Fall through to Binance fallback
+        }
+
+        try {
+            const response = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
+            if (response.ok) {
+                const data = await response.json();
+                const price = parseFloat(data.lastPrice);
+                const percentChange = parseFloat(data.priceChangePercent);
+                if (price) {
+                    return { price, percentChange: percentChange || 0 };
+                }
+            }
+        } catch (error) {
+            // Fall through to Yahoo Finance fallback
+        }
+
+        const baseUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?interval=1d&range=1d';
+        const proxies = [
+            `https://corsproxy.io/?${encodeURIComponent(baseUrl)}`,
+            `https://api.allorigins.win/raw?url=${encodeURIComponent(baseUrl)}`
+        ];
+
+        for (const url of proxies) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) continue;
+                const data = await response.json();
+                const meta = data.chart?.result?.[0]?.meta;
+                if (!meta?.regularMarketPrice) continue;
+
+                let percentChange = 0;
+                if (meta.regularMarketChangePercent != null) {
+                    percentChange = meta.regularMarketChangePercent * 100;
+                } else if (meta.previousClose) {
+                    percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
+                }
+
+                return {
+                    price: meta.regularMarketPrice,
+                    percentChange
+                };
+            } catch (error) {
+                // Try next proxy
+            }
+        }
+
+        throw new Error('Failed to fetch BTC price');
+    }
+
     async function fetchStockData() {
         loadingEl.style.display = 'flex';
         portfolioTable.style.display = 'none';
@@ -1109,15 +1171,10 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             const initialInvestment = initialInvestments[symbol];
             const initialEuroInvestment = initialEuroInvestments[symbol];
             
-            // Special handling for BTC - fetch from Finnhub (not included in price-updater)
+            // Special handling for BTC - fetch from CoinGecko/Yahoo (not included in price-updater)
             if (symbol === 'BINANCE:BTCUSDT') {
                 const fetchFn = async () => {
-                    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=BINANCE:BTCUSDT&token=${apiKey}`);
-                    if (!response.ok) { throw new Error(`HTTP error! Status: ${response.status}`); }
-                    const data = await response.json();
-                    if (!data.c) { throw new Error('Invalid Finnhub response for BTC'); }
-                    const price = data.c;
-                    const percentChange = data.dp;
+                    const { price, percentChange } = await fetchBitcoinPrice();
 
                     const value = price * shares;
                     const valueEur = value / usdToEurRate;
