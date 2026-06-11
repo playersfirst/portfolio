@@ -1109,6 +1109,37 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             const initialInvestment = initialInvestments[symbol];
             const initialEuroInvestment = initialEuroInvestments[symbol];
             
+            // Special handling for BTC - fetch from Finnhub (not included in price-updater)
+            if (symbol === 'BINANCE:BTCUSDT') {
+                const fetchFn = async () => {
+                    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=BINANCE:BTCUSDT&token=${apiKey}`);
+                    if (!response.ok) { throw new Error(`HTTP error! Status: ${response.status}`); }
+                    const data = await response.json();
+                    if (!data.c) { throw new Error('Invalid Finnhub response for BTC'); }
+                    const price = data.c;
+                    const percentChange = data.dp;
+
+                    const value = price * shares;
+                    const valueEur = value / usdToEurRate;
+                    const pnl = value - initialInvestment;
+                    const pnlEur = valueEur - initialEuroInvestment;
+
+                    portfolioData[symbol] = {
+                        shares, price, value, pnl, valueEur, pnlEur,
+                        percentChange, initialInvestment, initialEuroInvestment,
+                        displayPrice: price, isEurDenominated: false
+                    };
+                };
+
+                return fetchWithInfiniteRetry(fetchFn, symbol)
+                    .finally(() => {
+                        completedRequests++;
+                        if (completedRequests === totalRequests) {
+                            finishLoading();
+                        }
+                    });
+            }
+
             // Special handling for RLX - fetch from JSON file with infinite retry
             if (symbol === 'RLX') {
                 const fetchFn = async () => {
@@ -1145,10 +1176,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
             let apiSymbol = symbol;
             let useYahooFinance = false;
             
-            if (symbol === 'BINANCE:BTCUSDT') {
-                apiSymbol = 'BINANCE:BTCUSDT'; // Keep Bitcoin on Finnhub
-                useYahooFinance = false;
-            } else if (symbol === 'IWDE' && !eqyCombinedMode) {
+            if (symbol === 'IWDE' && !eqyCombinedMode) {
                 apiSymbol = 'IWDE.L'; // iShares World Developed Markets on London exchange
                 useYahooFinance = true;
             } else if (symbol === 'XUSE' && !eqyCombinedMode) {
