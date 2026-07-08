@@ -3970,6 +3970,17 @@
       "newAmount": 62800,
       "difference": 1170,
       "currency": "EUR"
+    },
+    {
+      "timestamp": "2026-07-08T14:01:57.027Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.3405999999999949,
+      "oldAmount": 166.5495,
+      "newAmount": 166.8901,
+      "difference": 0.3405999999999949,
+      "currency": "units"
     }
   ]
 }
