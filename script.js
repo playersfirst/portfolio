@@ -739,6 +739,19 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         return data;
     }
     
+    // Yahoo already returns regularMarketChangePercent in percent units (e.g. -0.286).
+    // The price-updater used to multiply LSE/AMS tickers by 100, producing values like -28.6% / -53.6%.
+    // Undo that scaling when the feed is still stale; leave plausible daily moves alone.
+    function normalizePercentChange(symbol, percentChange) {
+        const value = Number(percentChange);
+        if (!Number.isFinite(value)) return 0;
+        const yahooFeedSymbols = new Set(['IWDE', 'XUSE', 'URNU', 'COPX']);
+        if (yahooFeedSymbols.has(symbol) && Math.abs(value) >= 10) {
+            return value / 100;
+        }
+        return value;
+    }
+
     // Get price from current fetch (with symbol mapping)
     // NO CACHE - only uses data from the current fetch
     function getPriceFromCurrentFetch(symbol) {
@@ -767,7 +780,7 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
         if (assetData) {
             return {
                 price: assetData.price,
-                percentChange: assetData.percentChange
+                percentChange: normalizePercentChange(key, assetData.percentChange)
             };
         }
         
@@ -819,10 +832,12 @@ cbbiDateEl.textContent = `Last updated: ${date.toLocaleDateString()}`;
                 if (!meta?.regularMarketPrice) continue;
 
                 let percentChange = 0;
-                if (meta.regularMarketChangePercent != null) {
-                    percentChange = meta.regularMarketChangePercent * 100;
-                } else if (meta.previousClose) {
-                    percentChange = ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100;
+                const prevClose = meta.previousClose || meta.chartPreviousClose;
+                if (prevClose) {
+                    percentChange = ((meta.regularMarketPrice - prevClose) / prevClose) * 100;
+                } else if (meta.regularMarketChangePercent != null) {
+                    // Yahoo already returns this in percent units (e.g. 0.72 for +0.72%)
+                    percentChange = meta.regularMarketChangePercent;
                 }
 
                 return {
