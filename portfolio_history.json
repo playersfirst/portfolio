@@ -14832,6 +14832,35 @@
           "value_eur": 12133.8
         }
       }
+    },
+    {
+      "date": "2026-09-17",
+      "assets": {
+        "BINANCE:BTCUSDT": {
+          "value_usd": 14060.2,
+          "value_eur": 12270.58
+        },
+        "SGOV": {
+          "value_usd": 16852.56,
+          "value_eur": 14707.53
+        },
+        "RLX": {
+          "value_usd": 6973.62,
+          "value_eur": 6086.0
+        },
+        "OTR": {
+          "value_usd": 1008.62,
+          "value_eur": 880.24
+        },
+        "EQY": {
+          "value_usd": 24038.7,
+          "value_eur": 20978.99
+        },
+        "IAU": {
+          "value_usd": 18252.86,
+          "value_eur": 15929.6
+        }
+      }
     }
   ]
 }
