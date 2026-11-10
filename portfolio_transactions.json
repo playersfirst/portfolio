@@ -4421,6 +4421,28 @@
       "newAmount": 167.9547,
       "difference": 0.35089999999999577,
       "currency": "units"
+    },
+    {
+      "timestamp": "2026-11-10T13:43:44.535Z",
+      "ticker": "SGOV",
+      "type": "portfolio_holding",
+      "action": "buy",
+      "amount": 0.3843999999999994,
+      "oldAmount": 167.9547,
+      "newAmount": 168.3391,
+      "difference": 0.3843999999999994,
+      "currency": "units"
+    },
+    {
+      "timestamp": "2026-11-10T13:43:44.535Z",
+      "ticker": "BINANCE:BTCUSDT",
+      "type": "portfolio_holding",
+      "action": "sell",
+      "amount": 3.199999999980996e-7,
+      "oldAmount": 0.18571528,
+      "newAmount": 0.18571496,
+      "difference": -3.199999999980996e-7,
+      "currency": "units"
     }
   ]
 }
